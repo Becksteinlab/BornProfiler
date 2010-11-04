@@ -1,27 +1,93 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 """
-:Author: Kaihsu Tai
-:Year: 2008
+:Author: Kaihsu Tai, Oliver Beckstein
+:Year: 2008, 2010
 :Licence: GPL
 :Copyright: (c) 2008 Kaihsu Tai
+:Copyright: (c) 2010 Oliver Beckstein
 :URL: http://en.wikiversity.org/wiki/Talk:Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
 
-I wrote some Python code to automate this process. The job submission requires a queuing system called Grid Engine. Copyright © 2008 Kaihsu Tai. Moral rights asserted (why?). Hereby licensed under either GFDL or GNU General Public License at your option.
-
-Obviously, you will have to change the parameters in the driver-functions (main()) to fit the purposes of this tutorial. That is the exercise for the reader! -- Kaihsu 16:12, 23 December 2008 (UTC)
-
-Also, you will need to generate the PQR file, along with a file containing a list of the coordinates for the sample points. The script submits the job to a queueing system called Grid Engine, but you can submit the job by hand if you do not have this installed. -- Kaihsu 11:04, 9 January 2009 (UTC)
-
-Additionally, you will need to change the ion species. -- Kaihsu 17:03, 30 January 2009 (UTC)
-
-See also Two-dimensional Poisson-Boltzmann profile for an ion channel. -- Kaihsu 13:07, 30 April 2009 (UTC)
+I wrote some Python code to automate this process. The job submission
+requires a queuing system called Grid Engine. Copyright Â© 2008 Kaihsu
+Tai. Moral rights asserted (why?). Hereby licensed under either GFDL
+or GNU General Public License at your option.
 """
+
 import os
- 
-class placeion:
+import logging
+logger = logging.getLogger('bornprofile') 
+
+usage = """%programe [options] PQR samplepoints
+
+This script sets up input files for Born energy calculations for
+APBS. It expects to find ion positions in the file samplepoints.
+
+The "Born radii" for ions (not Pauling radii!) were taken from Table III in
+
+  Alexander A. Rashin, Barry Honig (1985) J. Phys. Chem. 89(26):5588-5593
+  http://dx.doi.org/10.1021/j100272a006
+
+This paper suggests using the corrected covalent radius (Born radius).
+"""
+
+# radius of the test ion (Angstrom)
+# ionic radii (Angstrom)
+# (all from Table III in Rashin & Honig)
+
+class Ion(dict):
+  def __init__(self, name, symbol, atomname, radius, charge):
+    super(Ion, self).__init__(name=name, symbol=symbol, atomname=atomname,
+                              radius=float(radius), charge=float(charge))
+  def __getattribute__(self, name):
+    try:
+      return self[name]
+    except KeyError:
+      return super(Ion, self).__getattribute__(name)
+
+#id symbol atomname radius charge
+# I use OPLS/Gromacs atom names
+_ions = """
+Li  Li+ LI+    1.316 +1
+Na  Na+ NA+    1.680 +1
+K   K+  K+     2.172 +1
+Rb  Rb+ RB+    2.311 +1
+Cs  Cs+ CS+    2.514 +1
+F   F-  F-     1.423 -1
+Cl  Cl- CL-    1.937 -1
+Br  Br- BR-    2.087 -1
+I   I-  I-     2.343 -1
+Mg  Mg+2  MG2+ 1.455 +2
+Spermidine  SPM SPM 2.130  +1
+"""
+
+def _setup_ions():
+  lines = _ions.split('\n')
+  ions = {}
+  for line in lines:
+    values = line.split()
+    if len(values) == 0:
+      continue
+    ions[values[0]] = Ion(*values)
+  return ions
+
+IONS = _setup_ions()
+
+
+class Placeion(object):
   "preparing job for APBS energy profiling by placing ions"
+
+  padding_xy = 40.0
+  padding_z  = 80.0
  
-  def __init__(self):
+  def __init__(self, pqrfile, pointsfile, ionName='Na', ionicStrength=0.15, jobName='bornprofile'):
+    self.pqrName = pqrfile
+    self.pointsName = pointsfile
+    self.jobName = jobName
+    self.ion = IONS[ionName]
+    self.ionicStrength = ionicStrength
+
     self.cglen = [0, 0, 0]
     self.pqrLines = []
  
@@ -46,8 +112,8 @@ class placeion:
           if float(tokens[i+5]) > maxDim[i]:
             maxDim[i] = float(tokens[i+5])
     for i in [0, 1]:
-      self.cglen[i] = (maxDim[i] - minDim[i]) + 40
-    self.cglen[2] = (maxDim[2] - minDim[2]) + 80
+      self.cglen[i] = (maxDim[i] - minDim[i]) + self.padding_xy
+    self.cglen[2] = (maxDim[2] - minDim[2]) + self.padding_z
  
   def writePQRs(self):
     # make directory
@@ -68,14 +134,10 @@ class placeion:
       aID = 50000
       rID = 10000
       ionLines = ""
-      for zOffset in self.zOffsets:
-        # example: "ATOM  50000  NHX SPM 10000      43.624  57.177  58.408  1.0000 2.1300"
-        ionLines += self.getPqrLine(aID, "NHX", rID, "SPM", x, y, z+zOffset, +1.0, 2.130)
-        # entry for NH4(+) in Table III in
-        # Rashin and Honig (1985) J. Phys. Chem. 89(26):5588--5593
-        # http://dx.doi.org/10.1021/j100272a006
-        aID += 1
-        rID += 1
+
+      # born ion is always resname ION
+      ion = self.ion
+      ionLines += self.getPqrLine(aID, ion.atomname, rID, 'ION', x, y, z, ion.charge, ion.radius)
  
       # write ion
       ionFile = open(self.jobName + "/ion_" + str(z) + ".pqr", "w")
@@ -139,8 +201,8 @@ class placeion:
     cgcent mol 3
     fgcent mol 2
     # NaCl ionic strength in mol/L
-    ion  1 """ + str(self.ionic) + """ 0.95 # sodium ions
-    ion -1 """ + str(self.ionic) + """ 1.81 # chloride ions
+    ion  1 """ + str(self.ionicStrength) + """ 0.95 # sodium ions
+    ion -1 """ + str(self.ionicStrength) + """ 1.81 # chloride ions
  
     lpbe
     bcfl mdh
@@ -224,20 +286,38 @@ exec ./${script}
       os.P_WAIT, "/sansom/fedpacks/opt/SGE6/bin/lx24-x86/qsub", "/sansom/fedpacks/opt/SGE6/bin/lx24-x86/qsub",
       "-t", "1-" + str(count), "qsub_" + self.jobName + ".bash"
     )
- 
-def main():
-  myP = placeion()
-  myP.pqrName = "/sansom/s66/kaihsu/works/oxford/physiome/magnesium/H011.pqr"
-  myP.pointsName = "/sansom/s66/kaihsu/works/oxford/physiome/magnesium/samplepoints011.dat"
-  myP.ionic = 0.15
- 
-  # in angstroms
-  # set myP.zOffsets to be [-6.3, 0.0, +5.0] for 'butane'  end towards cytoplasm
-  # set myP.zOffsets to be [-5.0, 0.0, +6.3] for 'propane' end towards cytoplasm
-  myP.zOffsets = [-6.3, 0.0, +5.0] 
-  myP.jobName = "H011cytoBut"
- 
-  myP.run()
- 
+  
 if __name__ == "__main__":
-  main()
+  import sys
+  from optparse import OptionParser
+
+  logging.basicConfig()
+
+  parser = OptionParser(usage=usage)
+  parser.add_option("--ionic-strength", dest="ionicStrength",
+               metavar="CONC",
+               help="set ionic strength of Na/Cl bath to the given concentration "
+               "CONC in mol/l [%default]")
+  parser.add_option("--name", dest="jobName",
+               metavar="STRING",
+               help="name for the job submission script [%default]")
+  parser.add_option("--ion", dest="ionName",
+               metavar="NAME",
+               help="name of the ion to be sampled. Available values:\n%r\n"
+               "Radii were taken from Table III in Rashin & Honig  1985. "
+               "The default ion is '%%default'" % (IONS.keys(),))
+  parser.set_defaults(ionicStrength=0.15, jobName="bornprofile", 
+                 ionName="Na")
+
+  opts,args = parser.parse_args()
+  
+  try:
+    pqrfile, pointsfile = args
+  except:
+    logger.fatal("Needs PQR file and sample points. See --help.")
+    sys.exit(1)
+  
+
+  P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
+               jobName=opts.jobName)
+  P.run()
