@@ -1,64 +1,125 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
-:Author: Kaihsu Tai
-:Year: 2008
+:Author: Kaihsu Tai, Oliver Beckstein
+:Year: 2008, 2010
 :Licence: GPL
 :Copyright: (c) 2008 Kaihsu Tai
+:Copyright: (c) 2010 Oliver Beckstein
 :URL: http://en.wikiversity.org/wiki/Talk:Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
 
-I wrote some Python code to automate this process. The job submission requires a queuing system called Grid Engine. Copyright © 2008 Kaihsu Tai. Moral rights asserted (why?). Hereby licensed under either GFDL or GNU General Public License at your option.
+I wrote some Python code to automate this process. The job submission
+requires a queuing system called Grid Engine. Copyright Â© 2008 Kaihsu
+Tai. Moral rights asserted (why?). Hereby licensed under either GFDL
+or GNU General Public License at your option.
 
-Obviously, you will have to change the parameters in the driver-functions (main()) to fit the purposes of this tutorial. That is the exercise for the reader! -- Kaihsu 16:12, 23 December 2008 (UTC)
-
-Also, you will need to generate the PQR file, along with a file containing a list of the coordinates for the sample points. The script submits the job to a queueing system called Grid Engine, but you can submit the job by hand if you do not have this installed. -- Kaihsu 11:04, 9 January 2009 (UTC)
-
-Additionally, you will need to change the ion species. -- Kaihsu 17:03, 30 January 2009 (UTC)
-
-See also Two-dimensional Poisson-Boltzmann profile for an ion channel. -- Kaihsu 13:07, 30 April 2009 (UTC)
 """
-import Gnuplot, os
+from __future__ import with_statement
+
+import os
+import logging
+logger = logging.getLogger('bornprofile') 
+
+usage = """%prog [options] samplepoints-file *.out
+
+Extract the electrostatic free energy from the numbered APBS output files
+(produced via the placeion.py script) and associate each energy with the position of the ion. 
+
+.. Note:: The same samplepoints-file must be provided that was used for setting
+   up the APBS calculations.
+"""
+
+import bornprofiler
  
-class analyze:
+class AnalyzeElec(bornprofiler.BPbase):
   "analyze APBS energy profiling results"
+
+  def __init__(self, *args, **kwargs):
+    self.pointsName = args[0]
+    self.datafiles = args[1:]
+    self.jobName = kwargs.pop('jobName', 'bornprofile')
  
-  def readPoints(self):
-    pointsFile = open(self.pointsName, "r")
-    lines = pointsFile.readlines()
-    pointsFile.close()
- 
-    points = []
-    for line in lines:
-      tokens = line.split()
-      parsed = [float(tokens[0]), float(tokens[1]), float(tokens[2])]
-      points.append(parsed)
-    self.points = points
- 
-  def accumulate(self):
     self.readPoints()
+    if len(self.points) != len(self.datafiles):
+      raise ValueError("Number of sampled points (%d) does not match the number "
+                       "of data files. They MUST correspond 1-to-1." % 
+                       (len(self.points), len(self.datafiles)))
+    self.accumulate()
+    self.write()
+
+  def accumulate(self):
     self.zE = []
-    for point in self.points:
+    for num, point in enumerate(self.points):
       z = point[2]
-      outName = self.jobName + "/job_" + str(z) + ".out"
+      outName = self.outfilename(num)
       lines = ""
-      if (os.path.exists(outName)):
-        outFile = open(outName, "r")
-        lines = outFile.readlines()
-        outFile.close()
-      for line in lines:
-        if (line[0:18] == "  Local net energy"):
-          self.zE.append([z, float(line.split()[6])])
+      # find file name in list of input files
+      outPath = None
+      for path in self.datafiles:
+        if path.endswith(outName):
+          outPath = path
+          break
+      if outPath is None:
+        logger.warn("Sample point %d %r: Could not find file %s." % 
+                    (num, point, outName))
+        continue
+      with open(outPath) as outFile:
+        for line in outFile:
+          if (line[0:18] == "  Local net energy"):
+            self.zE.append([z, float(line.split()[6])])
  
   def write(self):
-    outName = self.jobName + ".dat"
-    outFile = open(outName, "w")
-    outFile.write("# z/angstrom E/(kJ/mol)\n")
-    for each in self.zE:
-      outFile.write("%8.3f %8.3e\n" % (each[0], each[1]))
-    outFile.close()
+    outName = self.datafile("welec")
+    with open(outName, "w") as outFile:
+      outFile.write("# z/angstrom E/(kJ/mol)\n")
+      for z,E in self.zE:
+        outFile.write("%(z)8.3f %(E)8.3e\n" % vars())
+    logger.info("Wrote Born profile to %(outName)r.", vars(self)) 
+
+  def plot(self, filename=None, plotter='matplotlib', **kwargs):
+    """Plot Born profile.
+
+    plot([filename[,plotter[,kwargs ...]]])
+
+    :Keywords:
+      *filename*
+         name of image file to save the plot in; with *plotter* = 'Gnuplot'
+         only eps files are supported (I think...)
+      *plotter* either 'matplotlib' 
+         (default, requires matplotlib) or 'gnuplot' (requires Gnuplot package)
+      *kwargs*
+         other keyword arguments that are passed on to :func:`pylab.plot`; ignored
+         for Gnuplot
+    """
+    plotters = {'matplotlib': self._plot_matplotlib,
+                'Gnuplot': _plot_Gnuplot,
+                }
+    kwargs['filename'] = filename
+    plotName = plotters[plotter](**kwargs)
+    logger.info("Plotted grap %(plotName)r.", vars())
+    return plotName
  
-  def plot(self):
-    outName = self.jobName + ".dat"
-    plotName = self.jobName + ".eps"
+  def _plot_matplotlib(self, filename=None, **kwargs):
+    from pylab import plot, xlabel, ylabel, savefig
+    if filename is None:
+      plotName = self.datafile("welec",".pdf")
+    else:
+      plotName = filename
+    kwargs.setdefault('color', 'black')
+    kwargs.setdefault('linewidth', 2)
+    plot(self.zE, **kwargs)
+    xlabel(r'$z$ in nm')
+    ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
+    savefig(plotName)
+    return plotName
+
+  def _plot_Gnuplot(self, filename=None, **kwargs):
+    import Gnuplot    
+    outName = self.datafile("welec")
+    if filename is None:
+      plotName = self.datafile("welec",".eps")
+    else:
+      plotName = filename
  
     # initialize
     g = Gnuplot.GnuplotProcess()
@@ -68,21 +129,39 @@ class analyze:
 set xlabel "z / nm"
 set ylabel "energy / (kJ/mol)"
 """
-    cmd += 'plot "' + outName + '" using ($1/10):($2) title "' + self.jobName + '"\n'
+    cmd += 'plot "%s" using ($1/10):($2) title "%s"\n' (outName,self.jobName)
  
     # do it
     g(cmd)
- 
-  def run(self):
-    self.accumulate()
-    self.write()
-    self.plot()
- 
-def main():
-  myP = analyze()
-  myP.pointsName = "/sansom/s66/kaihsu/works/oxford/physiome/magnesium/samplepoints011.dat"
-  myP.jobName = "H011cytoBut"
-  myP.run()
+    return plotName
  
 if __name__ == "__main__":
-  main()
+  import sys
+  from optparse import OptionParser
+
+  logging.basicConfig()
+
+  parser = OptionParser(usage=usage)
+  parser.add_option("--name", dest="jobName",
+                    metavar="STRING",
+                    help="name for the job submission script [%default]")
+#   parser.add_option("--ion", dest="ionName", type="choice", choices=IONS.keys(),
+#                     metavar="NAME",
+#                     help="name of the ion to be sampled. Available values: %r. "
+#                     "Radii were taken from Table III in Rashin & Honig  1985. "
+#                     "The default ion is '%%default'." % (IONS.keys(),))
+  parser.add_option("--plotter", dest="plotter", type="choice",
+                    choices=('matplotlib','Gnuplot'),
+                    help="plotting backend [%default]")
+  parser.set_defaults(jobName="bornprofile", plotter='matplotlib')
+
+
+  opts,args = parser.parse_args()
+  
+  if len(args) < 2:
+    logger.fatal("Needs samplepoints file and at least one APBS output file. See --help.")
+    sys.exit(1)
+
+  A = AnalyzeElec(args, jobName=opts.jobName)
+  A.plot(plotter=opts.plotter)
+
