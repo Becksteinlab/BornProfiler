@@ -42,10 +42,10 @@ class AnalyzeElec(bornprofiler.BPbase):
     self.jobName = kwargs.pop('jobName', 'bornprofile')
  
     self.readPoints()
-    if len(self.points) != len(self.datafiles):
+    if self.points.shape[-1] != len(self.datafiles):
       raise ValueError("Number of sampled points (%d) does not match the number "
                        "of data files (%d). They MUST correspond 1-to-1." % 
-                       (len(self.points), len(self.datafiles)))
+                       (self.points.shape[-1], len(self.datafiles)))
     self.accumulate()
     self.write()
 
@@ -150,11 +150,6 @@ if __name__ == "__main__":
   parser.add_option("--name", dest="jobName",
                     metavar="STRING",
                     help="name for the job submission script [%default]")
-#   parser.add_option("--ion", dest="ionName", type="choice", choices=IONS.keys(),
-#                     metavar="NAME",
-#                     help="name of the ion to be sampled. Available values: %r. "
-#                     "Radii were taken from Table III in Rashin & Honig  1985. "
-#                     "The default ion is '%%default'." % (IONS.keys(),))
   parser.add_option("--plotter", dest="plotter", type="choice",
                     choices=('matplotlib','Gnuplot'),
                     help="plotting backend [%default]")
@@ -167,7 +162,7 @@ if __name__ == "__main__":
     logger.fatal("Needs samplepoints file and at least one APBS output file. See --help.")
     sys.exit(1)
   elif len(args) == 2:
-    # maybe the shell did not expand globs?
+    # maybe the shell did not expand globs or we run in ipython?
     samplepoints,fileglob = args
     args = [samplepoints] + glob.glob(fileglob)
 

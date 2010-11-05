@@ -244,7 +244,7 @@ class Placeion(bornprofiler.BPbase):
  
     # TODO: template job array script, too
     qsubName = "qsub_" + self.jobName + ".bash"
-    self.numJobs = len(self.points)
+    self.numJobs = self.points.shape[-1]
     with open(qsubName, "w") as jobFile:
       jobFile.write("""#$ -N BP%(jobName)s
 #$ -S /bin/bash
