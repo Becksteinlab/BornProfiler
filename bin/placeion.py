@@ -193,10 +193,8 @@ class Placeion(bornprofiler.BPbase):
         proFile.write(line)
  
     # write complex and ion
-    for num,point in enumerate(self.points):
-      x = point[0]
-      y = point[1]
-      z = point[2]
+    for num,point in enumerate(self.points.T):
+      x,y,z = point
       aID = 50000
       rID = 10000
       # born ion is always resname ION
@@ -213,7 +211,7 @@ class Placeion(bornprofiler.BPbase):
                 self.jobName, num+1, self.ion.atomname)
   
   def writeIn(self):
-    for num,point in enumerate(self.points):
+    for num,point in enumerate(self.points.T):
       z = point[2]
       with open(self.jobpath(self.infilename(num)), "w") as inFile:
         inFile.write(apbs_component('header', z=z))
@@ -232,7 +230,7 @@ class Placeion(bornprofiler.BPbase):
       logger.warn("No script template provided; no queuing system scripts are written.")
       return None
 
-    for num,point in enumerate(self.points):
+    for num,point in enumerate(self.points.T):
       z = point[2]
       scriptargs = {
         'jobname': "n%04dz%.3f%s"%(num,z,self.jobName),

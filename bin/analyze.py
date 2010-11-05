@@ -51,7 +51,7 @@ class AnalyzeElec(bornprofiler.BPbase):
 
   def accumulate(self):
     zE = []
-    for num, point in enumerate(self.points):
+    for num, point in enumerate(self.points.T):
       z = point[2]
       outName = self.outfilename(num)
       lines = ""
@@ -75,7 +75,7 @@ class AnalyzeElec(bornprofiler.BPbase):
     outName = self.datafile("welec")
     with open(outName, "w") as outFile:
       outFile.write("# z/angstrom E/(kJ/mol)\n")
-      for z,E in self.zE:
+      for z,E in self.zE.T:
         outFile.write("%(z)8.3f %(E)8.3e\n" % vars())
     logger.info("Wrote Born profile to %(outName)r.", vars(self)) 
 
