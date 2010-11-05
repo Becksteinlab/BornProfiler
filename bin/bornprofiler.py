@@ -20,8 +20,33 @@ F   F-  F-     1.423 -1
 Cl  Cl- CL-    1.937 -1
 Br  Br- BR-    2.087 -1
 I   I-  I-     2.343 -1
+
+Cu1 Cu+ Cu+    1.252 +1
+Ag  Ag+ Ag+    1.434 +1
+Cu2 Cu+2  Cu2+ 1.242 +2
+ 
 Mg  Mg+2  MG2+ 1.455 +2
-Spermidine  SPM SPM 2.130  +1
+Ca  Ca+2  Ca2+ 1.862 +2
+Sr  Sr+2  Sr2+ 2.054 +2
+Ba  Ba+2  Ba2+ 2.119 +2
+Zn  Zn+2  Zn2+ 1.338 +2
+Cd  Cd+2  Cd2+ 1.509 +2
+Hg  Hg+2  Hg2+ 1.541 +2
+
+Al  Al+3  Al3+ 1.338 +3
+Sc  Sc+3  Sc3+ 1.541 +3
+Y   Y+3   Y3+  1.733 +3
+La  La+3  La3+ 1.808 +3
+Ce3 Ce+3  Ce3+ 1.761 +3
+Ga  Ga+3  Ga3+ 1.338 +3 
+In  In+3  In3+ 1.605 +3
+
+Ce4 Ce+4  Ce4+ 1.761 +4
+NH4 NH+4  NH4+ 2.130 +4
+
+OH  OH-   OH-  1.498 -1
+SH  SH-   SH-  1.969 -1
+S   S-2   S2-  1.969 -2
 """
 
 class Ion(dict):
