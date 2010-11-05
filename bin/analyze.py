@@ -20,8 +20,6 @@ import os
 import logging
 logger = logging.getLogger('bornprofile') 
 
-logging.basicConfig()
-
 usage = """%prog [options] samplepoints-file *.out
 
 Extract the electrostatic free energy from the numbered APBS output files

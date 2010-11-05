@@ -194,20 +194,18 @@ class Placeion(bornprofiler.BPbase):
       z = point[2]
       aID = 50000
       rID = 10000
-      ionLines = ""
-
       # born ion is always resname ION
-      ionLines += self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
- 
+      ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
       # write ion
       with open(self.jobpath(self.filename("ion",num,".pqr")), "w") as ionFile:
         ionFile.write(ionLines)
- 
       # write complex
       with open(self.jobpath(self.filename("cpx",num,".pqr")), "w") as cpxFile:
         for line in self.pqrLines:
           cpxFile.write(line)
         cpxFile.write(ionLines)
+    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
+                self.jobName, num+1, self.ion.atomname)
   
   def writeIn(self):
     for num,point in enumerate(self.points):
