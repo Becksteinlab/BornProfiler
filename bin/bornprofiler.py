@@ -4,6 +4,8 @@
 from __future__ import with_statement
 
 import os, errno
+import numpy
+
 import logging
 logger = logging.getLogger('bornprofile') 
 
@@ -71,13 +73,11 @@ def _parse_TABLE_IONS():
 
 IONS = _parse_TABLE_IONS()
 
-# A job script template finds input and output filename in %(infile)s
-# and %(outfile)s; the string is interpolated by python.
-
-
-
 class BPbase(object):
+  """Provide basic ifnra structure methods for bornprofiler classes.
 
+  Defines the file name API.
+  """
   # number files, do not use z in filename
   def jobpath(self, *args):
     return os.path.join(self.jobName, *args)
@@ -109,15 +109,12 @@ class BPbase(object):
     return line
  
   def readPoints(self):
-    with open(self.pointsName) as pointsFile:
-      lines = pointsFile.readlines()
- 
     points = []
-    for line in lines:
-      tokens = line.split()
-      parsed = [float(tokens[0]), float(tokens[1]), float(tokens[2])]
-      points.append(parsed)
-    self.points = points
+    with open(self.pointsName) as pointsFile:
+      for line in pointsFile:
+        fields = line.split()
+        points.append(map(float, fields[0:3]))
+    self.points = numpy.array(points)
  
   def get_XYZ_dict(self, name, vec):
     return {name.upper()+'_XYZ': " ".join(map(str, vec))}

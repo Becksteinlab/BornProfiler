@@ -17,6 +17,8 @@ or GNU General Public License at your option.
 from __future__ import with_statement
 
 import os
+import numpy
+
 import logging
 logger = logging.getLogger('bornprofile') 
 
@@ -48,7 +50,7 @@ class AnalyzeElec(bornprofiler.BPbase):
     self.write()
 
   def accumulate(self):
-    self.zE = []
+    zE = []
     for num, point in enumerate(self.points):
       z = point[2]
       outName = self.outfilename(num)
@@ -66,7 +68,8 @@ class AnalyzeElec(bornprofiler.BPbase):
       with open(outPath) as outFile:
         for line in outFile:
           if (line[0:18] == "  Local net energy"):
-            self.zE.append([z, float(line.split()[6])])
+            zE.append([z, float(line.split()[6])])
+    self.zE = numpy.array(zE)
  
   def write(self):
     outName = self.datafile("welec")
@@ -107,7 +110,8 @@ class AnalyzeElec(bornprofiler.BPbase):
       plotName = filename
     kwargs.setdefault('color', 'black')
     kwargs.setdefault('linewidth', 2)
-    plot(self.zE, **kwargs)
+    z,E = self.zE
+    plot(z,E, **kwargs)
     xlabel(r'$z$ in nm')
     ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
     savefig(plotName)

@@ -17,6 +17,8 @@ or GNU General Public License at your option.
 from __future__ import with_statement
 
 import os
+#import numpy
+
 import logging
 logger = logging.getLogger('bornprofile') 
 
@@ -37,6 +39,9 @@ and not the Pauling radius.
 
 import bornprofiler
 from bornprofiler import IONS
+
+# A job script template finds input and output filename in %(infile)s
+# and %(outfile)s; the string is interpolated by python.
 
 JOBSCRIPTS = {
   'local':
