@@ -69,7 +69,7 @@ class AnalyzeElec(bornprofiler.BPbase):
         for line in outFile:
           if (line[0:18] == "  Local net energy"):
             zE.append([z, float(line.split()[6])])
-    self.zE = numpy.array(zE)
+    self.zE = numpy.array(zE).T
  
   def write(self):
     outName = self.datafile("welec")

@@ -114,7 +114,7 @@ class BPbase(object):
       for line in pointsFile:
         fields = line.split()
         points.append(map(float, fields[0:3]))
-    self.points = numpy.array(points)
+    self.points = numpy.array(points).T
  
   def get_XYZ_dict(self, name, vec):
     return {name.upper()+'_XYZ': " ".join(map(str, vec))}
