@@ -20,6 +20,8 @@ import os
 import logging
 logger = logging.getLogger('bornprofile') 
 
+logging.basicConfig()
+
 usage = """%prog [options] samplepoints-file *.out
 
 Extract the electrostatic free energy from the numbered APBS output files
@@ -42,7 +44,7 @@ class AnalyzeElec(bornprofiler.BPbase):
     self.readPoints()
     if len(self.points) != len(self.datafiles):
       raise ValueError("Number of sampled points (%d) does not match the number "
-                       "of data files. They MUST correspond 1-to-1." % 
+                       "of data files (%d). They MUST correspond 1-to-1." % 
                        (len(self.points), len(self.datafiles)))
     self.accumulate()
     self.write()
@@ -92,7 +94,7 @@ class AnalyzeElec(bornprofiler.BPbase):
          for Gnuplot
     """
     plotters = {'matplotlib': self._plot_matplotlib,
-                'Gnuplot': _plot_Gnuplot,
+                'Gnuplot': self._plot_Gnuplot,
                 }
     kwargs['filename'] = filename
     plotName = plotters[plotter](**kwargs)
@@ -137,6 +139,7 @@ set ylabel "energy / (kJ/mol)"
  
 if __name__ == "__main__":
   import sys
+  import glob
   from optparse import OptionParser
 
   logging.basicConfig()
@@ -161,7 +164,12 @@ if __name__ == "__main__":
   if len(args) < 2:
     logger.fatal("Needs samplepoints file and at least one APBS output file. See --help.")
     sys.exit(1)
+  elif len(args) == 2:
+    # maybe the shell did not expand globs?
+    samplepoints,fileglob = args
+    args = [samplepoints] + glob.glob(fileglob)
 
-  A = AnalyzeElec(args, jobName=opts.jobName)
+  kwargs = {'jobName': opts.jobName}
+  A = AnalyzeElec(*args, **kwargs)
   A.plot(plotter=opts.plotter)
 

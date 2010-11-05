@@ -67,7 +67,7 @@ class BPbase(object):
     return self.filename("job",num,".out")
 
   def datafile(self, prefix, ext='.dat'):
-      return "%(prefix)s_%(jobName)s%(ext)s" % (prefix, self.jobName, ext)
+      return "%s_%s%s" % (prefix, self.jobName, ext)
 
   def filename(self, prefix, num, ext):
     return '%s_%04d%s' % (prefix,num,ext)
