@@ -255,7 +255,7 @@ class Placeion(bornprofiler.BPbase):
 declare -a job
  
 """ % vars(self))
-      for num,point in enumerate(self.points):
+      for num,point in enumerate(self.points.T):
         z = point[2]
         jobFile.write('job[%d]="%s"\n' % (num+1, self.jobscriptname(num)))
       jobFile.write("""
