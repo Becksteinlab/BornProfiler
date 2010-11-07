@@ -39,8 +39,8 @@ elec name solv0
     pdie %(pdie)f
     sdie %(sdie)f
     bcfl zero
-    ion 1 %(conc)f 2
-    ion -1 %(conc)f 2
+    ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+    ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
     gcent 0 0 0
     mol 1
     chgm spl2
@@ -103,8 +103,8 @@ elec name ref0
     pdie %(pdie)f
     sdie %(sdie)f
     bcfl zero
-    ion 1 %(conc)f 2
-    ion -1 %(conc)f 2
+    ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+    ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
     gcent 0 0 0
     mol 1
     chgm spl2
