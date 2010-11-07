@@ -187,7 +187,7 @@ ELEC name %(stage)s
   mol %(molnum)d
   dime %(DIME_XYZ)s
   cglen %(CGLEN_XYZ)s
-  fglen 20 20 20    
+  fglen 20 20 40    
   cgcent mol 3
   fgcent mol 2
   # NaCl ionic strength in mol/L

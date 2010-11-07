@@ -35,7 +35,8 @@ This paper suggests using the corrected covalent radius (Born radius)
 and not the Pauling radius.
 """
 
-from bornprofiler import IONS, Placeion
+from bornprofiler import IONS, JOBSCRIPTS, Placeion
+
    
 if __name__ == "__main__":
   import sys
@@ -85,5 +86,5 @@ if __name__ == "__main__":
       sys.exit(2)
 
   P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
-               jobName=opts.jobName, script=script_template)
+               dime=opts.dime, jobName=opts.jobName, script=script_template)
   P.generate()
