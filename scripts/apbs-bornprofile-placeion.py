@@ -35,8 +35,7 @@ This paper suggests using the corrected covalent radius (Born radius)
 and not the Pauling radius.
 """
 
-from bornprofiler import IONS, JOBSCRIPTS, Placeion
-
+from bornprofiler.core import IONS, JOBSCRIPTS, Placeion
    
 if __name__ == "__main__":
   import sys

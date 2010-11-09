@@ -31,9 +31,9 @@ Extract the electrostatic free energy from the numbered APBS output files
    up the APBS calculations.
 """
 
-import bornprofiler
+from bornprofiler.core import BPbase
  
-class AnalyzeElec(bornprofiler.BPbase):
+class AnalyzeElec(BPbase):
   "analyze APBS energy profiling results"
 
   def __init__(self, *args, **kwargs):

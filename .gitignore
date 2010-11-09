@@ -1,0 +1,3 @@
+*.pyc
+build
+APBS_BornProfiler.egg-info
