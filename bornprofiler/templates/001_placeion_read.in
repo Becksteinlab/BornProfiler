@@ -1,0 +1,5 @@
+READ
+   mol pqr %(protein_pqr)s
+   mol pqr %(ion_pqr)s
+   mol pqr %(complex_pqr)s
+END

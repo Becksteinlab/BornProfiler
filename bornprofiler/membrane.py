@@ -19,114 +19,13 @@ http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar
 import os.path
 from subprocess import call
 
-from config import configuration
+from config import configuration, read_template
 # executables; must be found on PATH by the shell or full path in config file
 DRAWMEMBRANE = configuration["drawmembrane"]
 APBS = configuration["apbs"]
 
-
-TEMPLATES = {'dummy': """
-# APBSmem: prepare the coefficient maps
-# (modified by OB)
-read
-    mol pqr "%(pqr)s"
-end
-
-elec name solv0
-    mg-dummy
-    dime %(DIME_XYZ)s
-    glen %(GLEN_XYZ)s
-    lpbe
-    pdie %(pdie)f
-    sdie %(sdie)f
-    bcfl zero
-    ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
-    ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
-    gcent 0 0 0
-    mol 1
-    chgm spl2
-    srfm mol
-    srad 1.4
-    swin 0.3
-    sdens 10
-    temp %(temperature)f
-    calcenergy no
-    calcforce no
-    write dielx dx dielx%(suffix)s
-    write diely dx diely%(suffix)s
-    write dielz dx dielz%(suffix)s
-    write kappa dx kappa%(suffix)s
-    write charge dx charge%(suffix)s
-end
-
-quit
-""",
-             'solvation': """
-# APBSmem: run simple 1st solvation
-# (modified by OB)
-
-read
-    mol pqr "%(pqr)s"
-    # Read Maps
-    diel dx dielx%(suffix)sm.dx diely%(suffix)sm.dx dielz%(suffix)sm.dx
-    kappa dx kappa%(suffix)sm.dx
-    charge dx charge%(suffix)sm.dx
-end
-
-elec name solv0
-    mg-manual
-    dime %(DIME_XYZ)s
-    glen %(GLEN_XYZ)s
-    lpbe
-    pdie %(pdie)f
-    sdie %(sdie)f
-    bcfl zero
-    ion charge  1  conc %(conc)f  radius 0.95  # sodium
-    ion charge -1  conc %(conc)f  radius 1.81  # chloride
-    gcent 0 0 0
-    mol 1
-    chgm spl2
-    srfm mol
-    srad 1.4
-    swin 0.3
-    sdens 10
-    temp %(temperature)f
-    calcenergy total
-    calcforce no
-    write pot dx pot_solv0%(suffix)s
-end
-
-elec name ref0
-    mg-manual
-    dime %(DIME_XYZ)s
-    glen %(GLEN_XYZ)s
-    lpbe
-    pdie %(pdie)f
-    sdie %(sdie)f
-    bcfl zero
-    ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
-    ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
-    gcent 0 0 0
-    mol 1
-    chgm spl2
-    srfm mol
-    srad 1.4
-    swin 0.3
-    sdens 10
-    temp %(temperature)f
-    calcenergy total
-    calcforce no
-    usemap diel 1
-    usemap kappa 1
-    usemap charge 1
-    write pot dx pot_ref%(suffix)s
-end
-
-print elecEnergy ref0 - solv0
-end
-
-quit
-""",
+TEMPLATES = {'dummy': read_template('dummy.in'),
+             'solvation': read_template('solvation.in'),
 }
 
 class APBSmem(object):

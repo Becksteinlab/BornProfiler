@@ -1,0 +1,34 @@
+# APBSmem: prepare the coefficient maps
+# (modified by OB)
+read
+    mol pqr "%(pqr)s"
+end
+
+elec name solv0
+    mg-dummy
+    dime %(DIME_XYZ)s
+    glen %(GLEN_XYZ)s
+    lpbe
+    pdie %(pdie)f
+    sdie %(sdie)f
+    bcfl zero
+    ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+    ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
+    gcent 0 0 0
+    mol 1
+    chgm spl2
+    srfm mol
+    srad 1.4
+    swin 0.3
+    sdens 10
+    temp %(temperature)f
+    calcenergy no
+    calcforce no
+    write dielx dx dielx%(suffix)s
+    write diely dx diely%(suffix)s
+    write dielz dx dielz%(suffix)s
+    write kappa dx kappa%(suffix)s
+    write charge dx charge%(suffix)s
+end
+
+quit
