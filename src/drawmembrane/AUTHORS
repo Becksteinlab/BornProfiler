@@ -1,0 +1,15 @@
+===============
+ draw_membrane
+===============
+
+draw_membrane2 and draw_membrane were written by Michael Grabe 
+http://mgrabe1.bio.pitt.edu/
+
+
+(1) draw_membrane2.c (c) 2008 Michael Grabe
+    Downloaded from 
+    http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
+(2) draw_membrane4.c (c) 2010 Michael Grabe (from apbsmem-1.04.zip)
+    http://mgrabe1.bio.pitt.edu/apbsmem/
+
+
