@@ -3,44 +3,47 @@
 # Licensed under GPL
 """%%prog PQR-file
 
-Runs customized apbs calculation of PQR file in a membrane. Currently
-customized for Yohei's CFTR structures (from the 30 ns MD); see the
-source for details.
+Runs customized apbs calculation of PQR file in a membrane.
+
+A custom APBSmem class must be available in a python file ``custom.py``. 
+
+Currently only the *CFTRmem* class, customized for Yohei's CFTR
+structures (from the 30 ns MD) is available; see the source for
+details.
 
 Uses draw_membrane2 to add a low-dielectric (eps=2) region and sets
 protein dielectric to eps=10.
 
-.. Note:: Paths to draw_membrane2 and apbs are hard coded!
-          apbs = %(apbs)r
-          draw_membrane2 = %(drawmembrane)r
+Paths to draw_membrane2 and apbs are set in the configuration file
+%(configfilename)r:
+
+ - apbs = %(apbs)r
+ - draw_membrane2 = %(drawmembrane)r
 
 Commandline version of apbsmem, following
 http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
 """
 
 import os.path
-
-from bornprofiler.membrane import APBSmem
-from config import configuration
-
-class CFTRmem(APBSmem):
-    """APBSmem with custom defaults"""
-    def __init__(self, pqr, suffix, zmem=-2, lmem=40, mdie=2, sdie=80, pdie=10, 
-                 headgroup_die=20, headgroup_l=0, Vmem=0,
-                 Rtop=16, Rbot=10,  **kwargs):
-        super(CFTRmem, self).__init__(pqr, suffix, zmem=-2, lmem=40, mdie=2, sdie=80, pdie=10, 
-                 headgroup_die=20, headgroup_l=0, Vmem=0,
-                 Rtop=16, Rbot=10,  **kwargs)
+from bornprofiler.config import cfg, configuration
+import logging
+logger = logging.getLogger('bornprofiler')
 
 if __name__ == "__main__":
     import sys
     import errno
     from optparse import OptionParser
 
+    logging.basicConfig()
+
     parser = OptionParser(usage=__doc__ % configuration)
+    parser.add_option("-C","--class-name", dest="clsname",
+                      help="Python name of a class derived from "
+                      "bornprofiler.membrane.APBSmem [%default]")
     parser.add_option("-s", "--suffix", dest="suffix",
-                      help="suffix for all generated files [%default]")
-    parser.set_defaults(suffix="S")
+                      help="suffix for all generated files [%default]")    
+    parser.set_defaults(clsname=cfg.get('membrane','class'), 
+                        suffix="S")
     
     options, args = parser.parse_args()
     
@@ -53,7 +56,20 @@ if __name__ == "__main__":
         raise IOError(errno.ENOENT, "PQR file not found", pqr)
         
     suffix = 'S'
-    
-    C = CFTRmem(pqr, options.suffix)
+
+    cls = None
+    for modname in 'custom', 'bornprofiler.custom':
+        try:
+            mod = __import__(modname, fromlist=[opts.clsname])
+            cls = mod.__getattribute__(opts.clsname)
+        except (ImportError, AttributeError):
+            pass
+    try:
+        C = cls(pqr, options.suffix)
+    except TypeError:
+        ermsg = "No setup class %r found in custom.py or bornprofiler.custom" % opts.clsname
+        logger.fatal(errmsg)
+        raise ValueError(errmsg)
+
     C.setup()
     C.run_apbs('solvation')
