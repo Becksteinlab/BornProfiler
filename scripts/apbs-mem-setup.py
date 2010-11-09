@@ -21,7 +21,7 @@ http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar
 import os.path
 BASEDIR = os.path.expanduser("~/Projects/Channels/CFTR")
 
-from membrane import APBSmem, APBS, DRAWMEMBRANE
+from bornprofiler.membrane import APBSmem, APBS, DRAWMEMBRANE
 
 class CFTRmem(APBSmem):
     """APBSmem with custom defaults"""
