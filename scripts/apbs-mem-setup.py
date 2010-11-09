@@ -11,17 +11,17 @@ Uses draw_membrane2 to add a low-dielectric (eps=2) region and sets
 protein dielectric to eps=10.
 
 .. Note:: Paths to draw_membrane2 and apbs are hard coded!
-          apbs = %(APBS)r
-          draw_membrane2 = %(DRAWMEMBRANE)r
+          apbs = %(apbs)r
+          draw_membrane2 = %(drawmembrane)r
 
 Commandline version of apbsmem, following
 http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
 """
 
 import os.path
-BASEDIR = os.path.expanduser("~/Projects/Channels/CFTR")
 
-from bornprofiler.membrane import APBSmem, APBS, DRAWMEMBRANE
+from bornprofiler.membrane import APBSmem
+from config import configuration
 
 class CFTRmem(APBSmem):
     """APBSmem with custom defaults"""
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     import errno
     from optparse import OptionParser
 
-    parser = OptionParser(usage=__doc__ % vars())
+    parser = OptionParser(usage=__doc__ % configuration)
     parser.add_option("-s", "--suffix", dest="suffix",
                       help="suffix for all generated files [%default]")
     parser.set_defaults(suffix="S")

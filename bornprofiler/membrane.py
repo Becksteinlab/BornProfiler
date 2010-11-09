@@ -19,9 +19,10 @@ http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar
 import os.path
 from subprocess import call
 
-# executables; must be found on PATH by the shell or full path
-DRAWMEMBRANE = os.path.expanduser(os.path.join("~", "bin", "draw_membrane2"))
-APBS = os.path.expanduser("apbs")
+from config import configuration
+# executables; must be found on PATH by the shell or full path in config file
+DRAWMEMBRANE = configuration["drawmembrane"]
+APBS = configuration["apbs"]
 
 
 TEMPLATES = {'dummy': """
