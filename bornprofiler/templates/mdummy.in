@@ -1,11 +1,13 @@
-# APBSmem: prepare the coefficient maps
-# build maps for three focusing steps of a Born profile calculation
-# Map names are hard coded.
+# Coefficient maps for Born profile calculations
+# Build maps for three focusing steps of a Born profile calculation
+# Map names are hard coded. Furthermore, in order to work around
+# a bug in draw_membrane2.c's naming code, the names have to always
+# be the same length --- should be fixed...
 
 READ
    mol pqr %(protein_pqr)s
    mol pqr %(ion_pqr)s
-   # mol pqr %(complex_pqr)s
+   mol pqr %(complex_pqr)s
 END
 
 #------------------------------------------------------------
@@ -101,3 +103,98 @@ ELEC name protein_S
   write kappa dx kappaS
   write charge dx chargeS
 END
+
+#------------------------------------------------------------
+# Complex protein+ion (mol 3)
+#------------------------------------------------------------
+#
+# Uses own set of maps
+# focusing step (1): whole system
+ELEC name complex_L
+  mg-dummy
+  mol 3
+  dime %(DIME_XYZ_L)s
+  nlev 4
+  glen %(GLEN_XYZ_L)s
+  gcent mol 1
+  # NaCl ionic strength in mol/L
+  ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+  ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
+  lpbe
+  bcfl zero
+  pdie %(pdie)f
+  sdie %(sdie)f
+  srfm mol
+  chgm spl2
+  srad 1.4
+  swin 0.3
+  sdens 10.0
+  temp %(temperature).2f
+  calcenergy no
+  calcforce no
+  write dielx dx dieCxL
+  write diely dx dieCyL
+  write dielz dx dieCzL
+  write kappa dx kappCL
+  write charge dx chargCL
+END
+
+# focus but now center on ion position (mol 2)
+ELEC name complex_M
+  mg-dummy
+  mol 3
+  dime %(DIME_XYZ_M)s
+  nlev 4
+  glen %(GLEN_XYZ_M)s
+  gcent mol 2
+  # NaCl ionic strength in mol/L
+  ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+  ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
+  lpbe
+  bcfl focus
+  pdie %(pdie)f
+  sdie %(sdie)f
+  srfm mol
+  chgm spl2
+  srad 1.4
+  swin 0.3
+  sdens 10.0
+  temp %(temperature).2f
+  calcenergy no
+  calcforce no
+  write dielx dx dieCxM
+  write diely dx dieCyM
+  write dielz dx dieCzM
+  write kappa dx kappCM
+  write charge dx chargCM
+END
+
+ELEC name complex_S
+  mg-dummy
+  mol 3
+  dime %(DIME_XYZ_S)s
+  nlev 4
+  glen %(GLEN_XYZ_S)s
+  gcent mol 2
+  # NaCl ionic strength in mol/L
+  ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+  ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
+  lpbe
+  bcfl focus
+  pdie %(pdie)f
+  sdie %(sdie)f
+  srfm mol
+  chgm spl2
+  srad 1.4
+  swin 0.3
+  sdens 10.0
+  temp %(temperature).2f
+  calcenergy no
+  calcforce no
+  write dielx dx dieCxS
+  write diely dx dieCyS
+  write dielz dx dieCzS
+  write kappa dx kappCS
+  write charge dx chargCS
+END
+
