@@ -6,56 +6,15 @@ from __future__ import with_statement
 import os, errno
 import numpy
 
+from config import configuration, read_template
+
 import logging
 logger = logging.getLogger('bornprofile') 
 
-TABLE_IONS = """
-#----------------------------------------
-# ionic Born radii (Angstrom) 
-#----------------------------------------
-# from Table III in Rashin & Honig 1986
-#
-# values are white-space separated
-#
-#id symbol atomname radius charge
-
-Li  Li+ LI+    1.316 +1
-Na  Na+ NA+    1.680 +1
-K   K+  K+     2.172 +1
-Rb  Rb+ RB+    2.311 +1
-Cs  Cs+ CS+    2.514 +1
-F   F-  F-     1.423 -1
-Cl  Cl- CL-    1.937 -1
-Br  Br- BR-    2.087 -1
-I   I-  I-     2.343 -1
-
-Cu1 Cu+ Cu+    1.252 +1
-Ag  Ag+ Ag+    1.434 +1
-Cu2 Cu+2  Cu2+ 1.242 +2
- 
-Mg  Mg+2  MG2+ 1.455 +2
-Ca  Ca+2  Ca2+ 1.862 +2
-Sr  Sr+2  Sr2+ 2.054 +2
-Ba  Ba+2  Ba2+ 2.119 +2
-Zn  Zn+2  Zn2+ 1.338 +2
-Cd  Cd+2  Cd2+ 1.509 +2
-Hg  Hg+2  Hg2+ 1.541 +2
-
-Al  Al+3  Al3+ 1.338 +3
-Sc  Sc+3  Sc3+ 1.541 +3
-Y   Y+3   Y3+  1.733 +3
-La  La+3  La3+ 1.808 +3
-Ce3 Ce+3  Ce3+ 1.761 +3
-Ga  Ga+3  Ga3+ 1.338 +3 
-In  In+3  In3+ 1.605 +3
-
-Ce4 Ce+4  Ce4+ 1.761 +4
-NH4 NH+4  NH4+ 2.130 +4
-
-OH  OH-   OH-  1.498 -1
-SH  SH-   SH-  1.969 -1
-S   S-2   S2-  1.969 -2
-"""
+TEMPLATES = {'born': read_template('mplaceion.in'),
+             'q_array.sge': read_template('q_array.sge'),
+             }
+TABLE_IONS = read_template('bornions.dat')
 
 class Ion(dict):
   def __init__(self, name, symbol, atomname, radius, charge):
@@ -250,6 +209,7 @@ class Placeion(BPbase):
       logger.warn("No script template provided; no queuing system scripts are written.")
       return None
 
+    bash_jobarray = []
     for num,point in enumerate(self.points.T):
       z = point[2]
       scriptargs = {
@@ -257,59 +217,49 @@ class Placeion(BPbase):
         'infile': self.infilename(num),
         'outfile': self.outfilename(num),
         }
-      with open(self.jobscriptname(num), "w") as jobFile:
+      scriptname = self.jobscriptname(num)
+      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptname))
+      with open(scriptname, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
  
-    # TODO: template job array script, too
     qsubName = "qsub_" + self.jobName + ".bash"
     self.numJobs = self.points.shape[-1]
     with open(qsubName, "w") as jobFile:
-      jobFile.write("""#$ -N BP%(jobName)s
-#$ -S /bin/bash
-#$ -l mem_free=500M,mem_total=500M
-#$ -cwd
-#$ -j y
-#$ -r y
-#$ -t 1-%(numJobs)d
-
-declare -a job
- 
-""" % vars(self))
-      for num,point in enumerate(self.points.T):
-        z = point[2]
-        jobFile.write('job[%d]="%s"\n' % (num+1, self.jobscriptname(num)))
-      jobFile.write("""
-run_d=$(dirname ${job[${SGE_TASK_ID}]})
-script=$(basename ${job[${SGE_TASK_ID}]})
- 
-cd ${run_d} || { echo "Failed to cd ${run_d}. Abort."; exit 1; }
-. ./${script}
-""")
+      jobFile.write(TEMPLATES['q_array.sge'] % {
+          'jobName': self.jobName,
+          'numJobs': self.numJobs,
+          'jobArray': "\n".join(bash_jobarray),
+          })
     return num+1
 
 
 import membrane
+from utilities import AttributeDict
 
-class MPlaceion(BPbase):
-    def __init__(self, *args, **kwargs):
-      """Setup Born profile with membrane.
+def ngridpoints(c, nlev=4):
+  """The allowed number of grid points.
 
-      MPlaceion(pqr,points[,memclass])
+  For mg-manual calculations, the arguments are dependent on the choice of *nlev*
+  by the formula
 
-      :Arguments:
-        *pqr*
-           PQR file
-        *points* 
-           data file with sample points
-      :Keywords:
-        *memclass*
-           a class or type :class:`APBSMem`.
-      """
-      self.pqrName = args[0]
-      self.pointsName = args[1]
-      self.MemSetup = kwargs.pop('memclass', membrane.APBSMem)  # to customize
+    n = c*2**(nlev + 1) + 1
 
-      memSetups = dict([(suffix, self.MemSetup(self.pqrName, suffix, **kwargs)) for
-                        suffix in ('L', 'M', 'S')])
-        
-        
+  where n is the dime argument, c is a non-zero integer, lev is the nlev
+  value. The most common values for grid dimensions are 65, 97, 129, and 161
+  (they can be different in each direction); these are all compatible with a
+  nlev value of 4. If you happen to pick a "bad" value for the dimensions
+  (i.e., mismatch with nlev), the APBS code will adjust the specified dime
+  downwards to more appropriate values. This means that "bad" values will
+  typically result in lower resolution/accuracy calculations!
+
+  http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime
+  """
+  return c*2**(nlev+1) + 1
+
+class SetupParameters(AttributeDict):
+  """Collect parameters for a APBSmem run."""
+  no_kwargs = ['suffix']
+  def as_kwargs(self):
+    return dict([(k,self[k]) for k in self if not k in self.no_kwargs])
+
+

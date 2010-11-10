@@ -1,0 +1,19 @@
+#$ -N BP%(jobName)s
+#$ -S /bin/bash
+#$ -l mem_free=500M,mem_total=500M
+#$ -cwd
+#$ -j y
+#$ -r y
+#$ -t 1-%(numJobs)d
+
+declare -a job
+
+#------------------------------------------------------------
+%(jobArray)s 
+#------------------------------------------------------------
+
+run_d=$(dirname ${job[${SGE_TASK_ID}]})
+script=$(basename ${job[${SGE_TASK_ID}]})
+ 
+cd ${run_d} || { echo "Failed to cd ${run_d}. Abort."; exit 1; }
+. ./${script}

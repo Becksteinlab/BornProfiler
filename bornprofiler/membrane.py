@@ -26,6 +26,7 @@ APBS = configuration["apbs"]
 
 TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
+             'born': read_template('mplaceion.in'),
 }
 
 class APBSmem(object):
@@ -87,10 +88,15 @@ class APBSmem(object):
     def get_XYZ_dict(self, name, vec):
         return {name.upper()+'_XYZ': " ".join(map(str, vec))}
 
+    def get_XYZ(self, attr):
+        """Join items of *attr* with spaces."""
+        return " ".join(map(str, self.__getattibute__(attr)))
+
     def write(self, stage, **kwargs):
         vardict = self.get_var_dict(stage)
         vardict.update(self.get_XYZ_dict('dime', self.dime))
         vardict.update(self.get_XYZ_dict('glen', self.glen))
+        vardict.update(kwargs)
         f = open(self.infile(stage), 'w')
         try:
             f.write(TEMPLATES[stage] % vardict)

@@ -261,8 +261,8 @@ def read_template(filename):
 
   *filename* can be one of the template files.
   """
-  import config
-  fn = config.get_template(filename)
+  fn = get_template(filename)
+  logger.debug("Reading file %(filename)r from %(fn)r.", vars())
   return "".join(file(fn).readlines())
 
 
