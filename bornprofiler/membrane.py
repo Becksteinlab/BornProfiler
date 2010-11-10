@@ -16,8 +16,11 @@ http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar
 
 """
 
-import os.path
+import os, errno
 from subprocess import call
+
+import logging
+logger = logging.getLogger("bornprofile.membrane")
 
 from config import configuration, read_template
 # executables; must be found on PATH by the shell or full path in config file
@@ -121,9 +124,19 @@ class APBSmem(object):
         v = self.get_var_dict(stage)
         # hardcoded dielx!
         dielx = kwargs.pop('dielx', "dielx%(suffix)s.dx" % vars(self))
+        if not os.path.exists(dielx):
+            errmsg = "File %(dielx)r missing." % vars()
+            logger.fatal(errmsg)
+            raise OSError(errno.ENOENT, dielx, errmsg)
+        logger.info("Running drawmembrane...")
         rc = call([self.drawmembrane, dielx] + 
                    map(str, [v['zmem'], v['lmem'], v['pdie'], v['Vmem'], v['conc'],
                              v['Rtop'], v['Rbot']]))
+        if rc != 0:
+            errmsg = "%r failed with return code %d." % (self.drawmembrane, rc)
+            logger.fatal(errmsg)
+            raise EnvironmentError(rc, self.drawmembrane, "failed")
+        logger.info("Drawmembrane finished. Look for dx files with 'm' in their name.")
         return rc
 
     def setup(self, **kwargs):

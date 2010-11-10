@@ -1,0 +1,103 @@
+# APBSmem: prepare the coefficient maps
+# build maps for three focusing steps of a Born profile calculation
+# Map names are hard coded.
+
+READ
+   mol pqr %(protein_pqr)s
+   mol pqr %(ion_pqr)s
+   # mol pqr %(complex_pqr)s
+END
+
+#------------------------------------------------------------
+# Protein alone (mol 1)
+#------------------------------------------------------------
+#
+# focusing step (1): whole system
+ELEC name protein_L
+  mg-dummy
+  mol 1
+  dime %(DIME_XYZ_L)s
+  nlev 4
+  glen %(GLEN_XYZ_L)s
+  gcent mol 1
+  # NaCl ionic strength in mol/L
+  ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+  ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
+  lpbe
+  bcfl zero
+  pdie %(pdie)f
+  sdie %(sdie)f
+  srfm mol
+  chgm spl2
+  srad 1.4
+  swin 0.3
+  sdens 10.0
+  temp %(temperature).2f
+  calcenergy no
+  calcforce no
+  write dielx dx dielxL
+  write diely dx dielyL
+  write dielz dx dielzL
+  write kappa dx kappaL
+  write charge dx chargeL
+END
+
+# focus but now center on ion position (mol 2)
+# and use potential from boundary of previous calc (bcfl focus)
+ELEC name protein_M
+  mg-dummy
+  mol 1
+  dime %(DIME_XYZ_M)s
+  nlev 4
+  glen %(GLEN_XYZ_M)s
+  gcent mol 2
+  # NaCl ionic strength in mol/L
+  ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+  ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
+  lpbe
+  bcfl focus
+  pdie %(pdie)f
+  sdie %(sdie)f
+  srfm mol
+  chgm spl2
+  srad 1.4
+  swin 0.3
+  sdens 10.0
+  temp %(temperature).2f
+  calcenergy no
+  calcforce no
+  write dielx dx dielxM
+  write diely dx dielyM
+  write dielz dx dielzM
+  write kappa dx kappaM
+  write charge dx chargeM
+END
+
+ELEC name protein_S
+  mg-dummy
+  mol 1
+  dime %(DIME_XYZ_S)s
+  nlev 4
+  glen %(GLEN_XYZ_S)s
+  gcent mol 2
+  # NaCl ionic strength in mol/L
+  ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
+  ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
+  lpbe
+  bcfl focus
+  pdie %(pdie)f
+  sdie %(sdie)f
+  srfm mol
+  chgm spl2
+  srad 1.4
+  swin 0.3
+  sdens 10.0
+  temp %(temperature).2f
+  calcenergy no
+  calcforce no
+  write dielx dx dielxS
+  write diely dx dielyS
+  write dielz dx dielzS
+  write kappa dx kappaS
+  write charge dx chargeS
+END

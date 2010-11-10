@@ -101,6 +101,7 @@ JOBSCRIPTS = {
   'darthtater': read_template('q_darthtater.sge'),
 }
 
+# change this to a monolitic script and hardcode stages!
 APBS_SCRIPT_COMPONENTS = {
   'header': read_template("000_placeion_header.in"),
   'read':   read_template("001_placeion_read.in"),
@@ -263,3 +264,75 @@ class SetupParameters(AttributeDict):
     return dict([(k,self[k]) for k in self if not k in self.no_kwargs])
 
 
+class MPlaceion(BPbase):
+  # choose dime compatible with nlev=4 (in input file)
+  # Schedule is run from first to last
+  schedule = [
+    SetupParameters(suffix='L', dime=(129, 129, 129), glen=(250,250,250)),
+    SetupParameters(suffix='M', dime=(129, 129, 129), glen=(100,100,100)),
+    SetupParameters(suffix='S', dime=(129, 129, 129), glen=(50,50,50)),
+  ]
+
+  def __init__(self, *args, **kwargs):
+    """Setup Born profile with membrane.
+
+      MPlaceion(pqr,points[,memclass])
+
+      :Arguments:
+        *pqr*
+           PQR file
+        *points* 
+           data file with sample points
+      :Keywords:
+        *memclass*
+           a class or type :class:`APBSMem`.
+           """
+    self.pqrName = args[0]
+    self.pointsName = args[1]
+
+    # copied & pasted from Placeion because inheritance would be messy :-p
+    self.jobName = kwargs.pop('jobName', "mbornprofile")
+    self.ion = IONS[kwargs.pop('ionName', 'Na')]
+    self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
+    self.temperature = kwargs.pop('temperature', 300.0)
+    self.script = kwargs.pop('script', None)
+
+    cls = kwargs.pop('memclass', membrane.APBSmem)  # to customize
+
+    # use hard coded schedule for the moment, make it a table later
+    self.memSetups = [cls(self.pqrName, s.suffix, **s.as_kwargs()) for s in self.schedule]
+
+    # TODO:
+    # center i>0 on the ion
+    # --> actually, need to set up for every single window because the focus
+    # region changes and needs a new map
+    # Also not sure if draw_membrane is still happy if there's no membrane in the
+    # region.
+    # - need a flexible ABPSmem and/or generate the template files on the
+    #   fly
+    # - do one directory per window because file naming is a desaster
+    
+    # do one BP calculation by hand and then work from there...
+
+    # fixed names for all maps, use L/M/S suffixes (suffix='X')
+    _vars = ['DIME_XYZ_L','DIME_XYZ_M','DIME_XYZ_S',
+            'GLEN_XYZ_L','GLEN_XYZ_M','GLEN_XYZ_S',
+            'z','temperature','conc','sdie','pdie',
+            'protein_pqr','ion_pqr','complex_pqr',
+            ]
+
+    # first get variable names that are the same for all focusing stages
+    # (stuff for the 'solvation' run of the standard class)
+    # (adds a few other vars such as pqr,suffix which we don't care about)
+    self.tvars = self.memSetups[0].get_var_dict('solvation')
+    for s in self.memSetups:
+      self.tvars['DIME_XYZ_%s' % s.suffix] = s.get_XYZ('dime')
+      self.tvars['GLEN_XYZ_%s' % s.suffix] = s.get_XYZ('glen')
+
+    self.pqrLines = []
+    #self.readPQR()
+    self.readPoints()    
+
+  def writeIn(self):
+    with open(self.outfile,'w') as out:
+      out.write(TEMPLATES['born'] % self.tvars)
