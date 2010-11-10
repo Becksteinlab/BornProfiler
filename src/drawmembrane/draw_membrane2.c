@@ -174,7 +174,7 @@ in = fopen(file_name_x,"r");
 if (in == NULL) {
 	printhelp();
 	printf("Make sure %s exists in current directory!!!\n\n", argv[1]);
-	return 0;
+	return 1;
 }
 
 /* First read the header */
@@ -280,6 +280,10 @@ fclose(in);
 /*****************************************************/
 
 in = fopen(file_name_y,"r");
+if (in == NULL) {
+   printf("File name %s not found.\n", file_name_y);
+   return 1;
+}
 
 /* First read the header */
 
@@ -340,6 +344,11 @@ fclose(in);
 /*****************************************************/
 
 in = fopen(file_name_z,"r");
+if (in == NULL) {
+   printf("File name %s not found.\n", file_name_z);
+   return 1;
+}
+
 
 /* First read the header */
 
@@ -405,6 +414,11 @@ fclose(in);
 /*****************************************************/
 
 in = fopen(file_name_k,"r");
+if (in == NULL) {
+   printf("File name %s not found.\n", file_name_k);
+   return 1;
+}
+
 
 /* First read the header */
 
@@ -470,6 +484,11 @@ fclose(in);
 /*****************************************************/
 
 in = fopen(file_name_c,"r");
+if (in == NULL) {
+   printf("File name %s not found.\n", file_name_c);
+   return 1;
+}
+
 
 /* First read the header */
 
