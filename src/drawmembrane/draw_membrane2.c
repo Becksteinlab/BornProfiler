@@ -117,7 +117,11 @@ if (argc <= 1) {
 
 strcpy(file_name_x,argv[1]);
 
-printf("Using your naming scheme to find other APBS maps.\n");
+printf("----------------------------------------------------------------\n");
+printf("draw_membrane2 -- Copyright (c) 2008 Michael Grabe [09/02/08]\n");
+printf("http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
+printf("----------------------------------------------------------------\n");
+printf("Using your naming scheme to find other APBS maps: %s\n", file_name_x);
 
 /* Find the y-shifted dielectric map */
 l=strlen(file_name_x);
@@ -176,6 +180,7 @@ if (in == NULL) {
 	printf("Make sure %s exists in current directory!!!\n\n", argv[1]);
 	return 1;
 }
+printf("Reading %s...\n", file_name_x);
 
 /* First read the header */
 
@@ -284,6 +289,7 @@ if (in == NULL) {
    printf("File name %s not found.\n", file_name_y);
    return 1;
 }
+printf("Reading %s...\n", file_name_y);
 
 /* First read the header */
 
@@ -348,7 +354,7 @@ if (in == NULL) {
    printf("File name %s not found.\n", file_name_z);
    return 1;
 }
-
+printf("Reading %s...\n", file_name_z);
 
 /* First read the header */
 
@@ -418,7 +424,7 @@ if (in == NULL) {
    printf("File name %s not found.\n", file_name_k);
    return 1;
 }
-
+printf("Reading %s...\n", file_name_k);
 
 /* First read the header */
 
@@ -488,7 +494,7 @@ if (in == NULL) {
    printf("File name %s not found.\n", file_name_c);
    return 1;
 }
-
+printf("Reading %s...\n", file_name_c);
 
 /* First read the header */
 
@@ -640,6 +646,7 @@ else if (tmp1 == 2)
 fprintf(out,"%12.6E %12.6E \n", d_x[cnt], d_x[cnt+1]);
 
 fclose(out);
+printf("Wrote %s.\n", f1);
 
 /********************Y-DATA******************************/
 
@@ -682,6 +689,7 @@ else if (tmp1 == 2)
 fprintf(out,"%12.6E %12.6E \n", d_y[cnt], d_y[cnt+1]);
 
 fclose(out);
+printf("Wrote %s.\n", f2);
 
 /**********************Z-DATA*****************************/
 
@@ -725,6 +733,7 @@ else if (tmp1 == 2)
 fprintf(out,"%12.6E %12.6E \n", d_z[cnt], d_z[cnt+1]);
 
 fclose(out);
+printf("Wrote %s.\n", f3);
 
 /*********************KAPPA******************************/
 
@@ -766,6 +775,7 @@ else if (tmp1 == 2)
 fprintf(out,"%12.6E %12.6E \n", kk[cnt], kk[cnt+1]);
 
 fclose(out);
+printf("Wrote %s.\n", f4);
 
 /********************CHARGE*******************************/
 
@@ -806,6 +816,7 @@ else if (tmp1 == 2)
 fprintf(out,"%12.6E %12.6E \n", cc[cnt], cc[cnt+1]);  
 
 fclose(out);
+printf("Wrote %s.\n", f5);
 
 /********************CHARGE CHANGE MAP*************************/
 
@@ -844,6 +855,7 @@ else if (tmp1 == 2)
 fprintf(out,"%i %i \n", map[cnt], map[cnt+1]);
 
 fclose(out);
+printf("Wrote %s.\n", f6);
 
 /***********************************************************/
 free(x_x);
@@ -860,5 +872,5 @@ free(y);
 free(z);
 
 printf("Your files have been written.\n");
-
+return 0;
 }
