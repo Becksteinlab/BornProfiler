@@ -20,7 +20,7 @@ assignments::
 
   [executables]
   apbs = apbs
-  drawmembrane = /path/to/drawmembrane2
+  drawmembrane = /path/to/drawmembrane2a
 
   [membrane]
   class = APBSmem
@@ -77,7 +77,7 @@ def get_configuration(filename=CONFIGNAME):
         cfg.add_section('membrane')
         cfg.set('membrane', 'class','APBSmem')
         cfg.add_section('executables')
-        cfg.set('executables', 'drawmembrane', 'draw_membrane2')
+        cfg.set('executables', 'drawmembrane', 'draw_membrane2a')
         cfg.set('executables', 'apbs', 'apbs')
         with open(filename, 'w') as configfile:
             cfg.write(configfile)  # write the default file
