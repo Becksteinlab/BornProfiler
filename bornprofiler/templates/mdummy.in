@@ -27,8 +27,8 @@ ELEC name protein_L
   ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
   lpbe
   bcfl zero
-  pdie %(pdie)f
-  sdie %(sdie)f
+  pdie %(pdie).2f
+  sdie %(sdie).2f
   srfm mol
   chgm spl2
   srad 1.4
@@ -37,11 +37,11 @@ ELEC name protein_L
   temp %(temperature).2f
   calcenergy no
   calcforce no
-  write dielx dx dielxL
-  write diely dx dielyL
-  write dielz dx dielzL
-  write kappa dx kappaL
-  write charge dx chargeL
+  write dielx dx dielx_prot_L
+  write diely dx diely_prot_L
+  write dielz dx dielz_prot_L
+  write kappa dx kappa_prot_L
+  write charge dx charge_prot_L
 END
 
 # focus but now center on ion position (mol 2)
@@ -58,8 +58,8 @@ ELEC name protein_M
   ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
   lpbe
   bcfl focus
-  pdie %(pdie)f
-  sdie %(sdie)f
+  pdie %(pdie).2f
+  sdie %(sdie).2f
   srfm mol
   chgm spl2
   srad 1.4
@@ -68,11 +68,11 @@ ELEC name protein_M
   temp %(temperature).2f
   calcenergy no
   calcforce no
-  write dielx dx dielxM
-  write diely dx dielyM
-  write dielz dx dielzM
-  write kappa dx kappaM
-  write charge dx chargeM
+  write dielx dx dielx_prot_M
+  write diely dx diely_prot_M
+  write dielz dx dielz_prot_M
+  write kappa dx kappa_prot_M
+  write charge dx charge_prot_M
 END
 
 ELEC name protein_S
@@ -87,8 +87,8 @@ ELEC name protein_S
   ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
   lpbe
   bcfl focus
-  pdie %(pdie)f
-  sdie %(sdie)f
+  pdie %(pdie).2f
+  sdie %(sdie).2f
   srfm mol
   chgm spl2
   srad 1.4
@@ -97,11 +97,11 @@ ELEC name protein_S
   temp %(temperature).2f
   calcenergy no
   calcforce no
-  write dielx dx dielxS
-  write diely dx dielyS
-  write dielz dx dielzS
-  write kappa dx kappaS
-  write charge dx chargeS
+  write dielx dx dielx_prot_S
+  write diely dx diely_prot_S
+  write dielz dx dielz_prot_S
+  write kappa dx kappa_prot_S
+  write charge dx charge_prot_S
 END
 
 #------------------------------------------------------------
@@ -122,8 +122,8 @@ ELEC name complex_L
   ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
   lpbe
   bcfl zero
-  pdie %(pdie)f
-  sdie %(sdie)f
+  pdie %(pdie).2f
+  sdie %(sdie).2f
   srfm mol
   chgm spl2
   srad 1.4
@@ -132,11 +132,11 @@ ELEC name complex_L
   temp %(temperature).2f
   calcenergy no
   calcforce no
-  write dielx dx dieCxL
-  write diely dx dieCyL
-  write dielz dx dieCzL
-  write kappa dx kappCL
-  write charge dx chargCL
+  write dielx dx dielx_cpx_L
+  write diely dx diely_cpx_L
+  write dielz dx dielz_cpx_L
+  write kappa dx kappa_cpx_L
+  write charge dx charge_cpx_L
 END
 
 # focus but now center on ion position (mol 2)
@@ -152,8 +152,8 @@ ELEC name complex_M
   ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
   lpbe
   bcfl focus
-  pdie %(pdie)f
-  sdie %(sdie)f
+  pdie %(pdie).2f
+  sdie %(sdie).2f
   srfm mol
   chgm spl2
   srad 1.4
@@ -162,11 +162,11 @@ ELEC name complex_M
   temp %(temperature).2f
   calcenergy no
   calcforce no
-  write dielx dx dieCxM
-  write diely dx dieCyM
-  write dielz dx dieCzM
-  write kappa dx kappCM
-  write charge dx chargCM
+  write dielx dx dielx_cpx_M
+  write diely dx diely_cpx_M
+  write dielz dx dielz_cpx_M
+  write kappa dx kappa_cpx_M
+  write charge dx charge_cpx_M
 END
 
 ELEC name complex_S
@@ -181,8 +181,8 @@ ELEC name complex_S
   ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
   lpbe
   bcfl focus
-  pdie %(pdie)f
-  sdie %(sdie)f
+  pdie %(pdie).2f
+  sdie %(sdie).2f
   srfm mol
   chgm spl2
   srad 1.4
@@ -191,10 +191,10 @@ ELEC name complex_S
   temp %(temperature).2f
   calcenergy no
   calcforce no
-  write dielx dx dieCxS
-  write diely dx dieCyS
-  write dielz dx dieCzS
-  write kappa dx kappCS
-  write charge dx chargCS
+  write dielx dx dielx_cpx_S
+  write diely dx diely_cpx_S
+  write dielz dx dielz_cpx_S
+  write kappa dx kappa_cpx_S
+  write charge dx charge_cpx_S
 END
 
