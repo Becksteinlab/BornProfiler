@@ -52,7 +52,7 @@ variable can be accessed via the getter method of the
 """
 from __future__ import with_statement
 
-import os.path
+import os.path, errno
 from ConfigParser import SafeConfigParser
 
 from pkg_resources import resource_filename, resource_listdir
@@ -61,6 +61,11 @@ import utilities
 
 import logging
 logger = logging.getLogger("bornprofiler.config")
+
+
+APBS_MINIMUM_VERSION = 1,2
+DRAWMEMBRANE_REQUIRED_VERSION = "draw_membrane2a.c"
+
 
 # Processing of the configuration file
 # ------------------------------------ 
@@ -265,4 +270,49 @@ def read_template(filename):
   logger.debug("Reading file %(filename)r from %(fn)r.", vars())
   return "".join(file(fn).readlines())
 
+
+import subprocess
+import re
+
+def check_APBS():
+    """Return ABPS version if apbs can be run and has the minimum required version.
+    
+    :Raises: error if it cannot be found (OSError ENOENT) or wrong version (EnvironmentError).
+    """    
+    APBS = cfg.get('executables', 'apbs')
+    try:
+        p = subprocess.Popen([APBS, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out,err = p.communicate()
+    except OSError:
+        logger.critial("No APBS binary found --- set it in the config file %(configfilename)s", configuration)
+        raise
+    # do not check p.returncode because --verbose sets it to 13 (?) but no idea if this is a feature
+    m = re.match('.*APBS\s*(?P<major>\d+)\.(?P<minor>\d+)', err)
+    if m is None:
+        raise EnvironmentError(errno.EIO, APBS,
+                               "Cannot obtain APBS version string from %r." % err)        
+    major,minor = int(m.group('major')), int(m.group('minor'))
+    if not (major,minor) >= APBS_MINIMUM_VERSION:
+        raise EnvironmentError(errno.EIO, APBS, "APBS version %d.%d is too old, need at least %d.%d." % 
+                               ((major,minor)+APBS_MINIMUM_VERSION))        
+    return major,minor
+
+def check_drawmembrane():
+    """Return drawmembrane version or raise :exc:`EnvironmentError` if incompatible version of drawmembrane"""
+    drawmembrane = cfg.get('executables', 'drawmembrane')
+    try:
+        p = subprocess.Popen([drawmembrane], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out,err = p.communicate()
+    except OSError:
+        logger.critial("No drawmembrane binary found --- set it in the config file %(configfilename)s", configuration)
+        raise
+    m = re.match(r"\*\s*(?P<name>[^\s]+)\s+(?P<date>[/\d]+)", out)
+    if m is None:
+        raise EnvironmentError(errno.EIO, drawmembrane, "Cannot obtain version string from %r." % out)        
+    if not m.group('name') == DRAWMEMBRANE_REQUIRED_VERSION:
+        raise EnvironmentError(errno.EIO, drawmembrane, "drawmembrane version %r does not work here, "
+                               "need exactly %r (compile it from the src/drawmembrane directory)." % 
+                               (m.group('name'), DRAWMEMBRANE_REQUIRED_VERSION))
+    return m.group('name')
+        
 
