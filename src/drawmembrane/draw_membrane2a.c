@@ -1,4 +1,5 @@
 /* draw_membrane2.c                     09/02/08 *
+ * draw_membrane2a.c                    11/11/10 * 
  *-----------------------------------------------* 
  * By Michael Grabe                              *
  * This program takes the dielectric, kappa, and * 
@@ -34,8 +35,6 @@
 
  2010-11-11  Oliver Beckstein
              changed naming (provide the infix) and added more diagnostics
-
-
  */
 
 #include <stdio.h>
@@ -74,7 +73,7 @@ char *newname(char *prefix, char *infix, char *suffix) {
 /********************************************************************/
 void printhelp()
 {
-printf("* draw_membrane2.c                     09/02/08 *\n"
+printf("* draw_membrane2a.c                     11/11/10 *\n"
 		"*-----------------------------------------------*\n"
 		"* By Michael Grabe                              *\n"
 		"* This program takes the dielectric, kappa, and *\n" 
@@ -112,7 +111,7 @@ printf("* draw_membrane2.c                     09/02/08 *\n"
 		"*-----------------------------------------------*\n\n"
 		"********************************************************************\n"
 		"* INPUT LOOKS LIKE:                                                *\n"
-		"* ./draw_membrane2  infix     z_m0 l_m pdie V I R_m1 R_m0          *\n"
+		"* ./draw_membrane2a infix  z_m0 l_m pdie V I R_m1 R_m0             *\n"
 		"********************************************************************\n\n"
 	  );
 }
@@ -158,7 +157,7 @@ strcpy(infix,argv[1]);
 
 printf("----------------------------------------------------------------\n");
 printf("draw_membrane2a -- (c) 2008 Michael Grabe [09/02/08]\n");
-printf("                   (c) 2010 Oliver Beckstein, minor modifications [11/11/11]\n");
+printf("                   (c) 2010 Oliver Beckstein, minor modifications [11/11/10]\n");
 printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
 printf("----------------------------------------------------------------\n");
 printf("Using hard-coded names with your infix to find files: infix=%s\n", infix);
