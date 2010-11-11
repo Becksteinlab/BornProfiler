@@ -7,6 +7,7 @@ import os, errno
 import numpy
 
 from config import configuration, read_template
+from utilities import in_dir, asiterable
 
 import logging
 logger = logging.getLogger('bornprofile') 
@@ -64,6 +65,17 @@ class BPbase(object):
 
   def filename(self, prefix, num, ext):
     return '%s_%04d%s' % (prefix,num,ext)
+
+  # naming scheme!!
+  def get_ion_name(self, num):
+    return self.filename("ion",num,".pqr")
+  def get_complex_name(self, num):
+    return self.filename("cpx",num,".pqr")
+  def get_protein_name(self, num=None):
+    return "pro.pqr"  
+  def get_windowdirname(self, num):
+    return "w%04d" % num
+
 
   def getPqrLine(self, aID, aType, rID, rType, x, y, z, q, r):
     # example: "ATOM  50000  NHX SPM 10000      43.624  57.177  58.408  1.0000 2.1300"
@@ -141,8 +153,7 @@ class Placeion(BPbase):
 
   def readPQR(self):
     with open(self.pqrName, "r") as pqrFile:
-      lines = pqrFile.readlines()
-      for line in lines:
+      for line in pqrFile:
         if (line[0:4] == "ATOM"):
           self.pqrLines.append(line)
  
@@ -168,7 +179,7 @@ class Placeion(BPbase):
       os.mkdir(self.jobName)
  
     # write protein
-    with open(self.jobpath("pro.pqr"), "w") as proFile:
+    with open(self.jobpath(self.get_protein_name()), "w") as proFile:
       for line in self.pqrLines:
         proFile.write(line)
  
@@ -180,10 +191,10 @@ class Placeion(BPbase):
       # born ion is always resname ION
       ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
       # write ion
-      with open(self.jobpath(self.filename("ion",num,".pqr")), "w") as ionFile:
+      with open(self.jobpath(self.get_ion_name(num)), "w") as ionFile:
         ionFile.write(ionLines)
       # write complex
-      with open(self.jobpath(self.filename("cpx",num,".pqr")), "w") as cpxFile:
+      with open(self.jobpath(self.get_complex_name(num)), "w") as cpxFile:
         for line in self.pqrLines:
           cpxFile.write(line)
         cpxFile.write(ionLines)
@@ -257,21 +268,13 @@ def ngridpoints(c, nlev=4):
   """
   return c*2**(nlev+1) + 1
 
-class SetupParameters(AttributeDict):
-  """Collect parameters for a APBSmem run."""
-  no_kwargs = ['suffix']
-  def as_kwargs(self):
-    return dict([(k,self[k]) for k in self if not k in self.no_kwargs])
-
 
 class MPlaceion(BPbase):
-  # choose dime compatible with nlev=4 (in input file)
-  # Schedule is run from first to last
-  schedule = [
-    SetupParameters(suffix='L', dime=(129, 129, 129), glen=(250,250,250)),
-    SetupParameters(suffix='M', dime=(129, 129, 129), glen=(100,100,100)),
-    SetupParameters(suffix='S', dime=(129, 129, 129), glen=(50,50,50)),
-  ]
+  #: Schedule is run from first to last: L -> M -> S
+  #: choose dime compatible with nlev=4 (in input file)
+  schedule = {'dime': [(129, 129, 129),(129, 129, 129),(129, 129, 129)],
+              'glen': [(250,250,250),(100,100,100),(50,50,50)],
+              }
 
   def __init__(self, *args, **kwargs):
     """Setup Born profile with membrane.
@@ -287,20 +290,66 @@ class MPlaceion(BPbase):
         *memclass*
            a class or type :class:`APBSMem`.
            """
-    self.pqrName = args[0]
-    self.pointsName = args[1]
+    self.pqrName = os.path.realpath(args[0])
+    self.pointsName = os.path.realpath(args[1])
 
     # copied & pasted from Placeion because inheritance would be messy :-p
     self.jobName = kwargs.pop('jobName', "mbornprofile")
     self.ion = IONS[kwargs.pop('ionName', 'Na')]
     self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
-    self.temperature = kwargs.pop('temperature', 300.0)
+    self.temperature = kwargs.pop('temperature', 300.0)  # or use 'temp' ??
     self.script = kwargs.pop('script', None)
 
-    cls = kwargs.pop('memclass', membrane.APBSmem)  # to customize
+    # hack...
+    self.SetupClass = kwargs.pop('memclass', membrane.BornAPBSmem)  # to customize
+
+    self.readPQR()
+    self.readPoints()
+
+  def readPQR(self):
+    self.pqrLines = []
+    with open(self.pqrName, "r") as pqrFile:
+      for line in pqrFile:
+        if (line[0:4] == "ATOM"):
+          self.pqrLines.append(line)
+
+  def writePQRs(self):
+    with in_dir(self.jobName):
+      # make directory if it does not exist and cd into it
+      
+      for num,point in enumerate(self.points.T):
+        windowdirname = self.get_windowdirname(num)
+        with in_dir(windowdirname):
+          # write protein (make hard-link to safe space)
+          # HARDCODED name of protein pqr
+          try:
+            os.link(self.pqrName, self.get_protein_name())
+          except OSError, err:
+            if err.errno != errno.EEXIST:
+              raise
+
+          # write complex and ion 
+          x,y,z = point
+          aID = 99999
+          rID = 9999
+          # born ion is always resname ION
+          ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
+          # write ion
+          with open(self.get_ion_name(num), "w") as ionFile:
+            ionFile.write(ionLines)
+          # write complex
+          with open(self.get_complex_name(num), "w") as cpxFile:
+            for line in self.pqrLines:
+              cpxFile.write(line)
+            cpxFile.write(ionLines)
+    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
+                self.jobName, num+1, self.ion.atomname)
+
+  def generateMem(self, windows=None):
+    """Generate special diel/kappa/charge files and mem_placeion.in for each window."""
 
     # use hard coded schedule for the moment, make it a table later
-    self.memSetups = [cls(self.pqrName, s.suffix, **s.as_kwargs()) for s in self.schedule]
+    #self.memSetups = [cls(self.pqrName, s.suffix, **s.as_kwargs()) for s in self.schedule]
 
     # TODO:
     # center i>0 on the ion
@@ -314,25 +363,23 @@ class MPlaceion(BPbase):
     
     # do one BP calculation by hand and then work from there...
 
-    # fixed names for all maps, use L/M/S suffixes (suffix='X')
-    _vars = ['DIME_XYZ_L','DIME_XYZ_M','DIME_XYZ_S',
-            'GLEN_XYZ_L','GLEN_XYZ_M','GLEN_XYZ_S',
-            'z','temperature','conc','sdie','pdie',
-            'protein_pqr','ion_pqr','complex_pqr',
-            ]
+    if windows is None:
+      windows = numpy.arange(1, self.numPoints+1)
+    else:
+      windows = asiterable(windows)
 
-    # first get variable names that are the same for all focusing stages
-    # (stuff for the 'solvation' run of the standard class)
-    # (adds a few other vars such as pqr,suffix which we don't care about)
-    self.tvars = self.memSetups[0].get_var_dict('solvation')
-    for s in self.memSetups:
-      self.tvars['DIME_XYZ_%s' % s.suffix] = s.get_XYZ('dime')
-      self.tvars['GLEN_XYZ_%s' % s.suffix] = s.get_XYZ('glen')
-
-    self.pqrLines = []
-    #self.readPQR()
-    self.readPoints()    
-
-  def writeIn(self):
-    with open(self.outfile,'w') as out:
-      out.write(TEMPLATES['born'] % self.tvars)
+    for num in windows:
+      windowdirpath = self.jobpath(self.get_windowdirname(num))
+      with in_dir(windowdirpath, create=False):
+        protein = self.get_protein_name()
+        ion = self.get_ion_name(num)
+        cpx = self.get_complex_name(num)
+        # should get draw_membrane parameters as well, do this once we use cfg input files
+        # TODO: add position of ion to comments
+        kw = {'conc':self.ionicStrength, 'temperature':self.temperature,'comment':'window %d, z=XXX'%num,
+              }
+        kw.update(self.schedule)  # set dime and glen !
+        # using a custom SetupClass pre-populates the parameters for draw_membrane2
+        # (hack!! -- should be moved into a cfg input file)
+        membornsetup = self.SetupClass(protein, ion, cpx, **kw)
+        membornsetup.generate()

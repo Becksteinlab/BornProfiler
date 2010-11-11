@@ -54,7 +54,7 @@ class BaseMem(object):
         - pdie : protein dielectric
         - Rtop : exclusion cylinder top
         - Rbot : exclusion cylinder bottom
-        - temp : temperature
+        - temperature : temperature
         - conc : ionic strength in mol/l
         """
         self.zmem = kwargs.pop('zmem', 0.0)
@@ -68,7 +68,7 @@ class BaseMem(object):
         self.lhgp = kwargs.pop('headgroup_l', 0.0)  # geo3
         self.Rtop = kwargs.pop('Rtop', 0)  # geo1
         self.Rbot = kwargs.pop('Rbot', 0)  # geo2
-        self.temperature = kwargs.pop('temp', 298.15)
+        self.temperature = kwargs.pop('temperature', 298.15)
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
 
         # check draw_membrane -- should we raise??
@@ -147,7 +147,7 @@ class APBSmem(BaseMem):
 
         :Arguments:
           - arguments for drawmembrane (see source)
-          - temp: temperature [298.15]
+          - temperature: temperature [298.15]
           - conc: ionic concentration of monovalent salt with radius 2 A
                   in mol/l [0.1]
           - dime: grid dimensions, as list [(97,97,97)]
@@ -199,7 +199,7 @@ class BornAPBSmem(BaseMem):
 
         Additional arguments:
           - drawmembrane arguments (see source)
-          - temp: temperature [298.15]
+          - temperature: temperature [298.15]
           - conc: ionic concentration of monovalent salt with radius 2 A
                   in mol/l [0.1]
           - dime: grid dimensions, as list with 1 or 3 entries; if o1 entry
