@@ -63,7 +63,7 @@ import logging
 logger = logging.getLogger("bornprofiler.config")
 
 
-APBS_MINIMUM_VERSION = 1,2
+APBS_MINIMUM_VERSION = 1,3   # want to be able to read gzipped files
 DRAWMEMBRANE_REQUIRED_VERSION = "draw_membrane2a.c"
 
 
@@ -274,12 +274,12 @@ def read_template(filename):
 import subprocess
 import re
 
-def check_APBS():
+def check_APBS(name=None):
     """Return ABPS version if apbs can be run and has the minimum required version.
     
     :Raises: error if it cannot be found (OSError ENOENT) or wrong version (EnvironmentError).
     """    
-    APBS = cfg.get('executables', 'apbs')
+    APBS = name or cfg.get('executables', 'apbs')
     try:
         p = subprocess.Popen([APBS, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out,err = p.communicate()
@@ -297,9 +297,9 @@ def check_APBS():
                                ((major,minor)+APBS_MINIMUM_VERSION))        
     return major,minor
 
-def check_drawmembrane():
+def check_drawmembrane(name=None):
     """Return drawmembrane version or raise :exc:`EnvironmentError` if incompatible version of drawmembrane"""
-    drawmembrane = cfg.get('executables', 'drawmembrane')
+    drawmembrane = name or cfg.get('executables', 'drawmembrane')
     try:
         p = subprocess.Popen([drawmembrane], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out,err = p.communicate()
