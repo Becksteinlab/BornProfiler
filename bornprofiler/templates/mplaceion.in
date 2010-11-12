@@ -10,30 +10,30 @@ READ
    mol pqr %(complex_pqr)s
 
    # maps for protein only
-   diel dx dielx_prot_Lm.dx diely_prot_Lm.dx dielz_prot_Lm.dx
-   diel dx dielx_prot_Mm.dx diely_prot_Mm.dx dielz_prot_Mm.dx
-   diel dx dielx_prot_Sm.dx diely_prot_Sm.dx dielz_prot_Sm.dx
+   diel %(dxformat)s dielx_prot_Lm.%(dxsuffix)s diely_prot_Lm.%(dxsuffix)s dielz_prot_Lm.%(dxsuffix)s
+   diel %(dxformat)s dielx_prot_Mm.%(dxsuffix)s diely_prot_Mm.%(dxsuffix)s dielz_prot_Mm.%(dxsuffix)s
+   diel %(dxformat)s dielx_prot_Sm.%(dxsuffix)s diely_prot_Sm.%(dxsuffix)s dielz_prot_Sm.%(dxsuffix)s
 
-   kappa dx kappa_prot_Lm.dx
-   kappa dx kappa_prot_Mm.dx
-   kappa dx kappa_prot_Sm.dx
+   kappa %(dxformat)s kappa_prot_Lm.%(dxsuffix)s
+   kappa %(dxformat)s kappa_prot_Mm.%(dxsuffix)s
+   kappa %(dxformat)s kappa_prot_Sm.%(dxsuffix)s
 
-   charge dx charge_prot_Lm.dx
-   charge dx charge_prot_Mm.dx
-   charge dx charge_prot_Sm.dx
+   charge %(dxformat)s charge_prot_Lm.%(dxsuffix)s
+   charge %(dxformat)s charge_prot_Mm.%(dxsuffix)s
+   charge %(dxformat)s charge_prot_Sm.%(dxsuffix)s
 
    # maps for complex
-   diel dx dielx_cpx_Lm.dx diely_cpx_Lm.dx dielz_cpx_Lm.dx
-   diel dx dielx_cpx_Mm.dx diely_cpx_Mm.dx dielz_cpx_Mm.dx
-   diel dx dielx_cpx_Sm.dx diely_cpx_Sm.dx dielz_cpx_Sm.dx
+   diel %(dxformat)s dielx_cpx_Lm.%(dxsuffix)s diely_cpx_Lm.%(dxsuffix)s dielz_cpx_Lm.%(dxsuffix)s
+   diel %(dxformat)s dielx_cpx_Mm.%(dxsuffix)s diely_cpx_Mm.%(dxsuffix)s dielz_cpx_Mm.%(dxsuffix)s
+   diel %(dxformat)s dielx_cpx_Sm.%(dxsuffix)s diely_cpx_Sm.%(dxsuffix)s dielz_cpx_Sm.%(dxsuffix)s
 
-   kappa dx kappa_cpx_Lm.dx
-   kappa dx kappa_cpx_Mm.dx
-   kappa dx kappa_cpx_Sm.dx
+   kappa %(dxformat)s kappa_cpx_Lm.%(dxsuffix)s
+   kappa %(dxformat)s kappa_cpx_Mm.%(dxsuffix)s
+   kappa %(dxformat)s kappa_cpx_Sm.%(dxsuffix)s
 
-   charge dx charge_cpx_Lm.dx
-   charge dx charge_cpx_Mm.dx
-   charge dx charge_cpx_Sm.dx
+   charge %(dxformat)s charge_cpx_Lm.%(dxsuffix)s
+   charge %(dxformat)s charge_cpx_Mm.%(dxsuffix)s
+   charge %(dxformat)s charge_cpx_Sm.%(dxsuffix)s
 END
 
 # Focus each calculation in three steps

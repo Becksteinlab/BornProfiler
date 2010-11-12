@@ -23,7 +23,7 @@ import numpy
 from itertools import izip
 
 import logging
-logger = logging.getLogger("bornprofile.membrane")
+logger = logging.getLogger("bornprofiler.membrane")
 
 import config
 from config import configuration, read_template
@@ -45,17 +45,20 @@ class BaseMem(object):
     def __init__(self, *args, **kwargs):
         """draw_membrane and common APBS run  parameters
 
-        .. Note:; sdie=80 and mdie=2 are fixed in draw_membrane2.c at the moment
+        .. Note:: sdie=80 and mdie=2 are fixed in draw_membrane2.c at the moment
 
         :Keywords:
-        - zmem : membrane centre (A)
-        - lmem : membrane thickness (A)
-        - Vmem (untested)
-        - pdie : protein dielectric
-        - Rtop : exclusion cylinder top
-        - Rbot : exclusion cylinder bottom
-        - temperature : temperature
-        - conc : ionic strength in mol/l
+           - zmem : membrane centre (A)
+           - lmem : membrane thickness (A)
+           - Vmem (untested)
+           - pdie : protein dielectric
+           - Rtop : exclusion cylinder top
+           - Rbot : exclusion cylinder bottom
+           - temperature : temperature
+           - conc : ionic strength in mol/l  
+           - basedir: full path to the directory from which files are read and written; 
+             by default this is realpath('.')                     
+                        
         """
         self.zmem = kwargs.pop('zmem', 0.0)
         self.lmem = kwargs.pop('lmem', 40.0)
@@ -70,13 +73,20 @@ class BaseMem(object):
         self.Rbot = kwargs.pop('Rbot', 0)  # geo2
         self.temperature = kwargs.pop('temperature', 298.15)
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
+        self.basedir = kwargs.pop('basedir', os.path.realpath(os.path.curdir))
 
-        # check draw_membrane -- should we raise??
-        if os.path.basename(self.drawmembrane) != "draw_membrane2a":
-            wmsg = "WARNING!! Only draw_membrane2a.c will work, not %r. Set the path in %r." % \
-                (self.drawmembrane, config.CONFIGNAME)
-            warnings.warn(wmsg)
-            logger.warn(wmsg)
+        # check draw_membrane: raises a stink if not the right one
+        config.check_drawmembrane(self.drawmembrane)
+
+        # dx file compression
+        # http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/write
+        apbsversion = config.check_APBS(self.apbs)
+        if apbsversion >= (1,3):
+            self.dxformat = "gz"     # format in an APBS read/write statement
+            self.dxsuffix = "dx.gz"  # APBS automatically adds .dx.gz when writing
+        else:
+            self.dxformat = "dx"
+            self.dxsuffix = "dx"
 
         super(BaseMem, self).__init__(*args, **kwargs)
 
@@ -89,6 +99,10 @@ class BaseMem(object):
         return " ".join(map(str, vec))
 
     def write(self, stage, **kwargs):
+        """General template writer.
+
+        *stage* is a key into :data:`TEMPLATES` and :attr:`filenames`.
+        """
         vardict = self.get_var_dict(stage)
         vardict.update(kwargs)
         with open(self.infile(stage), 'w') as f:
@@ -122,6 +136,8 @@ class BaseMem(object):
         cmdline = [self.drawmembrane, infix] + \
             map(str, [v['zmem'], v['lmem'], v['pdie'], v['Vmem'], v['conc'],
                       v['Rtop'], v['Rbot']])
+        if self.dxformat == "gz":
+            cmdline.append('gz')   # special version draw_membrane2a that can deal with gz
         logger.info("COMMAND: %s", " ".join(cmdline))
         rc = call(cmdline)
         if rc != 0:
@@ -131,6 +147,37 @@ class BaseMem(object):
         logger.info("Drawmembrane finished. Look for dx files with 'm' in their name.")
         return rc
 
+    def _gzip_dx(self, name="gzip", options=None):
+        from subprocess import call
+        from glob import glob
+        if options is None:
+            options = []
+        dxfiles = glob("*.dx")
+        if len(dxfiles) == 0:
+            logger.warn("No dx files for %(name)s.", vars())
+            return 0
+        cmdline = [name] + options + dxfiles
+        logger.info("Beginning to %s %s all %d dx files... patience.", 
+                    name, " ".join(options), len(dxfiles))
+        logger.debug("COMMAND: %r", cmdline)
+        rc = call(cmdline)
+        if rc == 0:
+            logger.info("Completed %s operation.", name)
+        else:
+            logger.error("%s error: returncode %d", name, rc)            
+        return rc
+    
+    def gzip_dx(self):
+        """Run external gzip on all dx files.
+
+        Saves about 98% of space.
+        """
+        return self._gzip_dx()
+        
+    def ungzip_dx(self):
+        """Run external ungzip on all dx files."""
+        return self._gzip_dx('gunzip')
+        
 
 class APBSmem(BaseMem):
     """Represent the apbsmem tools.
@@ -139,6 +186,11 @@ class APBSmem(BaseMem):
 
     .. Note:: see code for kwargs
     """
+
+    # XXX: probably broken at the moment, check
+    # - dx vs dx.gz format
+    # - make template monolithic
+    # - use separate window dirs ... ie make it more like BornAPBSmem
 
     def __init__(self, *args, **kwargs):
         """Set up calculation.
@@ -188,10 +240,17 @@ class APBSmem(BaseMem):
         self.run_apbs('dummy')
         self.run_drawmembrane()
         self.write('solvation')
-        
+        if gz:
+            self.gzip_dx()        
 
 class BornAPBSmem(BaseMem):
     """Class to prepare a single window in a manual focusing run."""    
+
+    #: Suffices of file names are hard coded in templates and should not
+    #: be changed; see ``templates/mdummy.in`` and ``templates/mplaceion.in``.
+    #: The order of the suffices corresponds to the sequence in the schedule.
+    suffices = ('L','M','S')
+
     def __init__(self, *args, **kwargs):
         """Set up calculation.
 
@@ -210,7 +269,6 @@ class BornAPBSmem(BaseMem):
         self.protein_pqr = args[0]
         self.ion_pqr = args[1]
         self.complex_pqr = args[2]
-        self.suffices = ('L','M','S')   # hard coded in templates
         # names for diel, kappa, and charge maps hard coded; only infix varies
         # (see templates/mdummy.in and templates/mplaceion.in)
         # processing requires draw_membrane2a with changes to the filename handling code
@@ -237,15 +295,19 @@ class BornAPBSmem(BaseMem):
                           }
 
         #: "static" variables required for a  calculation
-        self.vars = {'born_dummy': "protein_pqr,ion_pqr,complex_pqr,"
-                     "pdie,sdie,conc,temperature,"
+        self.vars = {'born_dummy': 
+                     "protein_pqr,ion_pqr,complex_pqr,"
+                     "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
-                     'born_run': "protein_pqr,ion_pqr,complex_pqr,"
-                     "pdie,sdie,conc,temperature,comment,"
+                     'born_run': 
+                     "protein_pqr,ion_pqr,complex_pqr,"
+                     "pdie,sdie,conc,temperature,comment,dxformat,dxsuffix,"
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
-                     'drawmembrane2': "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot"}
+                     'born_jobscript': "jobname,infile,outfile",
+                     'drawmembrane2': 
+                     "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot",}
 
         # generate names
         d = {}
@@ -270,3 +332,7 @@ class BornAPBSmem(BaseMem):
         for infix in self.infices:
             self.run_drawmembrane(infix=infix)
         self.write('born_run')
+        if self.dxformat == "dx":
+            logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
+            self.gzip_dx()
+

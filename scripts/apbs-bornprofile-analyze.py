@@ -42,16 +42,16 @@ class AnalyzeElec(BPbase):
     self.jobName = kwargs.pop('jobName', 'bornprofile')
  
     self.readPoints()
-    if self.points.shape[-1] != len(self.datafiles):
+    if self.points.shape[0] != len(self.datafiles):
       raise ValueError("Number of sampled points (%d) does not match the number "
                        "of data files (%d). They MUST correspond 1-to-1." % 
-                       (self.points.shape[-1], len(self.datafiles)))
+                       (self.points.shape[0], len(self.datafiles)))
     self.accumulate()
     self.write()
 
   def accumulate(self):
     zE = []
-    for num, point in enumerate(self.points.T):
+    for num, point in enumerate(self.points):
       z = point[2]
       outName = self.outfilename(num)
       lines = ""

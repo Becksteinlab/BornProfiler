@@ -10,7 +10,7 @@ from config import configuration, read_template
 from utilities import in_dir, asiterable
 
 import logging
-logger = logging.getLogger('bornprofile') 
+logger = logging.getLogger('bornprofiler.core') 
 
 TEMPLATES = {'born': read_template('mplaceion.in'),
              'q_array.sge': read_template('q_array.sge'),
@@ -47,12 +47,13 @@ class BPbase(object):
 
   Defines the file name API.
   """
-  # number files, do not use z in filename
+  # number files, do not use z in filename;
+  # assume standard python 0-based indexing and naming
   def jobpath(self, *args):
     return os.path.join(self.jobName, *args)
 
   def jobscriptname(self, num):
-    return self.jobpath(self.filename('job', num, '.bash'))
+    return self.filename('job', num, '.bash')
 
   def infilename(self, num):
     return self.filename("job",num,".in")
@@ -66,6 +67,9 @@ class BPbase(object):
   def filename(self, prefix, num, ext):
     return '%s_%04d%s' % (prefix,num,ext)
 
+  def window_jobname(self, num):
+    return "w%04d_%s" % (num,self.jobName)
+
   # naming scheme!!
   def get_ion_name(self, num):
     return self.filename("ion",num,".pqr")
@@ -76,6 +80,17 @@ class BPbase(object):
   def get_windowdirname(self, num):
     return "w%04d" % num
 
+  def _process_window_numbers(self, windows=None):
+    """Window numbers are 0-based."""
+    if windows is None:
+      windows = numpy.arange(self.numPoints)
+    else:
+      windows = numpy.unique(asiterable(windows))
+    if windows.min() < 0  or windows.max() >= self.numPoints:
+      errmsg = "window numbers must be between 0 and %d inclusive." % (self.numPoints-1)
+      logger.fatal(errmsg)
+      raise ValueError(errmsg)
+    return windows
 
   def getPqrLine(self, aID, aType, rID, rType, x, y, z, q, r):
     # example: "ATOM  50000  NHX SPM 10000      43.624  57.177  58.408  1.0000 2.1300"
@@ -94,7 +109,8 @@ class BPbase(object):
       for line in pointsFile:
         fields = line.split()
         points.append(map(float, fields[0:3]))
-    self.points = numpy.array(points).T
+    self.points = numpy.array(points)
+    self.numPoints = self.points.shape[0]
  
   def get_XYZ_dict(self, name, vec):
     return {name.upper()+'_XYZ': " ".join(map(str, vec))}
@@ -113,7 +129,7 @@ JOBSCRIPTS = {
   'darthtater': read_template('q_darthtater.sge'),
 }
 
-# change this to a monolitic script and hardcode stages!
+# change this to a monolithic script and hardcode stages!
 APBS_SCRIPT_COMPONENTS = {
   'header': read_template("000_placeion_header.in"),
   'read':   read_template("001_placeion_read.in"),
@@ -184,7 +200,7 @@ class Placeion(BPbase):
         proFile.write(line)
  
     # write complex and ion
-    for num,point in enumerate(self.points.T):
+    for num,point in enumerate(self.points):
       x,y,z = point
       aID = 50000
       rID = 10000
@@ -202,14 +218,16 @@ class Placeion(BPbase):
                 self.jobName, num+1, self.ion.atomname)
   
   def writeIn(self):
-    for num,point in enumerate(self.points.T):
+    for num,point in enumerate(self.points):
       z = point[2]
       with open(self.jobpath(self.infilename(num)), "w") as inFile:
         inFile.write(apbs_component('header', z=z))
-        inFile.write(apbs_component('read', protein_pqr="pro.pqr",
-                                    ion_pqr=self.filename("ion",num,".pqr"),
-                                    complex_pqr=self.filename("cpx",num,".pqr")))
-        for count,what in enumerate(["pro", "ion", "cpx"]):
+        inFile.write(apbs_component('read', protein_pqr=self.get_protein_name(num),
+                                    ion_pqr=self.get_ion_name(num),
+                                    complex_pqr=self.get_complex_name(num)))
+        # TODO: make this a single monolithic template and get rid of 
+        # the baroque split-template thing
+        for count,what in enumerate(["pro", "ion", "cpx"]):          
           inFile.write(apbs_component('elec', stage=what, molnum=count+1,
                                       DIME_XYZ=self.get_XYZ_str(self.dime),
                                       CGLEN_XYZ=self.get_XYZ_str(self.cglen),
@@ -222,20 +240,20 @@ class Placeion(BPbase):
       return None
 
     bash_jobarray = []
-    for num,point in enumerate(self.points.T):
+    for num,point in enumerate(self.points):
       z = point[2]
       scriptargs = {
-        'jobname': "n%04dz%.3f%s"%(num,z,self.jobName),
+        'jobname': self.window_jobname(num),
         'infile': self.infilename(num),
         'outfile': self.outfilename(num),
         }
       scriptname = self.jobscriptname(num)
-      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptname))
-      with open(scriptname, "w") as jobFile:
+      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptname))  # job array ids are 1-based!
+      with open(self.jobpath(scriptname), "w") as jobFile:
         jobFile.write(self.script % scriptargs)
  
     qsubName = "qsub_" + self.jobName + ".bash"
-    self.numJobs = self.points.shape[-1]
+    self.numJobs = self.points.shape[0]
     with open(qsubName, "w") as jobFile:
       jobFile.write(TEMPLATES['q_array.sge'] % {
           'jobName': self.jobName,
@@ -245,8 +263,219 @@ class Placeion(BPbase):
     return num+1
 
 
-import membrane
-from utilities import AttributeDict
+class MPlaceion(BPbase):
+  """Generate all input files for a Born profile calculation WITH a membrane
+
+  
+  """
+
+  #: Schedule is run from first to last: L -> M -> S
+  #: choose dime compatible with nlev=4 (in input file)
+  schedule = {'dime': [(129, 129, 129),(129, 129, 129),(129, 129, 129)],
+              'glen': [(250,250,250),(100,100,100),(50,50,50)],
+              }
+
+  def __init__(self, *args, **kwargs):
+    """Setup Born profile with membrane.
+
+      MPlaceion(pqr,points[,memclass,jobName,ionName,ionicStrength,temperature,basedir])
+
+      :Arguments:
+        *pqr*
+           PQR file
+        *points* 
+           data file with sample points
+
+      :Keywords:
+        *memclass*
+           a class or type :class:`APBSMem` to customize draw_membrane
+        *jobName*
+           name of the run, used as top directory name and as unique identifier
+           [mbornprofile]
+        *ionName*
+           name of the Rashin&Honig ion to calculate; any ion in IONS works [Na]
+        *ionicStrength*
+           concentration of monovalent NaCl solution in mol/l [0.15]
+        *temperature*
+           temperature in K [300.0]
+        *script*
+           template for a submission script (contains 'abps %(infile)s > %(outfile)s'
+           or similar; %(jobname)s is also replaced). Can be (a) a local file, (b) a
+           file stored in he user template dir, (c) a bundled template file.
+        *arrayscript*
+           template for a queuing system array script; contains the the placeholders
+           %(jobName)s and %(jobArray)s; jobs are stored in the bash array 'job' so
+           there should be a line 'declare -a job'. Window numbers correspond to the
+           task ids (SGE) ar array ids (PBS) in the job array. See ``templates/q_array.sge``
+           as an example.
+        *basedir*
+           top directory of set up, defaults to [.]           
+    """
+    self.pqrName = os.path.realpath(args[0])
+    self.pointsName = os.path.realpath(args[1])
+
+    # copied & pasted from Placeion because inheritance would be messy :-p
+    self.jobName = kwargs.pop('jobName', "mbornprofile")
+    self.ion = IONS[kwargs.pop('ionName', 'Na')]
+    self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
+    self.temperature = kwargs.pop('temperature', 300.0)
+    scriptname = kwargs.pop('script', None)
+    if not scriptname is None:
+      self.script = read_template(scriptname)
+    else:
+      self.script = None
+    self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
+
+    # hack for quickly customizing draw_membrane (uses custom classes)
+    self.SetupClass = kwargs.pop('memclass', None)
+    if self.SetupClass is None:
+      import membrane
+      self.SetupClass = membrane.BornAPBSmem  # to customize
+      
+    # sanity check
+    assert len(self.schedule) != len(self.SetupClass.suffices), \
+        "schedule does not correspond to naming scheme --- make sure that memclass is set up properly"
+
+    # do some initial processing...
+    self.readPQR()
+    self.readPoints()
+
+  def readPQR(self):
+    self.pqrLines = []
+    with open(self.pqrName, "r") as pqrFile:
+      for line in pqrFile:
+        if (line[0:4] == "ATOM"):
+          self.pqrLines.append(line)
+
+  def writePQRs(self, windows=None):
+    """Generate input pqr files for all windows and store them in separate directories."""
+    # NOTE: This is the only place where window numbers reference the sample points
+    #       at the moment: point = self.points[num]
+    windows = self._process_window_numbers(windows)
+    with in_dir(self.jobName):
+      # make directory if it does not exist and cd into it      
+      for num in windows:
+        windowdirname = self.get_windowdirname(num)
+        with in_dir(windowdirname):
+          # write protein (make hard-link to safe space)
+          try:
+            os.link(self.pqrName, self.get_protein_name())
+          except OSError, err:
+            if err.errno != errno.EEXIST:
+              raise
+          # write complex and ion 
+          x,y,z = self.points[num]  # index points with window id
+          aID = 99999
+          rID = 9999
+          # born ion is always resname ION
+          ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
+          # write ion
+          with open(self.get_ion_name(num), "w") as ionFile:
+            ionFile.write(ionLines)
+          # write complex
+          with open(self.get_complex_name(num), "w") as cpxFile:
+            for line in self.pqrLines:
+              cpxFile.write(line)
+            cpxFile.write(ionLines)
+    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
+                self.jobName, len(windows), self.ion.atomname)
+
+  def writeJob(self, windows=None):
+    """Write the job script.
+
+    Can be done selectively for a subset of windows and then the
+    global array script will also only contain this subset of windows.
+    """
+    if self.script is None:
+      logger.warn("No script template provided; no queuing system scripts are written.")
+      return None
+
+    windows = self._process_window_numbers(windows)
+
+    bash_jobarray = []
+    for num in windows:
+      scriptargs = {
+        'jobname': self.window_jobname(num),
+        'infile': self.infilename(num),
+        'outfile': self.outfilename(num),
+        }      
+      scriptname = self.jobscriptname(num)
+      scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
+      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptpath))    # job array ids are 1-based!
+      # write scriptfile into the window directory
+      with open(scriptpath, "w") as jobFile:
+        jobFile.write(self.script % scriptargs)
+ 
+    qsubName = "qsub_" + self.jobName + ".bash"
+    self.numJobs = self.points.shape[0]  # always record maximum number
+    with open(qsubName, "w") as jobFile:
+      jobFile.write(self.arrayscript % {
+          'jobName': self.jobName,
+          'numJobs': self.numJobs,
+          'jobArray': "\n".join(bash_jobarray),
+          })
+    return len(windows)
+
+
+  def generateMem(self, windows=None):
+    """Generate special diel/kappa/charge files and mem_placeion.in for each window.
+
+    The APBS calculation is set up for manual focusing in three stages:
+      1. **L** is a coarse grid and centered on the protein
+      2. **M** is a medium grod, centered on the ion, and using focusing
+         (the boundary values come from the **L** calculation)
+      3. **S** is the finest grid, also centered and focused on the ion
+
+    The ion positions ("windows") are simply sequentially numbered, starting at
+    1, as they appear in the input file. Each window is set up in its own
+    directiroy (called "wNNNN" where NNNN is the 4-digit, zero-padded number).
+
+    .. Warning:: At the moment it is not checked that the "inner" focusing region M
+       are always contained in the outer region L; it's on the TODO list.
+
+    :Keywords:
+       *windows*
+          window number or list of window numbers to generate. If set to
+          ``None`` (the default) then all windows are generated. Window
+          numbers start at 0 and end at numPoints-1.
+    """
+
+    windows = self._process_window_numbers(windows)
+    for num in windows:
+      windowdirpath = self.jobpath(self.get_windowdirname(num))
+      with in_dir(windowdirpath, create=False):
+        # will throw an error if the directory does not exist -- currently users
+        # responsibility to set it up properly (i.e. generate diel maps etc)
+        membornsetup = self.get_MemBornSetup(num)
+        membornsetup.generate()
+
+  def get_MemBornSetup(self, num):
+    """Return the setup class for window *num*."""
+    protein = self.get_protein_name()
+    ion = self.get_ion_name(num)
+    cpx = self.get_complex_name(num)
+    # should get draw_membrane parameters as well, do this once we use cfg input files
+    # TODO: add position of ion to comments
+    kw = {'conc':self.ionicStrength, 'temperature':self.temperature,'comment':'window %d, z=XXX'%num,
+          'basedir': os.path.realpath(self.jobpath(self.get_windowdirname(num)))}
+    kw.update(self.schedule)  # set dime and glen !
+    # using a custom SetupClass pre-populates the parameters for draw_membrane2
+    # (hack!! -- should be moved into a cfg input file)
+    return self.SetupClass(protein, ion, cpx, **kw)
+
+  def generate(self, windows=None):
+    """Set up all input files for Born calculations with a membrane.
+
+    generate([windows])
+
+    This can take a long time. For testing, a subset of windows can be
+    processed.
+    """
+    windows = self._process_window_numbers(windows)
+    self.writePQRs(windows=windows)
+    self.generateMem(windows=windows)
+    self.writeJob(windows=windows)
+
 
 def ngridpoints(c, nlev=4):
   """The allowed number of grid points.
@@ -267,119 +496,3 @@ def ngridpoints(c, nlev=4):
   http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime
   """
   return c*2**(nlev+1) + 1
-
-
-class MPlaceion(BPbase):
-  #: Schedule is run from first to last: L -> M -> S
-  #: choose dime compatible with nlev=4 (in input file)
-  schedule = {'dime': [(129, 129, 129),(129, 129, 129),(129, 129, 129)],
-              'glen': [(250,250,250),(100,100,100),(50,50,50)],
-              }
-
-  def __init__(self, *args, **kwargs):
-    """Setup Born profile with membrane.
-
-      MPlaceion(pqr,points[,memclass])
-
-      :Arguments:
-        *pqr*
-           PQR file
-        *points* 
-           data file with sample points
-      :Keywords:
-        *memclass*
-           a class or type :class:`APBSMem`.
-           """
-    self.pqrName = os.path.realpath(args[0])
-    self.pointsName = os.path.realpath(args[1])
-
-    # copied & pasted from Placeion because inheritance would be messy :-p
-    self.jobName = kwargs.pop('jobName', "mbornprofile")
-    self.ion = IONS[kwargs.pop('ionName', 'Na')]
-    self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
-    self.temperature = kwargs.pop('temperature', 300.0)  # or use 'temp' ??
-    self.script = kwargs.pop('script', None)
-
-    # hack...
-    self.SetupClass = kwargs.pop('memclass', membrane.BornAPBSmem)  # to customize
-
-    self.readPQR()
-    self.readPoints()
-
-  def readPQR(self):
-    self.pqrLines = []
-    with open(self.pqrName, "r") as pqrFile:
-      for line in pqrFile:
-        if (line[0:4] == "ATOM"):
-          self.pqrLines.append(line)
-
-  def writePQRs(self):
-    with in_dir(self.jobName):
-      # make directory if it does not exist and cd into it
-      
-      for num,point in enumerate(self.points.T):
-        windowdirname = self.get_windowdirname(num)
-        with in_dir(windowdirname):
-          # write protein (make hard-link to safe space)
-          # HARDCODED name of protein pqr
-          try:
-            os.link(self.pqrName, self.get_protein_name())
-          except OSError, err:
-            if err.errno != errno.EEXIST:
-              raise
-
-          # write complex and ion 
-          x,y,z = point
-          aID = 99999
-          rID = 9999
-          # born ion is always resname ION
-          ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
-          # write ion
-          with open(self.get_ion_name(num), "w") as ionFile:
-            ionFile.write(ionLines)
-          # write complex
-          with open(self.get_complex_name(num), "w") as cpxFile:
-            for line in self.pqrLines:
-              cpxFile.write(line)
-            cpxFile.write(ionLines)
-    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
-                self.jobName, num+1, self.ion.atomname)
-
-  def generateMem(self, windows=None):
-    """Generate special diel/kappa/charge files and mem_placeion.in for each window."""
-
-    # use hard coded schedule for the moment, make it a table later
-    #self.memSetups = [cls(self.pqrName, s.suffix, **s.as_kwargs()) for s in self.schedule]
-
-    # TODO:
-    # center i>0 on the ion
-    # --> actually, need to set up for every single window because the focus
-    # region changes and needs a new map
-    # Also not sure if draw_membrane is still happy if there's no membrane in the
-    # region.
-    # - need a flexible ABPSmem and/or generate the template files on the
-    #   fly
-    # - do one directory per window because file naming is a desaster
-    
-    # do one BP calculation by hand and then work from there...
-
-    if windows is None:
-      windows = numpy.arange(1, self.numPoints+1)
-    else:
-      windows = asiterable(windows)
-
-    for num in windows:
-      windowdirpath = self.jobpath(self.get_windowdirname(num))
-      with in_dir(windowdirpath, create=False):
-        protein = self.get_protein_name()
-        ion = self.get_ion_name(num)
-        cpx = self.get_complex_name(num)
-        # should get draw_membrane parameters as well, do this once we use cfg input files
-        # TODO: add position of ion to comments
-        kw = {'conc':self.ionicStrength, 'temperature':self.temperature,'comment':'window %d, z=XXX'%num,
-              }
-        kw.update(self.schedule)  # set dime and glen !
-        # using a custom SetupClass pre-populates the parameters for draw_membrane2
-        # (hack!! -- should be moved into a cfg input file)
-        membornsetup = self.SetupClass(protein, ion, cpx, **kw)
-        membornsetup.generate()
