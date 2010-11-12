@@ -16,3 +16,25 @@ so-called *Born profile*).
 """
 import config, utilities
 
+import logging
+# see the advice on logging and libraries in
+# http://docs.python.org/library/logging.html?#configuring-logging-for-a-library
+class NullHandler(logging.Handler):
+    def emit(self, record):
+        pass
+h = NullHandler()
+logging.getLogger("bornprofiler").addHandler(h)
+del h
+
+def start_logging(logfile="bornprofiler.log"):
+    """Start logging of messages to file and console."""
+    import log
+    log.create("bornprofiler", logfile=logfile)
+    logging.getLogger("bornprofiler").info("BornProfiler STARTED logging to %r", logfile)
+
+def stop_logging():
+    """Stop logging to logfile."""
+    import log
+    logger = logging.getLogger("bornprofiler")
+    logger.info("BornProfiler STOPPED logging")
+    log.clear_handlers(logger)  # this _should_ do the job...
