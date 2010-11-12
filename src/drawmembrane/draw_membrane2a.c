@@ -73,9 +73,10 @@ char *newname(char *prefix, char *infix, char *suffix) {
 /********************************************************************/
 void printhelp()
 {
-printf("* draw_membrane2a.c                     11/11/10 *\n"
+printf(         "* draw_membrane2a.c                    11/11/10 *\n"
 		"*-----------------------------------------------*\n"
 		"* By Michael Grabe                              *\n"
+                "* (minor modifications by Oliver Beckstein)     *\n"
 		"* This program takes the dielectric, kappa, and *\n" 
 		"* charge  maps from APBS and accounts for the   *\n"
 		"* membrane. the thickness and the bottom of the *\n"
@@ -117,7 +118,6 @@ printf("* draw_membrane2a.c                     11/11/10 *\n"
 }
 
 #define MAXLEN 100
-#define MAXFILENAME 256
 
 int main(int argc, char *argv[])
 {
@@ -217,7 +217,7 @@ fscanf(in, "%5s %f %f %f \n",s, &dx, &tmp, &tmp);
 fscanf(in, "%5s %f %f %f \n",s, &tmp, &dy, &tmp);
 fscanf(in, "%5s %f %f %f \n",s, &tmp, &tmp, &dz);
 fgets(s,MAXLEN,in);
-fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp,s,s,s,s,s,&tmp,s,&dim3,s,s);
+fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s,&dim3,s,s);
 
 
 /* assign the memory to the arrays */
@@ -326,7 +326,7 @@ fgets(s,MAXLEN,in);
 fgets(s,MAXLEN,in);
 fgets(s,MAXLEN,in);
 fgets(s,MAXLEN,in);
-fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp,s,s,s,s,s,&tmp,s, &tmp,s,s); 
+fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s, &tmp1,s,s); 
  
 /* initialize x,y,z, and diel vectors */
 
@@ -391,7 +391,7 @@ fgets(s,MAXLEN,in);
 fgets(s,MAXLEN,in);
 fgets(s,MAXLEN,in);
 fgets(s,MAXLEN,in);
-fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp,s,s,s,s,s,&tmp,s, &tmp,s,s);
+fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s, &tmp1,s,s);
 
 /* initialize x,y,z, and diel vectors */
 
