@@ -1,0 +1,30 @@
+=========
+ INSTALL
+=========
+
+Installing ``draw_membrane2a`` should be straightforward.
+
+
+Compile manually
+================
+
+In almost all cases you should be able to just compile with the native
+C-compiler and link against the math library libm and zlib::
+
+  cc draw_membrane2a.c -o draw_membrane2a -lm -lz
+
+Then copy the resulting binary to a directory on your PATH or, if you
+prefer to have it hidden somewhere, enter the full path into the
+BornProfiler configuration file, ``~/.bornprofiler.cfg``.
+
+
+cmake
+=====
+
+A funky way to do the same thing is to use ``cmake``::
+
+  mkdir build && cd build
+  cmake -D CMAKE_INSTALL_PREFIX=$HOME/bin -D CMAKE_BUILD_TYPE=Release ../src/drawmembrane
+  make 
+  make install
+

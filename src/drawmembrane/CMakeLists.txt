@@ -30,9 +30,9 @@ add_executable (draw_membrane2a draw_membrane2a.c)
 add_executable (draw_membrane4 draw_membrane4.c)
 
 # linking
-# (need libm)
+# (need libm and libz for new 2a)
 target_link_libraries (draw_membrane2 m)
-target_link_libraries (draw_membrane2a m)
+target_link_libraries (draw_membrane2a m z)
 target_link_libraries (draw_membrane4 m)
 
 # install executables

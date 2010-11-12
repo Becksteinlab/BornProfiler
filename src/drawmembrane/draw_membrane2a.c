@@ -1,5 +1,5 @@
 /* draw_membrane2.c                     09/02/08 *
- * draw_membrane2a.c                    11/11/10 * 
+ * draw_membrane2a.c                    11/12/10 * 
  *-----------------------------------------------* 
  * By Michael Grabe                              *
  * This program takes the dielectric, kappa, and * 
@@ -35,49 +35,90 @@
 
  2010-11-11  Oliver Beckstein
              changed naming (provide the infix) and added more diagnostics
+ 2010-11-12  Oliver Beckstein
+             added reading/writing of gz-compressed files
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <math.h>
 #include <string.h>
+#include <zlib.h>
 
+typedef uint bool;
 
-char *newname(char *prefix, char *infix, char *suffix) {
-  int l,m,n;
+#define MAXLEN 100
+#define TRUE  1
+#define FALSE 0
+
+char *newname(char *prefix, char *infix, char *suffix, bool gzipped) {
+  int l,m,n,p;
   char *s;
   static char default_suffix[4] = ".dx";
+  char compression_suffix[4];  /* ".gz" or "" */
 
   if (NULL == suffix) {
     suffix = default_suffix;
   }
 
+  if (gzipped) {
+    strcpy(compression_suffix, ".gz");
+  } else {
+    strcpy(compression_suffix, "");
+  }
+
   l = strlen(prefix);
   m = strlen(infix);
   n = strlen(suffix);
+  p = strlen(compression_suffix);
   
-  s = (char*)calloc(l+m+n+1, sizeof(char));
+  s = (char*)calloc(l+m+n+p+1, sizeof(char)); /* not freed ever... */
   if (NULL == s) {
-    printf("Failed to allocate string.");
-    abort();
+    printf("newname: Failed to allocate string.");
+    exit(EXIT_FAILURE);
   }
   strncpy(s, prefix, l);
   strncat(s, infix, m);
   strncat(s, suffix, n);
+  strncat(s, compression_suffix, n);
   return s;
+}
+
+
+int gzscanf(gzFile *stream, const char *fmt, ...) {
+  /* read one line from stream (up to newline) and parse with sscanf */
+  va_list args;
+  va_start(args, fmt);
+  int n;
+  static char buf[MAXLEN]; 
+
+  if (NULL == gzgets(stream, buf, MAXLEN)) {
+    printf("gzscanf: Failed to read line from gz file.\n");
+    exit(EXIT_FAILURE);
+  }
+  n = vsscanf(buf, fmt, args);
+  va_end(args);
+  if (0 == n) {
+    printf("gzscanf: Failed to parse line: %s\n", buf);
+    exit(EXIT_FAILURE);
+  }
+  return n;
 }
 
 /********************************************************************/
 /* INPUT LOOKS LIKE:                                                */
-/* mgrabe% draw_mem  dielx*.dx z_m0 l_m pdie V I R_m1 R_m0          */
+/*    draw_membrane2a  infix  z_m0 l_m pdie V I R_m1 R_m0  gz       */
+/*    draw_membrane2a  infix  z_m0 l_m pdie V I R_m1 R_m0           */
 /********************************************************************/
 void printhelp()
 {
-printf(         "* draw_membrane2a.c                    11/11/10 *\n"
+printf(         "* draw_membrane2a.c                    11/12/10 *\n"
 		"*-----------------------------------------------*\n"
 		"* By Michael Grabe                              *\n"
                 "* (minor modifications by Oliver Beckstein)     *\n"
-		"* This program takes the dielectric, kappa, and *\n" 
+		"* This program takes the gz-compressed          *\n"
+		"* dielectric, kappa, and                        *\n" 
 		"* charge  maps from APBS and accounts for the   *\n"
 		"* membrane. the thickness and the bottom of the *\n"
 		"* membrane must be given. we assume that the    *\n"
@@ -94,9 +135,9 @@ printf(         "* draw_membrane2a.c                    11/11/10 *\n"
 		"* older scripts pre 2005.                       *\n"
 		"*                                               *\n" 
 		"* INPUTS:                                       *\n"
-		"* thses all come at the command line:           *\n"
+		"* these all come at the command line:           *\n"
 		"* infix  - all maps are constructed as          *\n"
-                "*          <name><infix>.dx where <name> is     *\n"
+                "*          <name><infix>.dx[.gz] where <name> is*\n"
                 "*          hard-coded (dielx,diely,dielz,kappa  *\n"
                 "*          charge); see also OUTPUTS.           *\n"
 		"* z_m0   - bottom of the membrane               *\n"
@@ -106,18 +147,19 @@ printf(         "* draw_membrane2a.c                    11/11/10 *\n"
 		"* I      - molar conc. of one salt-species      *\n"
 		"* R_m1   - excl. radius at top of  membrane     *\n"
 		"* R_m0   - excl. radius at  bottom of membrane  *\n"
+                "* gz     - set to 'gz' if files are compressed  *\n"
+                "*          leave out or 'none' otherwise        *\n"
 		"*                                               *\n" 
 		"* OUTPUTS:                                      *\n"
-		"*   maps - names are <name><infix>m.dx          *\n"
+		"*   maps - names are <name><infix>m.dx[.gz]     *\n"
 		"*-----------------------------------------------*\n\n"
 		"********************************************************************\n"
 		"* INPUT LOOKS LIKE:                                                *\n"
-		"* ./draw_membrane2a infix  z_m0 l_m pdie V I R_m1 R_m0             *\n"
+		"* ./draw_membrane2a infix  z_m0 l_m pdie V I R_m1 R_m0  [gz]       *\n"
 		"********************************************************************\n\n"
 	  );
 }
 
-#define MAXLEN 100
 
 int main(int argc, char *argv[])
 {
@@ -125,7 +167,7 @@ int main(int argc, char *argv[])
 int dim_x,dim_y,dim_z,dim3,i,j,k,cnt;
 int tmp1,tmp2,tmp3,tmp4;
 int l, *map;
-FILE *out, *in; 
+gzFile *out, *in; 
 float *d_x, *d_y, *d_z;      
 float *x_x, *x_y, *x_z;
 float *y_x, *y_y, *y_z;
@@ -147,39 +189,48 @@ char *file_name_x, *file_name_y, *file_name_z;
 char *file_name_k, *file_name_c;
 char *f1, *f2, *f3, *f4, *f5, *f6;
 char ext[5]="m.dx";
+bool compression = FALSE;
 
-if (argc != 9) {
+if (argc < 9) {
 	printhelp();
 	return 1;
 }
 
-strcpy(infix,argv[1]);
-
 printf("----------------------------------------------------------------\n");
 printf("draw_membrane2a -- (c) 2008 Michael Grabe [09/02/08]\n");
-printf("                   (c) 2010 Oliver Beckstein, minor modifications [11/11/10]\n");
+printf("                   (c) 2010 Oliver Beckstein, minor modifications [11/12/10]\n");
 printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
 printf("----------------------------------------------------------------\n");
+
+strcpy(infix,argv[1]);
 printf("Using hard-coded names with your infix to find files: infix=%s\n", infix);
+
+if (argc == 10 && 0 == strcmp(argv[9], "gz")) {
+  compression = TRUE;
+  printf("Reading gzip-compressed dx files.\n");
+} else {
+  compression = FALSE;
+  printf("Reading un-compressed dx files (default).\n");
+}  
 
 /* Find the x-shifted dielectric map 
    Construct the name as <basename><infix><suffix>
 
    suffix == NULL --> use default = ".dx"
  */
-file_name_x = newname("dielx", infix, NULL);
+file_name_x = newname("dielx", infix, NULL, compression);
 
 /* Find the y-shifted dielectric map */
-file_name_y = newname("diely", infix, NULL);
+file_name_y = newname("diely", infix, NULL, compression);
 
 /* Find the z-shifted dielectric map */
-file_name_z = newname("dielz", infix, NULL);
+file_name_z = newname("dielz", infix, NULL, compression);
 
 /* Find the kappa map */
-file_name_k = newname("kappa", infix, NULL);
+file_name_k = newname("kappa", infix, NULL, compression);
 
 /* Find the charge map */
-file_name_c = newname("charge", infix, NULL);
+file_name_c = newname("charge", infix, NULL, compression);
 
 z_m0=atof(argv[2]);
 l_m=atof(argv[3]);
@@ -197,27 +248,27 @@ sdie = 80.0;
 /* read in the x-shifted dielectric data             */
 /*****************************************************/
 
-in = fopen(file_name_x,"r");
+in = gzopen(file_name_x,"r");
 if (in == NULL) {
 	printhelp();
-	printf("Make sure %s exists in current directory!!!\n\n", argv[1]);
+	printf("Make sure %s exists in current directory!!!\n\n", file_name_x);
 	return 1;
 }
 printf("Reading %s...\n", file_name_x);
 
 /* First read the header */
 
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);   
-fscanf(in, "%6s %1s %5s %13s %6s %i %i %i \n", s,s,s,s,s,&dim_x,&dim_y,&dim_z);
-fscanf(in, "%6s %f %f %f \n",s, &x0_x, &y0_x, &z0_x);
-fscanf(in, "%5s %f %f %f \n",s, &dx, &tmp, &tmp);
-fscanf(in, "%5s %f %f %f \n",s, &tmp, &dy, &tmp);
-fscanf(in, "%5s %f %f %f \n",s, &tmp, &tmp, &dz);
-fgets(s,MAXLEN,in);
-fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s,&dim3,s,s);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);   
+gzscanf(in, "%6s %1s %5s %13s %6s %i %i %i \n", s,s,s,s,s,&dim_x,&dim_y,&dim_z);
+gzscanf(in, "%6s %f %f %f \n",s, &x0_x, &y0_x, &z0_x);
+gzscanf(in, "%5s %f %f %f \n",s, &dx, &tmp, &tmp);
+gzscanf(in, "%5s %f %f %f \n",s, &tmp, &dy, &tmp);
+gzscanf(in, "%5s %f %f %f \n",s, &tmp, &tmp, &dz);
+gzgets(in,s,MAXLEN);
+gzscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s,&dim3,s,s);
 
 
 /* assign the memory to the arrays */
@@ -278,14 +329,14 @@ tmp3 =1;
 
 for (i=1; i <= tmp2; ++i)
 {
-fscanf(in,"%f %f %f \n", &d_x[tmp3], &d_x[tmp3+1], &d_x[tmp3+2]); 
+gzscanf(in,"%f %f %f \n", &d_x[tmp3], &d_x[tmp3+1], &d_x[tmp3+2]); 
 tmp3+=3;
 }
 
 if (tmp1 == 1)
-fscanf(in,"%f \n", &d_x[tmp3]);    /* reading in the last line */
+gzscanf(in,"%f \n", &d_x[tmp3]);    /* reading in the last line */
 else if (tmp1 == 2)
-fscanf(in,"%f %f \n", &d_x[tmp3], &d_x[tmp3+1]);
+gzscanf(in,"%f %f \n", &d_x[tmp3], &d_x[tmp3+1]);
 
 /*****************************************************/
 
@@ -301,13 +352,13 @@ x0_p=x0_x+l_c_x/2-dx/2;  /* this is the shift term that */
 y0_p=y0_x+l_c_y/2;
 z0_p=z0_x+l_c_z/2;
 
-fclose(in);
+gzclose(in);
 
 /*****************************************************/
 /* read in the y-shifted dielectric data             */
 /*****************************************************/
 
-in = fopen(file_name_y,"r");
+in = gzopen(file_name_y,"r");
 if (in == NULL) {
    printf("File name %s not found.\n", file_name_y);
    return 1;
@@ -316,17 +367,17 @@ printf("Reading %s...\n", file_name_y);
 
 /* First read the header */
 
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fscanf(in, "%6s %f %f %f \n",s, &x0_y, &y0_y, &z0_y);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s, &tmp1,s,s); 
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzscanf(in, "%6s %f %f %f \n",s, &x0_y, &y0_y, &z0_y);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s, &tmp1,s,s); 
  
 /* initialize x,y,z, and diel vectors */
 
@@ -357,22 +408,22 @@ tmp3 =1;
 
 for (i=1; i <= tmp2; ++i)
 {
-fscanf(in,"%f %f %f \n", &d_y[tmp3], &d_y[tmp3+1], &d_y[tmp3+2]);
+gzscanf(in,"%f %f %f \n", &d_y[tmp3], &d_y[tmp3+1], &d_y[tmp3+2]);
 tmp3+=3;
 }
 
 if (tmp1 == 1)
-fscanf(in,"%f \n", &d_y[tmp3]);    /* reading in the last line */
+gzscanf(in,"%f \n", &d_y[tmp3]);    /* reading in the last line */
 else if (tmp1 == 2)
-fscanf(in,"%f %f \n", &d_y[tmp3], &d_y[tmp3+1]);
+gzscanf(in,"%f %f \n", &d_y[tmp3], &d_y[tmp3+1]);
 
-fclose(in);
+gzclose(in);
 
 /*****************************************************/
 /* read in the z-shifted dielectric data             */
 /*****************************************************/
 
-in = fopen(file_name_z,"r");
+in = gzopen(file_name_z,"r");
 if (in == NULL) {
    printf("File name %s not found.\n", file_name_z);
    return 1;
@@ -381,17 +432,17 @@ printf("Reading %s...\n", file_name_z);
 
 /* First read the header */
 
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fscanf(in, "%6s %f %f %f \n",s, &x0_z, &y0_z, &z0_z);
-fgets(s,MAXLEN,in);                                                 
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s, &tmp1,s,s);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzscanf(in, "%6s %f %f %f \n",s, &x0_z, &y0_z, &z0_z);
+gzgets(in,s,MAXLEN);                                                 
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzscanf(in, "%6s %i %5s %5s %4s %6s %4s %i %5s %i %4s %7s \n",s,&tmp1,s,s,s,s,s,&tmp1,s, &tmp1,s,s);
 
 /* initialize x,y,z, and diel vectors */
 
@@ -425,16 +476,16 @@ tmp3 =1;
 
 for (i=1; i <= tmp2; ++i)
 { 
-fscanf(in,"%f %f %f \n", &d_z[tmp3], &d_z[tmp3+1], &d_z[tmp3+2]);
+gzscanf(in,"%f %f %f \n", &d_z[tmp3], &d_z[tmp3+1], &d_z[tmp3+2]);
 tmp3+=3;
 }
 
 if (tmp1 == 1) 
-fscanf(in,"%f \n", &d_z[tmp3]);    /* reading in the last line */
+gzscanf(in,"%f \n", &d_z[tmp3]);    /* reading in the last line */
 else if (tmp1 == 2)
-fscanf(in,"%f %f \n", &d_z[tmp3], &d_z[tmp3+1]);
+gzscanf(in,"%f %f \n", &d_z[tmp3], &d_z[tmp3+1]);
 
-fclose(in);
+gzclose(in);
 
 /*****************************************************/
 
@@ -442,7 +493,7 @@ fclose(in);
 /* read in the kappa data                            */
 /*****************************************************/
 
-in = fopen(file_name_k,"r");
+in = gzopen(file_name_k,"r");
 if (in == NULL) {
    printf("File name %s not found.\n", file_name_k);
    return 1;
@@ -451,17 +502,17 @@ printf("Reading %s...\n", file_name_k);
 
 /* First read the header */
 
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fscanf(in, "%6s %f %f %f \n",s, &x0, &y0, &z0);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzscanf(in, "%6s %f %f %f \n",s, &x0, &y0, &z0);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
 
 /* initialize x,y,z, and kappa vectors */
 
@@ -495,16 +546,16 @@ tmp3 =1;
 
 for (i=1; i <= tmp2; ++i)
 {
-fscanf(in,"%f %f %f \n", &kk[tmp3], &kk[tmp3+1], &kk[tmp3+2]);
+gzscanf(in,"%f %f %f \n", &kk[tmp3], &kk[tmp3+1], &kk[tmp3+2]);
 tmp3+=3;
 }
 
 if (tmp1 == 1)
-fscanf(in,"%f \n", &kk[tmp3]);    /* reading in the last line */
+gzscanf(in,"%f \n", &kk[tmp3]);    /* reading in the last line */
 else if (tmp1 == 2)
-fscanf(in,"%f %f \n", &kk[tmp3], &kk[tmp3+1]);
+gzscanf(in,"%f %f \n", &kk[tmp3], &kk[tmp3+1]);
 
-fclose(in);
+gzclose(in);
 
 /*****************************************************/
 
@@ -512,7 +563,7 @@ fclose(in);
 /* read in the charge data                           */
 /*****************************************************/
 
-in = fopen(file_name_c,"r");
+in = gzopen(file_name_c,"r");
 if (in == NULL) {
    printf("File name %s not found.\n", file_name_c);
    return 1;
@@ -521,17 +572,17 @@ printf("Reading %s...\n", file_name_c);
 
 /* First read the header */
 
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
-fgets(s,MAXLEN,in);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
+gzgets(in,s,MAXLEN);
 
 /* Read in the rest of the charge data */
 
@@ -539,16 +590,16 @@ tmp3 =1;
 
 for (i=1; i <= tmp2; ++i)
 {
-fscanf(in,"%f %f %f \n", &cc[tmp3], &cc[tmp3+1], &cc[tmp3+2]);
+gzscanf(in,"%f %f %f \n", &cc[tmp3], &cc[tmp3+1], &cc[tmp3+2]);
 tmp3+=3;
 }
 
 if (tmp1 == 1)
-fscanf(in,"%f \n", &cc[tmp3]);    /* reading in the last line */
+gzscanf(in,"%f \n", &cc[tmp3]);    /* reading in the last line */
 else if (tmp1 == 2)
-fscanf(in,"%f %f \n", &cc[tmp3], &cc[tmp3+1]);
+gzscanf(in,"%f %f \n", &cc[tmp3], &cc[tmp3+1]);
 
-fclose(in);
+gzclose(in);
 
 /*****************************************************/
 /* MANIPULATE THE DATA BY ADDING THE MEMBRANE        */      
@@ -632,22 +683,22 @@ for (k=1; k <= dim_x; ++k)  /* loop over z */
 /********************************************************/
 
 /* add the "m" extension to the file */
-f1 = newname("dielx", infix, ext);
-out = fopen(f1,"w");
+ f1 = newname("dielx", infix, ext, compression);
+out = gzopen(f1,"w");
 
 /* MAKE THE X HEADER FILE */
 
-fprintf(out, "# Data from draw_membrane.c \n");
-fprintf(out, "# \n");
-fprintf(out, "# X-SHIFTED DIELECTRIC MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
-fprintf(out, "# \n");
-fprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
-fprintf(out, "origin %12.6E %12.6E %12.6E \n", x0_x, y0_x, z0_x);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
-fprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
-fprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
+gzprintf(out, "# Data from draw_membrane.c \n");
+gzprintf(out, "# \n");
+gzprintf(out, "# X-SHIFTED DIELECTRIC MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
+gzprintf(out, "# \n");
+gzprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
+gzprintf(out, "origin %12.6E %12.6E %12.6E \n", x0_x, y0_x, z0_x);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
+gzprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
+gzprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
 
 /* ADD THE X DATA */
 
@@ -655,39 +706,39 @@ cnt=1;
 
 for (i=1; i <= tmp2  ; ++i)
 {	
-fprintf(out, "%12.6E %12.6E %12.6E \n", d_x[cnt], d_x[cnt+1], d_x[cnt+2]);
+gzprintf(out, "%12.6E %12.6E %12.6E \n", d_x[cnt], d_x[cnt+1], d_x[cnt+2]);
 cnt=cnt+3;
 }
 
 
 if (tmp1 == 1)
-fprintf(out,"%12.6E \n", d_x[cnt]);    /* saving in the last line */
+gzprintf(out,"%12.6E \n", d_x[cnt]);    /* saving in the last line */
 else if (tmp1 == 2)
-fprintf(out,"%12.6E %12.6E \n", d_x[cnt], d_x[cnt+1]);
+gzprintf(out,"%12.6E %12.6E \n", d_x[cnt], d_x[cnt+1]);
 
-fclose(out);
+gzclose(out);
 printf("Wrote %s.\n", f1);
 
 /********************Y-DATA******************************/
 
 /* give the file an "m" extension */
-f2 = newname("diely", infix, ext);
-out = fopen(f2,"w");
+f2 = newname("diely", infix, ext, compression);
+out = gzopen(f2,"w");
      
 /* MAKE THE Y HEADER FILE */
 
-fprintf(out, "# Data from draw_membrane.c \n");
-fprintf(out, "# \n");
-fprintf(out, "# Y-SHIFTED DIELECTRIC MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
-fprintf(out, "# \n");
-fprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
-fprintf(out, "origin %12.6E %12.6E %12.6E \n", x0_y, y0_y, z0_y);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
-fprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z)
+gzprintf(out, "# Data from draw_membrane.c \n");
+gzprintf(out, "# \n");
+gzprintf(out, "# Y-SHIFTED DIELECTRIC MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
+gzprintf(out, "# \n");
+gzprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
+gzprintf(out, "origin %12.6E %12.6E %12.6E \n", x0_y, y0_y, z0_y);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
+gzprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z)
 ;
-fprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
+gzprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
 
 /* ADD THE Y DATA */
 
@@ -695,39 +746,39 @@ cnt=1;
 
 for (i=1; i <= tmp2  ; ++i)
 {      
-fprintf(out, "%12.6E %12.6E %12.6E \n", d_y[cnt], d_y[cnt+1], d_y[cnt+2]);
+gzprintf(out, "%12.6E %12.6E %12.6E \n", d_y[cnt], d_y[cnt+1], d_y[cnt+2]);
 cnt=cnt+3;
 }
 
 if (tmp1 == 1)
-fprintf(out,"%12.6E \n", d_y[cnt]);    /* saving in the last line */ 
+gzprintf(out,"%12.6E \n", d_y[cnt]);    /* saving in the last line */ 
 else if (tmp1 == 2)
-fprintf(out,"%12.6E %12.6E \n", d_y[cnt], d_y[cnt+1]);
+gzprintf(out,"%12.6E %12.6E \n", d_y[cnt], d_y[cnt+1]);
 
-fclose(out);
+gzclose(out);
 printf("Wrote %s.\n", f2);
 
 /**********************Z-DATA*****************************/
 
 
 /* give the file an "m" extension */
-f3 = newname("dielz", infix, ext);
-out = fopen(f3,"w");
+f3 = newname("dielz", infix, ext, compression);
+out = gzopen(f3,"w");
 
 
 /* MAKE THE Z HEADER FILE */
 
-fprintf(out, "# Data from draw_membrane.c \n");
-fprintf(out, "# \n");
-fprintf(out, "# Z-SHIFTED DIELECTRIC MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
-fprintf(out, "# \n");
-fprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
-fprintf(out, "origin %12.6E %12.6E %12.6E \n", x0_z, y0_z, z0_z);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
-fprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
-fprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
+gzprintf(out, "# Data from draw_membrane.c \n");
+gzprintf(out, "# \n");
+gzprintf(out, "# Z-SHIFTED DIELECTRIC MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
+gzprintf(out, "# \n");
+gzprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
+gzprintf(out, "origin %12.6E %12.6E %12.6E \n", x0_z, y0_z, z0_z);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
+gzprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
+gzprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
 
 /* ADD THE Z DATA */
 
@@ -735,39 +786,39 @@ cnt=1;
 
 for (i=1; i <= tmp2  ; ++i)
 {      
-fprintf(out, "%12.6E %12.6E %12.6E \n", d_z[cnt], d_z[cnt+1], d_z[cnt+2]);
+gzprintf(out, "%12.6E %12.6E %12.6E \n", d_z[cnt], d_z[cnt+1], d_z[cnt+2]);
 cnt=cnt+3;
 }
 
 
 if (tmp1 == 1)
-fprintf(out,"%12.6E \n", d_z[cnt]);    /* saving in the last line */ 
+gzprintf(out,"%12.6E \n", d_z[cnt]);    /* saving in the last line */ 
 else if (tmp1 == 2)
-fprintf(out,"%12.6E %12.6E \n", d_z[cnt], d_z[cnt+1]);
+gzprintf(out,"%12.6E %12.6E \n", d_z[cnt], d_z[cnt+1]);
 
-fclose(out);
+gzclose(out);
 printf("Wrote %s.\n", f3);
 
 /*********************KAPPA******************************/
 
 /* give the file an "m" extension */
-f4 = newname("kappa", infix, ext);
-out = fopen(f4,"w");
+f4 = newname("kappa", infix, ext, compression);
+out = gzopen(f4,"w");
 
 
 /* MAKE THE KAPPA HEADER FILE */
 
-fprintf(out, "# Data from draw_membrane.c \n");
-fprintf(out, "# \n");
-fprintf(out, "# KAPPA MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
-fprintf(out, "# \n");
-fprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
-fprintf(out, "origin %12.6E %12.6E %12.6E \n", x0, y0, z0);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
-fprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
-fprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
+gzprintf(out, "# Data from draw_membrane.c \n");
+gzprintf(out, "# \n");
+gzprintf(out, "# KAPPA MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
+gzprintf(out, "# \n");
+gzprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
+gzprintf(out, "origin %12.6E %12.6E %12.6E \n", x0, y0, z0);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
+gzprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
+gzprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
 
 /* ADD THE KAPPA DATA */
 
@@ -775,37 +826,37 @@ cnt=1;
 
 for (i=1; i <= tmp2  ; ++i)
 {
-fprintf(out, "%12.6E %12.6E %12.6E \n", kk[cnt], kk[cnt+1], kk[cnt+2]);
+gzprintf(out, "%12.6E %12.6E %12.6E \n", kk[cnt], kk[cnt+1], kk[cnt+2]);
 cnt=cnt+3;
 }
 
 if (tmp1 == 1)
-fprintf(out,"%12.6E \n", kk[cnt]);    /* saving in the last line */
+gzprintf(out,"%12.6E \n", kk[cnt]);    /* saving in the last line */
 else if (tmp1 == 2)
-fprintf(out,"%12.6E %12.6E \n", kk[cnt], kk[cnt+1]);
+gzprintf(out,"%12.6E %12.6E \n", kk[cnt], kk[cnt+1]);
 
-fclose(out);
+gzclose(out);
 printf("Wrote %s.\n", f4);
 
 /********************CHARGE*******************************/
 
 /* give the file an "m" extension */
-f5 = newname("charge", infix, ext);
-out = fopen(f5,"w");
+f5 = newname("charge", infix, ext, compression);
+out = gzopen(f5,"w");
 
 /* MAKE THE CHARGE HEADER FILE */
 
-fprintf(out, "# Data from draw_membrane.c \n");
-fprintf(out, "# \n");
-fprintf(out, "# CHARGE MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
-fprintf(out, "# \n");
-fprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
-fprintf(out, "origin %12.6E %12.6E %12.6E \n", x0, y0, z0);      
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00); 
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
-fprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
-fprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
+gzprintf(out, "# Data from draw_membrane.c \n");
+gzprintf(out, "# \n");
+gzprintf(out, "# CHARGE MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
+gzprintf(out, "# \n");
+gzprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
+gzprintf(out, "origin %12.6E %12.6E %12.6E \n", x0, y0, z0);      
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00); 
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
+gzprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
+gzprintf(out, "object 3 class array type double rank 0 items %i data follows\n", dim_x*dim_y*dim_z);
 
 /* ADD THE CHARGE DATA */ 
 
@@ -813,36 +864,36 @@ cnt=1;
 
 for (i=1; i <= tmp2  ; ++i)
 {
-fprintf(out, "%12.6E %12.6E %12.6E \n", cc[cnt], cc[cnt+1], cc[cnt+2]);   
+gzprintf(out, "%12.6E %12.6E %12.6E \n", cc[cnt], cc[cnt+1], cc[cnt+2]);   
 cnt=cnt+3;
 }
 
 if (tmp1 == 1)
-fprintf(out,"%12.6E \n", cc[cnt]);    /* saving in the last line */ 
+gzprintf(out,"%12.6E \n", cc[cnt]);    /* saving in the last line */ 
 else if (tmp1 == 2)
-fprintf(out,"%12.6E %12.6E \n", cc[cnt], cc[cnt+1]);  
+gzprintf(out,"%12.6E %12.6E \n", cc[cnt], cc[cnt+1]);  
 
-fclose(out);
+gzclose(out);
 printf("Wrote %s.\n", f5);
 
 /********************CHARGE CHANGE MAP*************************/
 
-f6 = newname("change_map", infix, ext);
-out = fopen(f6,"w");
+f6 = newname("change_map", infix, ext, compression);
+out = gzopen(f6,"w");
 
 /* MAKE THE CHARGE HEADER FILE */
 
-fprintf(out, "# Data from draw_membrane.c \n");
-fprintf(out, "# \n");
-fprintf(out, "# CHARGE CHANGE MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
-fprintf(out, "# \n");
-fprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
-fprintf(out, "origin %12.6E %12.6E %12.6E \n", x0, y0, z0);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
-fprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
-fprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
-fprintf(out, "object 3 class array type double rank 0 items %i data follows\n",
+gzprintf(out, "# Data from draw_membrane.c \n");
+gzprintf(out, "# \n");
+gzprintf(out, "# CHARGE CHANGE MAP with membrane: zmem = %4.2f, Lmem = %4.2f \n",z_m0, l_m);
+gzprintf(out, "# \n");
+gzprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
+gzprintf(out, "origin %12.6E %12.6E %12.6E \n", x0, y0, z0);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
+gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
+gzprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
+gzprintf(out, "object 3 class array type double rank 0 items %i data follows\n",
 dim_x*dim_y*dim_z);
 
 /* ADD THE CHARGE CHANGE DATA */
@@ -851,16 +902,16 @@ cnt=1;
 
 for (i=1; i <= tmp2  ; ++i)
 {
-fprintf(out, "%i %i %i \n", map[cnt], map[cnt+1], map[cnt+2]);
+gzprintf(out, "%i %i %i \n", map[cnt], map[cnt+1], map[cnt+2]);
 cnt=cnt+3;
 }
 
 if (tmp1 == 1)
-fprintf(out,"%i \n", map[cnt]);    /* saving in the last line */
+gzprintf(out,"%i \n", map[cnt]);    /* saving in the last line */
 else if (tmp1 == 2)
-fprintf(out,"%i %i \n", map[cnt], map[cnt+1]);
+gzprintf(out,"%i %i \n", map[cnt], map[cnt+1]);
 
-fclose(out);
+gzclose(out);
 printf("Wrote %s.\n", f6);
 
 /***********************************************************/
