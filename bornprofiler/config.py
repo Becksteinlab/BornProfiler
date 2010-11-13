@@ -284,7 +284,7 @@ def check_APBS(name=None):
         p = subprocess.Popen([APBS, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out,err = p.communicate()
     except OSError:
-        logger.critial("No APBS binary found --- set it in the config file %(configfilename)s", configuration)
+        logger.critical("No APBS binary found --- set it in the config file %(configfilename)s", configuration)
         raise
     # do not check p.returncode because --verbose sets it to 13 (?) but no idea if this is a feature
     m = re.match('.*APBS\s*(?P<major>\d+)\.(?P<minor>\d+)', err)
@@ -304,15 +304,15 @@ def check_drawmembrane(name=None):
         p = subprocess.Popen([drawmembrane], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out,err = p.communicate()
     except OSError:
-        logger.critial("No drawmembrane binary found --- set it in the config file %(configfilename)s", configuration)
+        logger.critical("No drawmembrane binary found --- set it in the config file %(configfilename)s", configuration)
         raise
-    m = re.match(r"\*\s*(?P<name>[^\s]+)\s+(?P<date>[/\d]+)", out)
+    m = re.search(r"\*\s*(?P<name>[^\s]+)\s+(?P<date>[/\d]+)", out)
     if m is None:
         raise EnvironmentError(errno.EIO, drawmembrane, "Cannot obtain version string from %r." % out)        
     if not m.group('name') == DRAWMEMBRANE_REQUIRED_VERSION:
         raise EnvironmentError(errno.EIO, drawmembrane, "drawmembrane version %r does not work here, "
                                "need exactly %r (compile it from the src/drawmembrane directory)." % 
                                (m.group('name'), DRAWMEMBRANE_REQUIRED_VERSION))
-    return m.group('name')
+    return m.group('name'), m.group('date')
         
 
