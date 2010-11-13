@@ -47,7 +47,8 @@ class BPbase(object):
 
   Defines the file name API.
   """
-  # number files, do not use z in filename;
+  # naming scheme -- needs to be tidied up
+  # basic idea: simply number files, do not use z in filename;
   # assume standard python 0-based indexing and naming
   def jobpath(self, *args):
     return os.path.join(self.jobName, *args)
@@ -62,7 +63,7 @@ class BPbase(object):
     return self.filename("job",num,".out")
 
   def datafile(self, prefix, ext='.dat'):
-      return "%s_%s%s" % (prefix, self.jobName, ext)
+    return "%s_%s%s" % (prefix, self.jobName, ext)
 
   def filename(self, prefix, num, ext):
     return '%s_%04d%s' % (prefix,num,ext)
@@ -70,13 +71,20 @@ class BPbase(object):
   def window_jobname(self, num):
     return "w%04d_%s" % (num,self.jobName)
 
-  # naming scheme!!
   def get_ion_name(self, num):
     return self.filename("ion",num,".pqr")
+
   def get_complex_name(self, num):
     return self.filename("cpx",num,".pqr")
+
   def get_protein_name(self, num=None):
     return "pro.pqr"  
+
+  def get_apbs_script_name(self, num=None):
+    if num is None:
+      return "mem_placeion.in"  # see :class:`membrane.BornAPBSmem`
+    return self.infilename(num) # could probably make one of the two funcs redundant    
+
   def get_windowdirname(self, num):
     return "w%04d" % num
 
@@ -340,6 +348,10 @@ class MPlaceion(BPbase):
     self.readPQR()
     self.readPoints()
 
+  def infilename(num):
+    # override class because we keep the same name for all jobs in subdirs
+    return 
+
   def readPQR(self):
     self.pqrLines = []
     with open(self.pqrName, "r") as pqrFile:
@@ -454,10 +466,12 @@ class MPlaceion(BPbase):
     protein = self.get_protein_name()
     ion = self.get_ion_name(num)
     cpx = self.get_complex_name(num)
+    apbs_script_name = self.get_apbs_script_name(num)
     # should get draw_membrane parameters as well, do this once we use cfg input files
     # TODO: add position of ion to comments
     kw = {'conc':self.ionicStrength, 'temperature':self.temperature,'comment':'window %d, z=XXX'%num,
-          'basedir': os.path.realpath(self.jobpath(self.get_windowdirname(num)))}
+          'basedir': os.path.realpath(self.jobpath(self.get_windowdirname(num))),
+          'apbs_script_name': apbs_script_name}
     kw.update(self.schedule)  # set dime and glen !
     # using a custom SetupClass pre-populates the parameters for draw_membrane2
     # (hack!! -- should be moved into a cfg input file)

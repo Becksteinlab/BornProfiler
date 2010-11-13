@@ -257,6 +257,7 @@ class BornAPBSmem(BaseMem):
         BornAPBSmem(protein_pqr, ion_pqr, complex_pqr[, kwargs])
 
         Additional arguments:
+          - apbs_script_name: name on the xxx.in script [mem_placeion.in]
           - drawmembrane arguments (see source)
           - temperature: temperature [298.15]
           - conc: ionic concentration of monovalent salt with radius 2 A
@@ -290,11 +291,12 @@ class BornAPBSmem(BaseMem):
 
         # names for diel, kappa, and charge maps hard coded; only infix varies
         # TODO: proper naming and/or directories
-        self.filenames = {'born_dummy': 'mem_dummy.in' % vars(self),
-                          'born_run': 'mem_placeion.in' % vars(self),
+        self.filenames = {'born_dummy': 'mem_dummy.in',
+                          'born_run': kwargs.pop('apbs_script_name', 'mem_placeion.in'),
                           }
 
-        #: "static" variables required for a  calculation
+        #: "static" variables required for generating a file from a template;
+        #: The variable names can be found in self.__dict__
         self.vars = {'born_dummy': 
                      "protein_pqr,ion_pqr,complex_pqr,"
                      "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
