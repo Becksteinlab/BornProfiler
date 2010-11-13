@@ -37,19 +37,30 @@ def _parse_TABLE_IONS():
     ions[values[0]] = Ion(*values)
   return ions
 
+#: Rashin&Honig ion data as a dict, read from :file:`templates/bornions.dat`.
 IONS = _parse_TABLE_IONS()
 
-def apbs_component(name, **kwargs):
-  return APBS_SCRIPT_COMPONENTS[name] % kwargs
+#: A job script template finds input and output filename in %(infile)s
+#: and %(outfile)s; the string is interpolated by python.
+JOBSCRIPTS = {
+  'local': read_template('q_local.sh'),
+  'SBCB':  read_template('q_SBCB.sh'),
+  'darthtater': read_template('q_darthtater.sge'),
+}
 
 class BPbase(object):
   """Provide basic infra structure methods for bornprofiler classes.
 
   Defines the file name API.
+
+  * simply number files, do not use z or other data in filename;
+  * assume standard python 0-based indexing and naming
+  * filenames are generated and typically only take *num*, the window
+    number, as an argument
+
+  .. Note:: This class cannot be used on its own and it relies on
+            other attributes being set by the parent class.
   """
-  # naming scheme -- needs to be tidied up
-  # basic idea: simply number files, do not use z in filename;
-  # assume standard python 0-based indexing and naming
   def jobpath(self, *args):
     return os.path.join(self.jobName, *args)
 
@@ -126,18 +137,15 @@ class BPbase(object):
   def get_XYZ_str(self, vec):
     return " ".join(map(str, vec))
 
-# A job script template finds input and output filename in %(infile)s
-# and %(outfile)s; the string is interpolated by python.
+  def __repr__(self):
+    return "<%s from pqr=%r points=%r>" % (self.__class__.__name__, 
+                                           os.path.basename(self.pqrName), 
+                                           os.path.basename(self.pointsName))
 
-from config import read_template
 
-JOBSCRIPTS = {
-  'local': read_template('q_local.sh'),
-  'SBCB':  read_template('q_SBCB.sh'),
-  'darthtater': read_template('q_darthtater.sge'),
-}
-
+# For Placeion:
 # change this to a monolithic script and hardcode stages!
+# (The partite approach still exists for historic reasons)
 APBS_SCRIPT_COMPONENTS = {
   'header': read_template("000_placeion_header.in"),
   'read':   read_template("001_placeion_read.in"),
@@ -145,6 +153,8 @@ APBS_SCRIPT_COMPONENTS = {
   'elec':   read_template("002_placeion_elec.in"),
   'printEnergy': read_template("003_placeion_printEnergy.in"),
 }
+def apbs_component(name, **kwargs):
+  return APBS_SCRIPT_COMPONENTS[name] % kwargs
 
 class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
@@ -347,10 +357,6 @@ class MPlaceion(BPbase):
     # do some initial processing...
     self.readPQR()
     self.readPoints()
-
-  def infilename(num):
-    # override class because we keep the same name for all jobs in subdirs
-    return 
 
   def readPQR(self):
     self.pqrLines = []
