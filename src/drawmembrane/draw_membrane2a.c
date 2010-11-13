@@ -140,36 +140,35 @@ int read_data(gzFile *in, int num_data, float *x) {
   num_last_entries = num_data % 3; 
   num_lines = (num_data - num_last_entries)/3;  /* total data lines less one left in file */ 
 
-  // printf("DEBUG read_data(): num_data = %d\n", num_data);
-
   for (i=0; i<num_lines; i++)
     {
       n = gzscanf(in, "%f %f %f \n", &x[idata], &x[idata+1], &x[idata+2]);
       idata += 3;
       data_read += n;
       if (n != 3) {
-	printf("ERROR [data line %d]: expected %d but got %d data\n", i, 3, n);
+	printf("ERROR [data line %d]: expected %d but got %d data\n", i+1, 3, n);
       }
     }
 
   if (num_last_entries == 1) {
-    // printf("DEBUG read_data(): reading lone last entry idata=%d\n", idata);
     n = gzscanf(in,"%f \n", &x[idata]);    /* reading in the last line */
     idata += 1;
   }
   else if (num_last_entries == 2) {
-    // printf("DEBUG read_data(): reading last 2 entries idata=%d\n", idata);
     n = gzscanf(in,"%f %f \n", &x[idata], &x[idata+1]);
     idata += 2;
+  } 
+  else {
+    n = 0;
   }
   data_read += n;
   if (n != num_last_entries) {
-    printf("ERROR [data line %d]: expected %d but got %d data\n", i, num_last_entries, n);
+    printf("ERROR [data line %d]: expected %d but got %d data\n", i+1, num_last_entries, n);
   }
 
   assert(idata == num_data); /* index now points to one beyond the end of the array */
   if (data_read != num_data) {
-    printf("Expected %d data points but only read %d: problem with file.\n", num_data, data_read);
+    printf("Expected %d data points but read %d: problem with file.\n", num_data, data_read);
     exit(EXIT_FAILURE);
   }
   return data_read;
@@ -329,6 +328,10 @@ if (argc == 10 && 0 == strcmp(argv[9], "gz")) {
   compression = FALSE;
   printf("Reading un-compressed dx files (default).\n");
 }  
+
+printf(">>> draw_membrane2a  %s  %s %s %s %s %s %s %s  %s\n",
+       argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7], argv[8],
+       compression ? "gz" : "none");
 
 /* Find the x-shifted dielectric map 
    Construct the name as <basename><infix><suffix>
