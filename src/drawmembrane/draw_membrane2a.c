@@ -54,10 +54,10 @@ typedef uint bool;
 #define FALSE 0
 #define NUMCOLS 3   /* number of columns in dx files, ABPS specific */
 
-char *newname(char *prefix, char *infix, char *suffix, bool gzipped) {
+char *newname(const char *prefix, const char *infix, const char *suffix, const bool gzipped) {
   int l,m,n,p;
   char *s;
-  static char default_suffix[4] = ".dx";
+  static char default_suffix[] = ".dx";
   char compression_suffix[4];  /* ".gz" or "" */
 
   if (NULL == suffix) {
@@ -75,7 +75,7 @@ char *newname(char *prefix, char *infix, char *suffix, bool gzipped) {
   n = strlen(suffix);
   p = strlen(compression_suffix);
   
-  s = (char*)calloc(l+m+n+p+1, sizeof(char)); /* not freed ever... */
+  s = (char*)calloc(l+m+n+p+1, sizeof(char)); /* must be free in calling code! */
   if (NULL == s) {
     printf("newname: Failed to allocate string.");
     exit(EXIT_FAILURE);
@@ -849,18 +849,14 @@ xclose(compression, out);
 printf("Wrote %s.\n", f6);
 
 /***********************************************************/
-free(x_x);
-free(y_x);
-free(z_x);
-free(x_y);
-free(y_y);
-free(z_y); 
-free(x_z);
-free(y_z);
-free(z_z); 
-free(x);
-free(y);
-free(z);
+free(x_x); free(y_x); free(z_x);
+free(x_y); free(y_y); free(z_y); 
+free(x_z); free(y_z); free(z_z); 
+free(d_x); free(d_y); free(d_z);
+free(x);   free(y);   free(z);
+free(kk);  free(cc);  free(map);
+
+free(f1); free(f2); free(f3); free(f4); free(f5); free(f6); /* calloc'ed by newname() :-p */
 
 printf("Your files have been written.\n");
 return 0;
