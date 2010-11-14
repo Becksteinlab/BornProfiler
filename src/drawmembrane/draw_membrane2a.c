@@ -52,6 +52,7 @@ typedef uint bool;
 #define MAXLEN 100
 #define TRUE  1
 #define FALSE 0
+#define NUMCOLS 3   /* number of columns in dx files, ABPS specific */
 
 char *newname(char *prefix, char *infix, char *suffix, bool gzipped) {
   int l,m,n,p;
@@ -137,16 +138,21 @@ int read_data(gzFile *in, int num_data, float *x) {
   int num_lines, num_last_entries;
   int i;
 
-  num_last_entries = num_data % 3; 
-  num_lines = (num_data - num_last_entries)/3;  /* total data lines less one left in file */ 
+  /* should generate the read string using NUMCOLS 
+     XXX: WILL NOT WORK unless NUMCOLS == 3 !!
+  */
+  assert(NUMCOLS == 3);
+
+  num_last_entries = num_data % NUMCOLS; 
+  num_lines = (num_data - num_last_entries)/NUMCOLS;  /* total data lines less one left in file */ 
 
   for (i=0; i<num_lines; i++)
     {
       n = gzscanf(in, "%f %f %f \n", &x[idata], &x[idata+1], &x[idata+2]);
-      idata += 3;
+      idata += NUMCOLS;
       data_read += n;
-      if (n != 3) {
-	printf("ERROR [data line %d]: expected %d but got %d data\n", i+1, 3, n);
+      if (n != NUMCOLS) {
+	printf("ERROR [data line %d]: expected %d but got %d data\n", i+1, NUMCOLS, n);
       }
     }
 
@@ -174,55 +180,113 @@ int read_data(gzFile *in, int num_data, float *x) {
   return data_read;
 }
 
-void write_header(gzFile *out, char *name, float z_m0, float l_m,
+void *xopen(const bool compression, char *filename, char *mode) {
+  /* open filename in write mode either for gz or standard */
+  void *stream; 
+  if (compression)
+    stream = gzopen(filename, mode);
+  else
+    stream = fopen(filename, mode);
+  return stream;
+}
+
+int xclose(const bool compression, void *stream) {
+  /* close filehandle for gz or standard */
+  int status;
+  if (compression)
+    status = gzclose((gzFile*)stream);
+  else
+    status = fclose((FILE*)stream);
+  return status;
+}
+
+/* note: it is not possible to write a "xprintf()" that passes a list
+   of arguments down because there does not exists a gzprintf()
+   function that accepts a va_list (and I am too lazy to write that
+   one, too). See http://c-faq.com/varargs/handoff.html
+*/
+
+int write_header(const bool compression, void *out, char *name, float z_m0, float l_m,
 		 int dim_x, int dim_y, int dim_z,
 		 float x0, float y0, float z0,
 		 float dx, float dy, float dz) {
-  gzprintf(out, "# Data from draw_membrane2a.c \n");
-  gzprintf(out, "# \n");
-  gzprintf(out, "# %s with membrane: zmem = %4.2f, Lmem = %4.2f \n",name, z_m0, l_m);
-  gzprintf(out, "# \n");
-  gzprintf(out, "object 1 class gridpositions counts %i %i %i \n", dim_x, dim_y, dim_z);
-  gzprintf(out, "origin %12.6E %12.6E %12.6E \n", x0, y0, z0);
-  gzprintf(out, "delta %12.6E %12.6E %12.6E \n", dx,0.000000E+00,0.000000E+00);
-  gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,dy,0.000000E+00);
-  gzprintf(out, "delta %12.6E %12.6E %12.6E \n", 0.000000E+00,0.000000E+00,dz);
-  gzprintf(out, "object 2 class gridconnections counts %i %i %i\n", dim_x, dim_y, dim_z);
-  gzprintf(out, "object 3 class array type double rank 0 items %i data follows\n",
-	   dim_x*dim_y*dim_z);
+  int status;
+  const char fmt[] =   
+    "# Data from draw_membrane2a.c\n"
+    "#\n"
+    "# %s with membrane: zmem = %4.2f, Lmem = %4.2f\n" //,name, z_m0, l_m
+    "#\n"
+    "object 1 class gridpositions counts %i %i %i \n" //, dim_x, dim_y, dim_z
+    "origin %12.6E %12.6E %12.6E\n" //, x0, y0, z0
+    "delta %12.6E %12.6E %12.6E\n" //, dx,0.000000E+00,0.000000E+00
+    "delta %12.6E %12.6E %12.6E\n" //, 0.000000E+00,dy,0.000000E+00
+    "delta %12.6E %12.6E %12.6E\n" //, 0.000000E+00,0.000000E+00,dz
+    "object 2 class gridconnections counts %i %i %i\n" //, dim_x, dim_y, dim_z
+    "object 3 class array type double rank 0 items %i data follows\n";  // num_data
+  int num_data = dim_x * dim_y * dim_z;
+
+  if (compression) 
+    status = gzprintf((gzFile*)out, fmt, 
+		      name, z_m0, l_m,
+		      dim_x, dim_y, dim_z,
+		      x0, y0, z0,
+		      dx,    0E+00,  0E+00,
+		      0E+00,    dy,  0E+00,
+		      0E+00, 0E+00,     dz,
+		      dim_x, dim_y, dim_z,
+		      num_data);
+  else
+    status = fprintf((FILE*)out, fmt, 
+		     name, z_m0, l_m,
+		     dim_x, dim_y, dim_z,
+		     x0, y0, z0,
+		     dx,    0E+00,  0E+00,
+		     0E+00,    dy,  0E+00,
+		     0E+00, 0E+00,     dz,
+		     dim_x, dim_y, dim_z,
+		     num_data);
+  return status;
 }
 
-int write_data(gzFile *out, int num_data, void *data) {
-  float *x = (float *)data;
-  int idata = 0;
-  int num_lines, num_last_entries;
+#define WRITE_DATA(PRINTF, TYPE) do {		   \
+   for (i=0; i<num_data; i++)                      \
+     {	                                           \
+       PRINTF((TYPE*)out, "%12.6E ", x[i]);        \
+       if ((i+1) % NUMCOLS == 0)	           \
+	 PRINTF((TYPE*)out, "\n"); /* break after NUMCOLS columns */ \
+     }                                             \
+   if (num_data % NUMCOLS != 0)                    \
+     PRINTF((TYPE*)out, "\n");     /* finish incomplete last line */ \
+  } while(0)
+
+int write_data(const bool compression, void *out, int num_data, void *data) {
+  float *x = (float *)data;     /* allows us to take int and write as float */
   int i;
 
-  num_last_entries = num_data % 3; 
-  num_lines = (num_data - num_last_entries)/3;  /* total data lines less one left in file */ 
-
-  for (i=0; i< num_lines; i++)
-    {	
-      gzprintf(out, "%12.6E %12.6E %12.6E \n", x[idata], x[idata+1], x[idata+2]);
-      idata += 3;
-    }
-
-  if (num_last_entries == 1)
-    gzprintf(out,"%12.6E \n", x[idata]);    /* saving in the last line */
-  else if (num_last_entries == 2)
-    gzprintf(out,"%12.6E %12.6E \n", x[idata], x[idata+1]);
-
-  return idata + num_last_entries;
+  if (compression)
+    WRITE_DATA(gzprintf, gzFile);
+  else
+    WRITE_DATA(fprintf, FILE);
+  return i;
 }
 
-int write_attr_positions(gzFile *stream) {
-  return gzprintf(stream, 
-		  "attribute \"dep\" string \"positions\"\n"
-		  "object \"regular positions regular connections\" class field\n"
-		  "component \"positions\" value 1\n"
-		  "component \"connections\" value 2\n"
-		  "component \"data\" value 3\n");
+
+int write_attr_positions(const bool compression, void *stream) {
+  int status;
+  const char attr_positions[] = 
+    "attribute \"dep\" string \"positions\"\n"
+    "object \"regular positions regular connections\" class field\n"
+    "component \"positions\" value 1\n"
+    "component \"connections\" value 2\n"
+    "component \"data\" value 3\n";
+  if (compression)
+    status = gzprintf((gzFile*)stream, attr_positions);
+  else
+    status = fprintf((FILE*)stream, attr_positions);
+  return status;
 }
+
+
 
 /********************************************************************/
 /* INPUT LOOKS LIKE:                                                */
@@ -693,32 +757,32 @@ for (k=1; k <= dim_x; ++k)  /* loop over z */
 
 /* add the "m" extension to the file */
 f1 = newname("dielx", infix, ext, compression);
-out = gzopen(f1,"w");
+out = xopen(compression, f1,"w");
 
 /* MAKE THE X HEADER FILE */
-write_header(out, "X-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+ write_header(compression, out, "X-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
 
 /* ADD THE X DATA */
-write_data(out, dim3, d_x);
+ write_data(compression, out, dim3, d_x);
 
-write_attr_positions(out);
-gzclose(out);
+ write_attr_positions(compression, out);
+ xclose(compression, out);
 printf("Wrote %s.\n", f1);
 
 /********************Y-DATA******************************/
 
 /* give the file an "m" extension */
 f2 = newname("diely", infix, ext, compression);
-out = gzopen(f2,"w");
+out = xopen(compression, f2,"w");
      
 /* MAKE THE Y HEADER FILE */
-write_header(out, "Y-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+write_header(compression, out, "Y-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
 
 /* ADD THE Y DATA */
-write_data(out, dim3, d_y);
+write_data(compression, out, dim3, d_y);
 
-write_attr_positions(out);
-gzclose(out);
+write_attr_positions(compression, out);
+xclose(compression, out);
 printf("Wrote %s.\n", f2);
 
 /**********************Z-DATA*****************************/
@@ -726,65 +790,65 @@ printf("Wrote %s.\n", f2);
 
 /* give the file an "m" extension */
 f3 = newname("dielz", infix, ext, compression);
-out = gzopen(f3,"w");
+out = xopen(compression, f3,"w");
 
 
 /* MAKE THE Z HEADER FILE */
-write_header(out, "Z-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+write_header(compression, out, "Z-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
 
 /* ADD THE Z DATA */
-write_data(out, dim3, d_z);
+write_data(compression, out, dim3, d_z);
 
-write_attr_positions(out);
-gzclose(out);
+write_attr_positions(compression, out);
+xclose(compression, out);
 printf("Wrote %s.\n", f3);
 
 /*********************KAPPA******************************/
 
 /* give the file an "m" extension */
 f4 = newname("kappa", infix, ext, compression);
-out = gzopen(f4,"w");
+out = xopen(compression, f4,"w");
 
 /* MAKE THE KAPPA HEADER FILE */
-write_header(out, "KAPPA MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+write_header(compression, out, "KAPPA MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
 
 /* ADD THE KAPPA DATA */
-write_data(out, dim3, kk);
+write_data(compression, out, dim3, kk);
 
-write_attr_positions(out);
-gzclose(out);
+write_attr_positions(compression, out);
+xclose(compression, out);
 printf("Wrote %s.\n", f4);
 
 /********************CHARGE*******************************/
 
 /* give the file an "m" extension */
 f5 = newname("charge", infix, ext, compression);
-out = gzopen(f5,"w");
+out = xopen(compression, f5,"w");
 
 /* MAKE THE CHARGE HEADER FILE */
-write_header(out, "CHARGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+write_header(compression, out, "CHARGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
 
 /* ADD THE CHARGE DATA */ 
-write_data(out, dim3, cc);
+write_data(compression, out, dim3, cc);
 
-write_attr_positions(out);
-gzclose(out);
+write_attr_positions(compression, out);
+xclose(compression, out);
 printf("Wrote %s.\n", f5);
 
 /********************CHARGE CHANGE MAP*************************/
 
 f6 = newname("change_map", infix, ext, compression);
-out = gzopen(f6,"w");
+out = xopen(compression, f6,"w");
 
 /* MAKE THE CHARGE HEADER FILE */
 
-write_header(out, "CHARGE CHANGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+write_header(compression, out, "CHARGE CHANGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
 
 /* ADD THE CHARGE CHANGE DATA */
- write_data(out, dim3, map);  // int map is converted to float
+ write_data(compression, out, dim3, map);  // int map is converted to float
 
-write_attr_positions(out);
-gzclose(out);
+write_attr_positions(compression, out);
+xclose(compression, out);
 printf("Wrote %s.\n", f6);
 
 /***********************************************************/
