@@ -441,8 +441,7 @@ if (in == NULL) {
 printf("Reading %s...\n", file_name_x);
 
 /* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0_x, &y0_x, &z0_x,
-	    &dx, &dy, &dz, &dim3);
+read_header(in, &dim_x, &dim_y, &dim_z, &x0_x, &y0_x, &z0_x, &dx, &dy, &dz, &dim3);
 
 /* assign the memory to the arrays */
 
@@ -526,10 +525,8 @@ if (in == NULL) {
 printf("Reading %s...\n", file_name_y);
 
 /* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0_y, &y0_y, &z0_y,
-	    &dx, &dy, &dz, &dim3);
+read_header(in, &dim_x, &dim_y, &dim_z, &x0_y, &y0_y, &z0_y, &dx, &dy, &dz, &dim3);
 
- 
 /* initialize x,y,z, and diel vectors */
 
 tmp_x=x0_y;
@@ -571,8 +568,7 @@ if (in == NULL) {
 printf("Reading %s...\n", file_name_z);
 
 /* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0_z, &y0_z, &z0_z,
-	    &dx, &dy, &dz, &dim3);
+read_header(in, &dim_x, &dim_y, &dim_z, &x0_z, &y0_z, &z0_z, &dx, &dy, &dz, &dim3);
 
 /* initialize x,y,z, and diel vectors */
 
@@ -601,7 +597,7 @@ tmp_z+=dz;
 
 
 /* Read in the rest of the dielectric data */
- read_data(in, dim3, d_z);
+read_data(in, dim3, d_z);
 
 gzclose(in);
 
@@ -619,8 +615,7 @@ if (in == NULL) {
 printf("Reading %s...\n", file_name_k);
 
 /* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0,
-	    &dx, &dy, &dz, &dim3);
+read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0, &dx, &dy, &dz, &dim3);
 
 /* initialize x,y,z, and kappa vectors */
 
@@ -667,8 +662,7 @@ printf("Reading %s...\n", file_name_c);
 
 /* First read the header */
 
-read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0,
-	    &dx, &dy, &dz, &dim3);
+read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0, &dx, &dy, &dz, &dim3);
 
 /* Read in the rest of the charge data */
 read_data(in, dim3, cc);
@@ -760,7 +754,8 @@ f1 = newname("dielx", infix, ext, compression);
 out = xopen(compression, f1,"w");
 
 /* MAKE THE X HEADER FILE */
- write_header(compression, out, "X-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+ write_header(compression, out, "X-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
+	      dim_x, dim_y, dim_z, x0_x, y0_x, z0_x, dx ,dy, dz);
 
 /* ADD THE X DATA */
  write_data(compression, out, dim3, d_x);
@@ -776,7 +771,8 @@ f2 = newname("diely", infix, ext, compression);
 out = xopen(compression, f2,"w");
      
 /* MAKE THE Y HEADER FILE */
-write_header(compression, out, "Y-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+write_header(compression, out, "Y-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
+	     dim_x, dim_y, dim_z, x0_y, y0_y, z0_y, dx ,dy, dz);
 
 /* ADD THE Y DATA */
 write_data(compression, out, dim3, d_y);
@@ -794,7 +790,8 @@ out = xopen(compression, f3,"w");
 
 
 /* MAKE THE Z HEADER FILE */
-write_header(compression, out, "Z-SHIFTED DIELECTRIC MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+write_header(compression, out, "Z-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
+	     dim_x, dim_y, dim_z, x0_z, y0_z, z0_z, dx ,dy, dz);
 
 /* ADD THE Z DATA */
 write_data(compression, out, dim3, d_z);
