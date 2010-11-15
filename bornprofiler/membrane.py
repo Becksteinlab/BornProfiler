@@ -75,18 +75,26 @@ class BaseMem(object):
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
         self.basedir = kwargs.pop('basedir', os.path.realpath(os.path.curdir))
 
+        self.versions = {}
         # check draw_membrane: raises a stink if not the right one
-        config.check_drawmembrane(self.drawmembrane)
+        self.versions['drawmembrane'] = config.check_drawmembrane(self.drawmembrane)
 
         # dx file compression
         # http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/write
-        apbsversion = config.check_APBS(self.apbs)
-        if apbsversion >= (1,3):
+        self.versions['APBS'] = config.check_APBS(self.apbs)
+        self.unpack_dxgz = False     # hack for v1.3, see below and http://sourceforge.net/support/tracker.php?aid=3108761
+        if self.versions['APBS'] >= (1,3):
             self.dxformat = "gz"     # format in an APBS read/write statement
             self.dxsuffix = "dx.gz"  # APBS automatically adds .dx.gz when writing
+            if self.versions['APBS'] == (1,3):
+                # note that 1.3 'READ gz' is broken (at least on Mac OS X) so we hack around 
+                # this by gunzipping in the queuing script and replacing the gz format in readstatements
+                # with the dx one :-p            
+                self.unpack_dxgz = True
         else:
             self.dxformat = "dx"
             self.dxsuffix = "dx"
+        self.apbs_version = ".".join(map(str, self.versions['APBS']))        
 
         super(BaseMem, self).__init__(*args, **kwargs)
 
@@ -320,6 +328,14 @@ class BornAPBSmem(BaseMem):
 
         # process the drawmembrane parameters
         super(BornAPBSmem, self).__init__(*args[3:], **kwargs)
+
+    def write_infile(self, name="born_run"):
+        if self.unpack_dxgz:
+            extra = {'dxformat': 'dx', 'dxsuffix': 'dx'}
+            logger.info("Working around bug in APBS 1.3: reading gunzipped files")
+        else:
+            extra = {}
+        self.write(name, **extra)
         
     def generate(self):
         """Setup solvation calculation.
@@ -333,7 +349,7 @@ class BornAPBSmem(BaseMem):
         self.run_apbs('born_dummy')
         for infix in self.infices:
             self.run_drawmembrane(infix=infix)
-        self.write('born_run')
+        self.write_infile('born_run')
         if self.dxformat == "dx":
             logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
             self.gzip_dx()

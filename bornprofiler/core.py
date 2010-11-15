@@ -329,6 +329,8 @@ class MPlaceion(BPbase):
         *basedir*
            top directory of set up, defaults to [.]           
     """
+    self.__cache_MemBornSetup = {}
+
     self.pqrName = os.path.realpath(args[0])
     self.pointsName = os.path.realpath(args[1])
 
@@ -412,10 +414,13 @@ class MPlaceion(BPbase):
 
     bash_jobarray = []
     for num in windows:
+      m = self.get_MemBornSetup(num)   # to access anything on a per-window basis
       scriptargs = {
         'jobname': self.window_jobname(num),
-        'infile': self.infilename(num),
+        'infile': self.infilename(num), # XXX: could take this from m, too...
         'outfile': self.outfilename(num),
+        'unpack_dxgz': m.unpack_dxgz,   # XXX: these two really should be attributes of
+        'apbs_version': m.apbs_version, # of MPlaceion but too lazy right now...
         }      
       scriptname = self.jobscriptname(num)
       scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
@@ -468,20 +473,24 @@ class MPlaceion(BPbase):
         membornsetup.generate()
 
   def get_MemBornSetup(self, num):
-    """Return the setup class for window *num*."""
-    protein = self.get_protein_name()
-    ion = self.get_ion_name(num)
-    cpx = self.get_complex_name(num)
-    apbs_script_name = self.get_apbs_script_name(num)
-    # should get draw_membrane parameters as well, do this once we use cfg input files
-    # TODO: add position of ion to comments
-    kw = {'conc':self.ionicStrength, 'temperature':self.temperature,'comment':'window %d, z=XXX'%num,
-          'basedir': os.path.realpath(self.jobpath(self.get_windowdirname(num))),
-          'apbs_script_name': apbs_script_name}
-    kw.update(self.schedule)  # set dime and glen !
-    # using a custom SetupClass pre-populates the parameters for draw_membrane2
-    # (hack!! -- should be moved into a cfg input file)
-    return self.SetupClass(protein, ion, cpx, **kw)
+    """Return the setup class for window *num* (cached)."""
+    try:
+      return self.__cache_MemBornSetup[num]
+    except KeyError:
+      protein = self.get_protein_name()
+      ion = self.get_ion_name(num)
+      cpx = self.get_complex_name(num)
+      apbs_script_name = self.get_apbs_script_name(num)
+      # should get draw_membrane parameters as well, do this once we use cfg input files
+      # TODO: add position of ion to comments
+      kw = {'conc':self.ionicStrength, 'temperature':self.temperature,'comment':'window %d, z=XXX'%num,
+            'basedir': os.path.realpath(self.jobpath(self.get_windowdirname(num))),
+            'apbs_script_name': apbs_script_name}
+      kw.update(self.schedule)  # set dime and glen !
+      # using a custom SetupClass pre-populates the parameters for draw_membrane2
+      # (hack!! -- should be moved into a cfg input file)
+      self.__cache_MemBornSetup[num] = self.SetupClass(protein, ion, cpx, **kw)
+    return self.__cache_MemBornSetup[num]
 
   def generate(self, windows=None):
     """Set up all input files for Born calculations with a membrane.
