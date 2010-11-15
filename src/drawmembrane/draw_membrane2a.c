@@ -274,6 +274,7 @@ int write_data(const bool compression, void *out, int num_data, void *data) {
 int write_attr_positions(const bool compression, void *stream) {
   int status;
   const char attr_positions[] = 
+    "\n"
     "attribute \"dep\" string \"positions\"\n"
     "object \"regular positions regular connections\" class field\n"
     "component \"positions\" value 1\n"
