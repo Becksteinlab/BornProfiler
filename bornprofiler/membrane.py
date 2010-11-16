@@ -36,6 +36,7 @@ TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
              'born_dummy': read_template('mdummy.in'),
              'born_run': read_template('mplaceion.in'),
+             'born_setup_script': read_template('drawmembrane2.bash'),
 }
 
 class BaseMem(object):
@@ -99,8 +100,9 @@ class BaseMem(object):
         super(BaseMem, self).__init__(*args, **kwargs)
 
     def get_var_dict(self, stage):
-        d = dict((k,self.__dict__[k.strip()]) for k in self.vars[stage].split(','))
-        # modify?
+        """Load required values for stage from vars(self) into d."""
+        keys = [k for k in self.vars[stage].split(',') if k.strip() in self.__dict__]
+        d = dict((k,self.__dict__[k.strip()]) for k in keys)
         return d
 
     def vec2str(self, vec):
@@ -301,6 +303,7 @@ class BornAPBSmem(BaseMem):
         # TODO: proper naming and/or directories
         self.filenames = {'born_dummy': 'mem_dummy.in',
                           'born_run': kwargs.pop('apbs_script_name', 'mem_placeion.in'),
+                          'born_setup_script': kwargs.pop('dummy_script_name', 'run_drawmembrane.bash'),
                           }
 
         #: "static" variables required for generating a file from a template;
@@ -315,10 +318,12 @@ class BornAPBSmem(BaseMem):
                      "pdie,sdie,conc,temperature,comment,dxformat,dxsuffix,"
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
-                     'born_jobscript': "jobname,infile,outfile",
                      'drawmembrane2': 
-                     "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot",}
-
+                     "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot",
+                     }
+        self.vars['born_setup_script'] = \
+            ",".join([self.vars['drawmembrane2'],
+                      "dxformat","infices","born_dummy_in","born_dummy_out"])
         # generate names
         d = {}
         for suffix,dime,glen in izip(self.suffices, self.dime, self.glen):
@@ -337,14 +342,30 @@ class BornAPBSmem(BaseMem):
             extra = {}
         self.write(name, **extra)
         
-    def generate(self):
+    def generate(self, run=True):
         """Setup solvation calculation.
 
-        1. create exclusion maps (runs apbs)
-        2. create membrane maps (drawmembrane)
-        3. create apbs run input file
+        If *run* = ``True`` then runs :program:`apbs` and
+        :program:`draw_membrane2` (which can take a few minutes);
+        otherwise just generate scripts.
 
+        *run* = ``True``
+          1. create exclusion maps (runs :program:`apbs` through :meth:`run_apbs`)
+          2. create membrane maps (:program:`draw_membrane2a` through 
+             :meth:`run_drawmembrane2`)
+          3. create apbs run input file
+
+        *run* = ``False``
+          1. write a bash script that calls :program:`apbs` and :program:`draw_membrane2` 
+             and which can be integrated into a window run script for parallelization.
+          2. create apbs run input file
         """
+        if run:
+            return self._generate_locally()
+        else:
+            return self._generate_scripted()
+
+    def _generate_locally(self):
         self.write('born_dummy')
         self.run_apbs('born_dummy')
         for infix in self.infices:
@@ -353,4 +374,20 @@ class BornAPBSmem(BaseMem):
         if self.dxformat == "dx":
             logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
             self.gzip_dx()
+        return None
 
+    def _generate_scripted(self):
+        """Write input files and bash script to run drawmembrane and APBS.
+
+        :Returns: name of the bash script
+        """
+        self.write('born_dummy')
+        # hack: MUST provide filenames as kwargs and infices as a "bash" list (i.e. just spaces);
+        # produces script == self.infile('born_setup_script')
+        script = self.write('born_setup_script', infices=self.vec2str(self.infices),
+                            born_dummy_in=self.infile('born_dummy'),
+                            born_dummy_out=self.outfile('born_dummy'))
+        self.write_infile('born_run')
+
+        os.chmod(script, 0755)
+        return script

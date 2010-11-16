@@ -440,7 +440,7 @@ class MPlaceion(BPbase):
     return len(windows)
 
 
-  def generateMem(self, windows=None):
+  def generateMem(self, windows=None, run=True):
     """Generate special diel/kappa/charge files and mem_placeion.in for each window.
 
     The APBS calculation is set up for manual focusing in three stages:
@@ -457,10 +457,13 @@ class MPlaceion(BPbase):
        are always contained in the outer region L; it's on the TODO list.
 
     :Keywords:
-       *windows*
+       *windows* : ``None``, number, or list
           window number or list of window numbers to generate. If set to
           ``None`` (the default) then all windows are generated. Window
           numbers start at 0 and end at numPoints-1.
+       *run* : bool
+          ``True``: immediately generate files (can take a while); ``False`` defer
+          file generation and just write a script
     """
 
     windows = self._process_window_numbers(windows)
@@ -470,7 +473,7 @@ class MPlaceion(BPbase):
         # will throw an error if the directory does not exist -- currently users
         # responsibility to set it up properly (i.e. generate diel maps etc)
         membornsetup = self.get_MemBornSetup(num)
-        membornsetup.generate()
+        membornsetup.generate(run=run)
 
   def get_MemBornSetup(self, num):
     """Return the setup class for window *num* (cached)."""
@@ -492,17 +495,24 @@ class MPlaceion(BPbase):
       self.__cache_MemBornSetup[num] = self.SetupClass(protein, ion, cpx, **kw)
     return self.__cache_MemBornSetup[num]
 
-  def generate(self, windows=None):
+  def generate(self, windows=None, run=True):
     """Set up all input files for Born calculations with a membrane.
 
-    generate([windows])
+    generate([windows[,run]])
 
-    This can take a long time. For testing, a subset of windows can be
-    processed.
+    The optional parameter *windows* allows one to select a subset of
+    windows instead of all the points in the sample points file; it
+    can be a single number or a list.
+
+    Setting *run* to ``True`` (the default) immediately generates setup files,
+    in particular it runs :program:`apbs` and :program:`draw_membrane2a` in
+    order to add the membrane to the system. Because this can take a long time
+    for a large number of windows it is also possible to only generate a bas
+    script for each window and defer the setup (*run* = ``False``).
     """
     windows = self._process_window_numbers(windows)
     self.writePQRs(windows=windows)
-    self.generateMem(windows=windows)
+    self.generateMem(windows=windows, run=run)
     self.writeJob(windows=windows)
 
 
