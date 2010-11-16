@@ -1,0 +1,19 @@
+#!/bin/bash
+# usage: fake_qsub array.sge SGE_TASK_ID [SGE_TASK_ID ...]
+#       
+# Run jobscript array.sge in an environment that has SGE_TASK_ID
+# set.
+# Example:
+#   (for ((i=1;i<100;i++)); do echo $i; done) \
+#   | xargs parallel.py 8  fake_qsub qsub_mbornprofile.sge ---
+#
+
+script=$1
+shift
+test -e "$script" || { echo "script $script missing"; exit 1; }
+
+for task in $*; do
+  export SGE_TASK_ID=$task
+  bash $script 
+done
+
