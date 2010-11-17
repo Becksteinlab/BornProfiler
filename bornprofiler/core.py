@@ -421,6 +421,7 @@ class MPlaceion(BPbase):
         'outfile': self.outfilename(num),
         'unpack_dxgz': m.unpack_dxgz,   # XXX: these two really should be attributes of
         'apbs_version': m.apbs_version, # of MPlaceion but too lazy right now...
+        'drawmembrane_script': m.filenames['born_setup_script'],
         }      
       scriptname = self.jobscriptname(num)
       scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)

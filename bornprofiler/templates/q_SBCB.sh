@@ -9,6 +9,8 @@ echo "APBS Born profile job running on $HOSTNAME"
 ulimit -c 64
 #module load abps/32 
 
+# If we need to run draw_membrane2a as part of this job
+RUN_DRAWMEMBRANE=%(drawmembrane_script)r
 # BornProfiler decides if dx files are to be gunzipped: True|1=yes, False|0|*=no
 UNPACK_DXGZ=%(unpack_dxgz)s
 APBS_VERSION=`apbs --version 2>&1 1>/dev/null| awk '/^APBS/ {print $2}'`
@@ -18,6 +20,13 @@ if [ -z "${APBS_VERSION}" ]; then
 fi
 echo "Detected apbs version ${APBS_VERSION}"
 echo "Script was written for version %(apbs_version)s"
+
+if [ -e "${RUN_DRAWMEMBRANE}" ]; then
+    echo "Running ${RUN_DRAWMEMBRANE}..."
+    bash ${RUN_DRAWMEMBRANE}
+    # the script checks if it needs to do anything so in principle there
+    # is no harm in just running it if we have it
+fi
 
 case "${UNPACK_DXGZ}" in
     1|true|True)
