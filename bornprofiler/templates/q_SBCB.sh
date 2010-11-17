@@ -21,8 +21,8 @@ echo "Script was written for version %(apbs_version)s"
 
 case "${UNPACK_DXGZ}" in
     1|true|True)
-	echo "unpacking dx files for buggy APBS 1.3..."
-	gunzip -v *m.dx.gz;;
+	echo "unpacking diel/kappa/charge dx files for buggy APBS 1.3..."
+	gunzip -v {diel,kappa,charge}*m.dx.gz;;
 esac
 
 echo "ensuring single threaded calculation OMP_NUM_THREADS=1"
@@ -32,8 +32,8 @@ rc=$?
 
 case "${UNPACK_DXGZ}" in
     1|true|True)
-	echo "compressing dx files again to save 98%% of space..."
-	gzip -v *.dx;;
+	echo "compressing diel/kappa/charge dx files again to save 98%% of space..."
+	gzip -v {diel,kappa,charge}*.dx;;
 esac
 
 exit $rc
