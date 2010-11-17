@@ -51,7 +51,6 @@ ELEC name protein_L
   mg-manual
   mol 1
   dime %(DIME_XYZ_L)s
-  nlev 4
   glen %(GLEN_XYZ_L)s
   gcent mol 1
   # NaCl ionic strength in mol/L
@@ -80,7 +79,6 @@ ELEC name protein_M
   mg-manual
   mol 1
   dime %(DIME_XYZ_M)s
-  nlev 4
   glen %(GLEN_XYZ_M)s
   gcent mol 2
   # NaCl ionic strength in mol/L
@@ -107,7 +105,6 @@ ELEC name protein_S
   mg-manual
   mol 1
   dime %(DIME_XYZ_S)s
-  nlev 4
   glen %(GLEN_XYZ_S)s
   gcent mol 2
   # NaCl ionic strength in mol/L
@@ -124,7 +121,6 @@ ELEC name protein_S
   sdens 10.0
   temp %(temperature).2f
   calcenergy total
-#  calcenergy comps
   calcforce no
   usemap diel 3
   usemap kappa 3
@@ -142,7 +138,6 @@ ELEC name ion_L
   mg-manual
   mol 2
   dime %(DIME_XYZ_L)s
-  nlev 4
   glen %(GLEN_XYZ_L)s
   gcent mol 1
   # NaCl ionic strength in mol/L
@@ -168,7 +163,6 @@ ELEC name ion_M
   mg-manual
   mol 2
   dime %(DIME_XYZ_M)s
-  nlev 4
   glen %(GLEN_XYZ_M)s
   gcent mol 2
   # NaCl ionic strength in mol/L
@@ -190,9 +184,8 @@ END
 
 ELEC name ion_S
   mg-manual
-  mol 1
+  mol 2
   dime %(DIME_XYZ_S)s
-  nlev 4
   glen %(GLEN_XYZ_S)s
   gcent mol 2
   # NaCl ionic strength in mol/L
@@ -209,7 +202,6 @@ ELEC name ion_S
   sdens 10.0
   temp %(temperature).2f
   calcenergy total
-#  calcenergy comps
   calcforce no
 END
 
@@ -224,7 +216,6 @@ ELEC name complex_L
   mg-manual
   mol 3
   dime %(DIME_XYZ_L)s
-  nlev 4
   glen %(GLEN_XYZ_L)s
   gcent mol 1
   # NaCl ionic strength in mol/L
@@ -280,7 +271,6 @@ ELEC name complex_S
   mg-manual
   mol 3
   dime %(DIME_XYZ_S)s
-  nlev 4
   glen %(GLEN_XYZ_S)s
   gcent mol 2
   # NaCl ionic strength in mol/L
@@ -297,7 +287,6 @@ ELEC name complex_S
   sdens 10.0
   temp %(temperature).2f
   calcenergy total
-#  calcenergy comps
   calcforce no
   usemap diel 6
   usemap kappa 6
