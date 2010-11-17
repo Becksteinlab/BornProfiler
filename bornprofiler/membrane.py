@@ -36,6 +36,7 @@ TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
              'born_dummy': read_template('mdummy.in'),
              'born_run': read_template('mplaceion.in'),
+             'memonly_run': read_template('mplaceion_memonly.in'),
              'born_setup_script': read_template('drawmembrane2.bash'),
 }
 
@@ -260,7 +261,8 @@ class BornAPBSmem(BaseMem):
     #: be changed; see ``templates/mdummy.in`` and ``templates/mplaceion.in``.
     #: The order of the suffices corresponds to the sequence in the schedule.
     suffices = ('L','M','S')
-
+    runtype = "born_run"
+    
     def __init__(self, *args, **kwargs):
         """Set up calculation.
 
@@ -302,7 +304,7 @@ class BornAPBSmem(BaseMem):
         # names for diel, kappa, and charge maps hard coded; only infix varies
         # TODO: proper naming and/or directories
         self.filenames = {'born_dummy': 'mem_dummy.in',
-                          'born_run': kwargs.pop('apbs_script_name', 'mem_placeion.in'),
+                          self.runtype: kwargs.pop('apbs_script_name', 'mem_placeion.in'),
                           'born_setup_script': kwargs.pop('dummy_script_name', 'run_drawmembrane.bash'),
                           }
 
@@ -313,7 +315,7 @@ class BornAPBSmem(BaseMem):
                      "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
-                     'born_run': 
+                     self.runtype: 
                      "protein_pqr,ion_pqr,complex_pqr,"
                      "pdie,sdie,conc,temperature,comment,dxformat,dxsuffix,"
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
@@ -334,7 +336,7 @@ class BornAPBSmem(BaseMem):
         # process the drawmembrane parameters
         super(BornAPBSmem, self).__init__(*args[3:], **kwargs)
 
-    def write_infile(self, name="born_run"):
+    def write_infile(self, name):
         if self.unpack_dxgz:
             extra = {'dxformat': 'dx', 'dxsuffix': 'dx'}
             logger.info("Working around bug in APBS 1.3: reading gunzipped files")
@@ -370,7 +372,7 @@ class BornAPBSmem(BaseMem):
         self.run_apbs('born_dummy')
         for infix in self.infices:
             self.run_drawmembrane(infix=infix)
-        self.write_infile('born_run')
+        self.write_infile(self.runtype)
         if self.dxformat == "dx":
             logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
             self.gzip_dx()
@@ -387,7 +389,11 @@ class BornAPBSmem(BaseMem):
         script = self.write('born_setup_script', infices=self.vec2str(self.infices),
                             born_dummy_in=self.infile('born_dummy'),
                             born_dummy_out=self.outfile('born_dummy'))
-        self.write_infile('born_run')
+        self.write_infile(self.runtype)
 
         os.chmod(script, 0755)
         return script
+
+
+class MemonlyAPBSmem(BornAPBSmem):
+    runtype = "memonly_run"
