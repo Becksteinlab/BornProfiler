@@ -25,7 +25,7 @@ Mac::
 
 and analyze when done::
 
-   apbs-bornprofile-analyze.py path.dat ParsegianSlab/w00*/job*.out
+   apbs-bornprofile-analyze.py --name=ParsegianSlab path.dat ParsegianSlab/w00*/job*.out
 
 
 Aqueous pore
@@ -39,6 +39,7 @@ Pore of radius 5 A through the slab::
 and run::
 
   ../../scripts/parallel.py 8 ../../scripts/fake_qsub ./qsub_ParsegianPore.bash --- `jot 19`  
+  apbs-bornprofile-analyze.py --name=ParsegianPore path.dat ParsegianPore/w00*/job*.out
 
 
 
