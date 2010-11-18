@@ -15,6 +15,7 @@ Commandline version of apbsmem, following
 http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
 
 """
+from __future__ import with_statement
 
 import os, errno
 import warnings
