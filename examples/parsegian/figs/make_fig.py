@@ -1,0 +1,10 @@
+from pylab import *
+pore = loadtxt("welec_ParsegianPore.dat")
+slab = loadtxt("welec_ParsegianSlab.dat")
+plot(slab[:,0], slab[:,1], 'k-', lw=3, label=r"membrane $\epsilon=2$")
+plot(pore[:,0], pore[:,1], 'r-', lw=3, label=r"pore $R=5 \AA$, $\epsilon=80$")
+ylim(-2,200)
+xlabel(r"$z$ along membrane normal ($\AA$)")
+ylabel("Born energy of a single Na$^{+}$ ion, $\cal W_\mathrm{elec}$  (kJ/mol)")
+legend(loc="best")
+savefig("parsegian.pdf")
