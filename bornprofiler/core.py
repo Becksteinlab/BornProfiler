@@ -112,15 +112,9 @@ class BPbase(object):
     return windows
 
   def getPqrLine(self, aID, aType, rID, rType, x, y, z, q, r):
-    # example: "ATOM  50000  NHX SPM 10000      43.624  57.177  58.408  1.0000 2.1300"
-    line =  "ATOM  "
-    line += "%5d  " % aID
-    line += "%-4s" % aType
-    line += "%3s " % rType
-    line += "%5d    " % rID
-    line += "%8.3f%8.3f%8.3f " % (x, y, z)
-    line += "%7.4f%7.4f\n" % (q, r)
-    return line
+    # PQR is white space separated!
+    fmt =  "ATOM %(aID)d %(aType)-4s %(rType)3s %(rID)5d   %(x)8.3f %(y)8.3f %(z)8.3f %(q)7.4f %(r)7.4f\n"
+    return fmt % vars()
  
   def readPoints(self):
     points = []
@@ -381,7 +375,12 @@ class MPlaceion(BPbase):
           try:
             os.link(self.pqrName, self.get_protein_name())
           except OSError, err:
-            if err.errno != errno.EEXIST:
+            if err.errno == errno.EEXIST:
+              pass
+            elif err.errno == errno.EXDEV:
+              import shutil
+              shutil.copy(self.pqrName, self.get_protein_name())
+            else:
               raise
           # write complex and ion 
           x,y,z = self.points[num]  # index points with window id
