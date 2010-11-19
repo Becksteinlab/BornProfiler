@@ -296,7 +296,7 @@ class MPlaceion(BPbase):
   def __init__(self, *args, **kwargs):
     """Setup Born profile with membrane.
 
-      MPlaceion(pqr,points[,memclass,jobName,ionName,ionicStrength,temperature,basedir])
+      MPlaceion(pqr,points[,memclass,jobName,ionName,ionicStrength,temperature,script,arrayscript,basedir])
 
       :Arguments:
         *pqr*
