@@ -24,11 +24,11 @@ elec name solv0
     temp %(temperature)f
     calcenergy no
     calcforce no
-    write dielx dx dielx%(suffix)s
-    write diely dx diely%(suffix)s
-    write dielz dx dielz%(suffix)s
-    write kappa dx kappa%(suffix)s
-    write charge dx charge%(suffix)s
+    write dielx %(dxformat)s dielx%(suffix)s
+    write diely %(dxformat)s diely%(suffix)s
+    write dielz %(dxformat)s dielz%(suffix)s
+    write kappa %(dxformat)s kappa%(suffix)s
+    write charge %(dxformat)s charge%(suffix)s
 end
 
 quit

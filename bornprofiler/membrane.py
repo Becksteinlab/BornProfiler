@@ -63,21 +63,6 @@ class BaseMem(object):
              by default this is realpath('.')                     
                         
         """
-        self.zmem = kwargs.pop('zmem', 0.0)
-        self.lmem = kwargs.pop('lmem', 40.0)
-        self.Vmem = kwargs.pop('Vmem', 0.0)  # potential (untested)
-        self.mdie = kwargs.pop('mdie', 2.0)  # membrane -- HARDCODED in draw_membrane2.c !!
-        self.sdie = kwargs.pop('sdie', 80.0)  # idie (solvent) -- HARDCODED in draw_membrane2.c !!
-        #self.sdie = kwargs.pop('sdie', 78.5)  # idie (solvent), Eisenberg and Crothers Phys. Chem. book 1979
-        self.pdie = kwargs.pop('pdie', 10.0)  # protein
-        self.hdie = kwargs.pop('headgroup_die', 20.0)
-        self.lhgp = kwargs.pop('headgroup_l', 0.0)  # geo3
-        self.Rtop = kwargs.pop('Rtop', 0)  # geo1
-        self.Rbot = kwargs.pop('Rbot', 0)  # geo2
-        self.temperature = kwargs.pop('temperature', 298.15)
-        self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
-        self.basedir = kwargs.pop('basedir', os.path.realpath(os.path.curdir))
-
         self.versions = {}
         # check draw_membrane: raises a stink if not the right one
         self.versions['drawmembrane'] = config.check_drawmembrane(self.drawmembrane)
@@ -98,6 +83,22 @@ class BaseMem(object):
             self.dxformat = "dx"
             self.dxsuffix = "dx"
         self.apbs_version = ".".join(map(str, self.versions['APBS']))        
+
+        # all the variables needed for draw_membrane2a
+        self.zmem = kwargs.pop('zmem', 0.0)
+        self.lmem = kwargs.pop('lmem', 40.0)
+        self.Vmem = kwargs.pop('Vmem', 0.0)  # potential (untested)
+        self.mdie = kwargs.pop('mdie', 2.0)  # membrane -- HARDCODED in draw_membrane2.c !!
+        self.sdie = kwargs.pop('sdie', 80.0)  # idie (solvent) -- HARDCODED in draw_membrane2.c !!
+        #self.sdie = kwargs.pop('sdie', 78.5)  # idie (solvent), Eisenberg and Crothers Phys. Chem. book 1979
+        self.pdie = kwargs.pop('pdie', 10.0)  # protein
+        self.hdie = kwargs.pop('headgroup_die', 20.0)
+        self.lhgp = kwargs.pop('headgroup_l', 0.0)  # geo3
+        self.Rtop = kwargs.pop('Rtop', 0)  # geo1
+        self.Rbot = kwargs.pop('Rbot', 0)  # geo2
+        self.temperature = kwargs.pop('temperature', 298.15)
+        self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
+        self.basedir = kwargs.pop('basedir', os.path.realpath(os.path.curdir))
 
         super(BaseMem, self).__init__(*args, **kwargs)
 
@@ -142,7 +143,7 @@ class BaseMem(object):
     def run_drawmembrane(self, **kwargs):
         stage = kwargs.pop('stage', "drawmembrane2")
         v = self.get_var_dict(stage)
-        # hardcoded dielx!
+        # hardcoded names dielx<infix>.dx etc!
         infix = kwargs.pop('infix', self.suffix)
         v.update(kwargs)  # override with kwargs
         cmdline = [self.drawmembrane, infix] + \
@@ -158,6 +159,14 @@ class BaseMem(object):
             raise EnvironmentError(errno.ENODATA, self.drawmembrane, errmsg)
         logger.info("Drawmembrane finished. Look for dx files with 'm' in their name.")
         return rc
+
+    def write_infile(self, name):
+        if self.unpack_dxgz:
+            extra = {'dxformat': 'dx', 'dxsuffix': 'dx'}
+            logger.info("Working around bug in APBS 1.3: reading gunzipped files")
+        else:
+            extra = {}
+        self.write(name, **extra)
 
     def _gzip_dx(self, name="gzip", options=None):
         from subprocess import call
@@ -228,9 +237,15 @@ class APBSmem(BaseMem):
         # (see templates/dummy.in)
 
         #: "static" variables required for a  calculation
-        self.vars = {'dummy': "pqr,suffix,pdie,sdie,conc,temperature,DIME_XYZ,GLEN_XYZ",
-                     'solvation': "pqr,suffix,pdie,sdie,conc,temperature,,DIME_XYZ,GLEN_XYZ",
-                     'drawmembrane2': "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot,suffix"}
+        self.vars = {'dummy': 
+                     "pqr,suffix,"
+                     "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
+                     "DIME_XYZ,GLEN_XYZ",
+                     'solvation': 
+                     "pqr,suffix,pdie,sdie,conc,temperature,dxformat,dxsuffix,"
+                     "DIME_XYZ,GLEN_XYZ",
+                     'drawmembrane2': 
+                     "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot,suffix"}
         # generate names
         d = {}
         d['DIME_XYZ'] = self.vec2str(self.dime)
@@ -251,9 +266,10 @@ class APBSmem(BaseMem):
         self.write('dummy')
         self.run_apbs('dummy')
         self.run_drawmembrane()
-        self.write('solvation')
-        if gz:
-            self.gzip_dx()        
+        self.write_infile('solvation')
+        if self.dxformat == "dx":
+            logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
+            self.gzip_dx()
 
 class BornAPBSmem(BaseMem):
     """Class to prepare a single window in a manual focusing run."""    
@@ -337,14 +353,6 @@ class BornAPBSmem(BaseMem):
         # process the drawmembrane parameters
         super(BornAPBSmem, self).__init__(*args[3:], **kwargs)
 
-    def write_infile(self, name):
-        if self.unpack_dxgz:
-            extra = {'dxformat': 'dx', 'dxsuffix': 'dx'}
-            logger.info("Working around bug in APBS 1.3: reading gunzipped files")
-        else:
-            extra = {}
-        self.write(name, **extra)
-        
     def generate(self, run=True):
         """Setup solvation calculation.
 

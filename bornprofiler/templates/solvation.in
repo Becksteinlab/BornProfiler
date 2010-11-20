@@ -1,13 +1,12 @@
-
 # APBSmem: run simple 1st solvation
 # (modified by OB)
 
 read
     mol pqr "%(pqr)s"
     # Read Maps
-    diel dx dielx%(suffix)sm.dx diely%(suffix)sm.dx dielz%(suffix)sm.dx
-    kappa dx kappa%(suffix)sm.dx
-    charge dx charge%(suffix)sm.dx
+    diel %(dxformat)s dielx%(suffix)sm.%(dxsuffix)s diely%(suffix)sm.%(dxsuffix)s dielz%(suffix)sm.%(dxsuffix)s
+    kappa %(dxformat)s kappa%(suffix)sm.%(dxsuffix)s
+    charge %(dxformat)s charge%(suffix)sm.%(dxsuffix)s
 end
 
 elec name solv0
