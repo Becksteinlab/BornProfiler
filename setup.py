@@ -9,7 +9,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(name="APBS-BornProfiler",
-      version="0.1",
+      version="0.2",
       description="Setting up of Born profile calculations for APBS",
       long_description="""
 """,
@@ -23,6 +23,9 @@ setup(name="APBS-BornProfiler",
                                        'templates/*.in', 'templates/*.dat']},
       scripts = ["scripts/apbs-bornprofile-analyze.py",
                  "scripts/apbs-bornprofile-placeion.py",
+                 "scripts/apbs-bornprofile-mplaceion.py",
+                 "scripts/apbs-bornprofile-mksample.py",
+                 "scripts/parallel.py", "scripts/fake_qsub",
                  "scripts/apbs-mem-setup.py",
                  ],
       install_requires=['numpy>=1.0.3',

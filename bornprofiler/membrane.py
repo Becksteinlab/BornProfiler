@@ -356,8 +356,8 @@ class BornAPBSmem(BaseMem):
         """Setup solvation calculation.
 
         If *run* = ``True`` then runs :program:`apbs` and
-        :program:`draw_membrane2` (which can take a few minutes);
-        otherwise just generate scripts (default).
+        :program:`draw_membrane2` (which can take a few minutes); otherwise
+        just generate scripts (default).
 
         *run* = ``True``
           1. create exclusion maps (runs :program:`apbs` through :meth:`run_apbs`)

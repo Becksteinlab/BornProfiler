@@ -290,17 +290,22 @@ class MPlaceion(BPbase):
   def __init__(self, *args, **kwargs):
     """Setup Born profile with membrane.
 
+      MPlaceion(paramfile[,basedir])
+
       MPlaceion(pqr,points[,memclass,jobName,ionName,ionicStrength,temperature,script,arrayscript,basedir])
 
       :Arguments:
+        *parameterfile* 
+           ini-style file containing all run parameters
         *pqr*
-           PQR file
+           PQR file                        **DEPRECATED**
         *points* 
-           data file with sample points
+           data file with sample points    **DEPRECATED**
 
-      :Keywords:
+      :Keywords:        
         *memclass*
            a class or type :class:`APBSMem` to customize draw_membrane
+           **DEPRECATED**
         *jobName*
            name of the run, used as top directory name and as unique identifier
            [mbornprofile]
@@ -325,26 +330,46 @@ class MPlaceion(BPbase):
     """
     self.__cache_MemBornSetup = {}
 
-    self.pqrName = os.path.realpath(args[0])
-    self.pointsName = os.path.realpath(args[1])
+    if len(args) == 1:
+      # new style
+      import io
+      params = io.RunParameters(args[0])
+      self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
+      self.pqrName = os.path.realpath(kw.pop('pqr'))
+      self.pointsName = os.path.realpath(kw.pop('points'))
+      self.ion = IONS[kw.pop('ion', 'Na')]
+      self.jobName = kw.pop('name', "mbornprofile")
+      self.ionicStrength = kw.pop('conc', 0.15)
+      self.temperature = kw.pop('temperature', 300.0)
+      self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
+      self.script = read_template(kw.pop('script', 'q_local.sh'))
 
-    # copied & pasted from Placeion because inheritance would be messy :-p
-    self.jobName = kwargs.pop('jobName', "mbornprofile")
-    self.ion = IONS[kwargs.pop('ionName', 'Na')]
-    self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
-    self.temperature = kwargs.pop('temperature', 300.0)
-    scriptname = kwargs.pop('script', None)
-    if not scriptname is None:
-      self.script = read_template(scriptname)
-    else:
-      self.script = None
-    self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
-
-    # hack for quickly customizing draw_membrane (uses custom classes)
-    self.SetupClass = kwargs.pop('memclass', None)
-    if self.SetupClass is None:
       import membrane
-      self.SetupClass = membrane.BornAPBSmem  # to customize
+      self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
+    else:
+      import warnings
+      warnings.warn("Using deprecated MPlaceion(pqr,points) call", DeprecationWarning)
+      self.pqrName = os.path.realpath(args[0])
+      self.pointsName = os.path.realpath(args[1])
+
+      # copied & pasted from Placeion because inheritance would be messy :-p
+      self.jobName = kwargs.pop('jobName', "mbornprofile")
+      self.ion = IONS[kwargs.pop('ionName', 'Na')]
+      self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
+      self.temperature = kwargs.pop('temperature', 300.0)
+      scriptname = kwargs.pop('script', None)
+      if not scriptname is None:
+        self.script = read_template(scriptname)
+      else:
+        self.script = None
+      self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
+
+      # hack for quickly customizing draw_membrane (uses custom classes)
+      self.SetupClass = kwargs.pop('memclass', None)
+      if self.SetupClass is None:
+        import membrane
+        self.SetupClass = membrane.BornAPBSmem  # to customize
+
       
     # sanity check
     assert len(self.schedule) != len(self.SetupClass.suffices), \
@@ -428,6 +453,7 @@ class MPlaceion(BPbase):
       # write scriptfile into the window directory
       with open(scriptpath, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
+      os.chmod(scriptpath, 0755)
  
     qsubName = "qsub_" + self.jobName + ".bash"
     self.numJobs = self.points.shape[0]  # always record maximum number
@@ -440,7 +466,7 @@ class MPlaceion(BPbase):
     return len(windows)
 
 
-  def generateMem(self, windows=None, run=True):
+  def generateMem(self, windows=None, run=False):
     """Generate special diel/kappa/charge files and mem_placeion.in for each window.
 
     The APBS calculation is set up for manual focusing in three stages:
@@ -463,7 +489,7 @@ class MPlaceion(BPbase):
           numbers start at 0 and end at numPoints-1.
        *run* : bool
           ``True``: immediately generate files (can take a while); ``False`` defer
-          file generation and just write a script
+          file generation and just write a script [``False``]
     """
 
     windows = self._process_window_numbers(windows)
@@ -486,29 +512,37 @@ class MPlaceion(BPbase):
       apbs_script_name = self.get_apbs_script_name(num)
       # should get draw_membrane parameters as well, do this once we use cfg input files
       # TODO: add position of ion to comments
+      # OLD-STYLE (still used ...):
       kw = {'conc':self.ionicStrength, 'temperature':self.temperature,'comment':'window %d, z=XXX'%num,
             'basedir': os.path.realpath(self.jobpath(self.get_windowdirname(num))),
             'apbs_script_name': apbs_script_name}
       kw.update(self.schedule)  # set dime and glen !
+      # NEW-STYLE (overrides old-style)
+      try:
+        kw.update(self.bornprofile_kwargs)
+      except AttributeError:
+        pass
       # using a custom SetupClass pre-populates the parameters for draw_membrane2
       # (hack!! -- should be moved into a cfg input file)
+      # Cfg file sets remaining kw args [2010-11-19] but still messy;
+      # but no custom classes needed anymore, just membrane.BornAPBSmem)
       self.__cache_MemBornSetup[num] = self.SetupClass(protein, ion, cpx, **kw)
     return self.__cache_MemBornSetup[num]
 
-  def generate(self, windows=None, run=True):
+  def generate(self, windows=None, run=False):
     """Set up all input files for Born calculations with a membrane.
 
     generate([windows[,run]])
 
-    The optional parameter *windows* allows one to select a subset of
-    windows instead of all the points in the sample points file; it
-    can be a single number or a list.
+    The optional parameter *windows* allows one to select a subset of windows
+    instead of all the points in the sample points file; it can be a single
+    number or a list.
 
-    Setting *run* to ``True`` (the default) immediately generates setup files,
-    in particular it runs :program:`apbs` and :program:`draw_membrane2a` in
-    order to add the membrane to the system. Because this can take a long time
-    for a large number of windows it is also possible to only generate a bas
-    script for each window and defer the setup (*run* = ``False``).
+    Setting *run* to ``True`` immediately generates setup files, in particular
+    it runs :program:`apbs` and :program:`draw_membrane2a` in order to add the
+    membrane to the system. Because this can take a long time for a large
+    number of windows it is also possible to only generate a bash script for
+    each window and defer the setup (*run* = ``False``, the default).
     """
     windows = self._process_window_numbers(windows)
     self.writePQRs(windows=windows)
