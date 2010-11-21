@@ -11,6 +11,8 @@ ulimit -c 64
 
 # use apbs on PATH or set environment variable APBS
 : ${APBS:=apbs}
+: ${DRAW_MEMBRANE2A:=draw_membrane2a}
+export APBS DRAW_MEMBRANE2A
 
 # If we need to run draw_membrane2a as part of this job
 RUN_DRAWMEMBRANE=%(drawmembrane_script)r
