@@ -2,17 +2,19 @@
 APBS calculations: Membrane simulations
 =======================================
 
-Requires the :program:`draw_membrane2` binary.
+Requires the :program:`draw_membrane2a` binary.
 
-Uses :programe:`draw_membrane2` to add a low-dielectric (eps=2) region and sets
+Uses :programe:`draw_membrane2a` to add a low-dielectric (eps=2) region and sets
 protein dielectric to eps=10.
 
-.. Note:: Paths to draw_membrane2 and apbs are hard coded!
+.. Note:: Paths to draw_membrane2a and apbs are set in the configuration file
+   ``~/.bornprofiler.cfg``::
           apbs = %(APBS)r
           draw_membrane2 = %(DRAWMEMBRANE)r
 
 Commandline version of apbsmem, following
 http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
+and modified (see ``src/drawmembrane/draw_membrane2a.c`` in the BornProfiler distribution).
 
 """
 
