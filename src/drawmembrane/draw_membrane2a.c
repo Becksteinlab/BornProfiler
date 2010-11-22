@@ -1,5 +1,5 @@
 /* draw_membrane2.c                     09/02/08 *
- * draw_membrane2a.c                    11/13/10 * 
+ * draw_membrane2a.c                    11/22/10 * 
  *-----------------------------------------------* 
  * By Michael Grabe                              *
  * This program takes the dielectric, kappa, and * 
@@ -17,31 +17,21 @@
  * extra command line argument was added that    *
  * will cause a fault if run without it from     *
  * older scripts pre 2005.                       *
- *                                               * 
- * INPUTS:                                       *
- * thses all come at the command line:           *
- * infix  - infix is used to construct map names *
- * z_m0   - bottom of the membrane               *
- * l_m    - length of the membrane               *
- * pdie   - protein dielectric constant          *
- * V      - cytoplasmic potential (kT/e)         *
- * I      - molar conc. of one salt-species      *
- * R_m1   - excl. radius at top of  membrane     *
- * R_m0   - excl. radius at  bottom of membrane  *
- *                                               * 
- * OUTPUTS:                                      *
- *   maps                                        *
- *-----------------------------------------------*
+ * OB's changes completely break input as we are now using standard option
+ * processing. 
 
  2010-11-11  Oliver Beckstein
              changed naming (provide the infix) and added more diagnostics
  2010-11-12  Oliver Beckstein
              added reading/writing of gz-compressed files
+ 2010-11-22  OB: switched to opt processing (completely breaks interface
+             but allows setting of sdie, mdie and pdie)
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <math.h>
 #include <string.h>
 #include <zlib.h>
@@ -287,60 +277,53 @@ int write_attr_positions(const bool compression, void *stream) {
   return status;
 }
 
+void printhelp() {
+  printf("\nusage: draw_membrane2a [options] infix\n"
+	 "\n"
+	 "This program takes the dielectric, kappa, and charge maps from APBS and\n"
+	 "accounts for the membrane. The thickness (-d) and the bottom of the\n"
+	 "membrane (-z) must be given. We assume that the membrane normal is\n"
+	 "along the z-axis. This requires lining the protein along the z-axis\n"
+	 "before running this program.  We also output a charge_change_map that\n"
+	 "tells me which positions in the charge matrix were edited by the\n"
+	 "addition of the membrane.\n"
+	 "\n"
+	 "ARGUMENTS:\n"
+	 "\n"
+	 "  infix  - all maps are constructed as <name><infix>.dx[.gz] where <name> is\n"
+	 "           hard-coded (dielx,diely,dielz,kappa  charge); see also OUTPUTS.\n"
+	 "\n"
+	 "OPTIONS:\n"
+	 "  -h          this help\n"
+	 "  -z z_m0     bottom of the membrane [-20]\n"
+	 "  -d l_m      membrane thickness (Angstrom) [40]\n"
+	 "  -V V        cytoplasmic potential (kT/e)  [0]\n"
+	 "  -I I        molar conc. of one salt-species [0.1]\n"
+	 "  -R R_m1     excl. radius at top of  membrane [0]\n" 
+	 "  -r R_m0     excl. radius at  bottom of membrane [0]\n"
+	 "  -p PDIE     protein dielectric constant [10]\n"
+	 "  -s SDIE     solvent dielectric [80]\n"   
+	 "  -m MDIE     membrane dielectric [2]\n"            
+	 "  -Z          read and write gzipped files\n"                    
+	 "\n"	                                               
+	 "OUTPUTS:\n"
+	 "  maps - names are <name><infix>m.dx[.gz]\n"
+	 "\n");
+}
 
+/* access argv after getopt
+   optind is a global
+ */
+int get_argv_int(char **argv, const int index) {
+  return atoi(argv[index + optind]);
+}
 
-/********************************************************************/
-/* INPUT LOOKS LIKE:                                                */
-/*    draw_membrane2a  infix  z_m0 l_m pdie V I R_m1 R_m0  gz       */
-/*    draw_membrane2a  infix  z_m0 l_m pdie V I R_m1 R_m0           */
-/********************************************************************/
-void printhelp()
-{
-printf(         "* draw_membrane2a.c                    11/13/10 *\n"
-		"*-----------------------------------------------*\n"
-		"* By Michael Grabe                              *\n"
-                "* (minor modifications by Oliver Beckstein)     *\n"
-		"* This program takes the gz-compressed          *\n"
-		"* dielectric, kappa, and                        *\n" 
-		"* charge  maps from APBS and accounts for the   *\n"
-		"* membrane. the thickness and the bottom of the *\n"
-		"* membrane must be given. we assume that the    *\n"
-		"* membrane normal is along the z-axis. this     *\n"
-		"* requires lining the protein along the z-axis  *\n"
-		"* before running this program.                  *\n"
-		"* We also output a charge_change_map that tells *\n"
-		"* me which positions in the charge matrix were  *\n"
-		"* edited by the addition of the membrane        *\n"
-		"* NOTE: this program was changes in 2005 to     *\n"
-		"* allow for conical channel geometries. An      *\n"
-		"* extra command line argument was added that    *\n"
-		"* will cause a fault if run without it from     *\n"
-		"* older scripts pre 2005.                       *\n"
-		"*                                               *\n" 
-		"* INPUTS:                                       *\n"
-		"* these all come at the command line:           *\n"
-		"* infix  - all maps are constructed as          *\n"
-                "*          <name><infix>.dx[.gz] where <name> is*\n"
-                "*          hard-coded (dielx,diely,dielz,kappa  *\n"
-                "*          charge); see also OUTPUTS.           *\n"
-		"* z_m0   - bottom of the membrane               *\n"
-		"* l_m    - length of the membrane               *\n"
-		"* pdie   - protein dielectric constant          *\n"
-		"* V      - cytoplasmic potential (kT/e)         *\n"
-		"* I      - molar conc. of one salt-species      *\n"
-		"* R_m1   - excl. radius at top of  membrane     *\n"
-		"* R_m0   - excl. radius at  bottom of membrane  *\n"
-                "* gz     - set to 'gz' if files are compressed  *\n"
-                "*          leave out or 'none' otherwise        *\n"
-		"*                                               *\n" 
-		"* OUTPUTS:                                      *\n"
-		"*   maps - names are <name><infix>m.dx[.gz]     *\n"
-		"*-----------------------------------------------*\n\n"
-		"********************************************************************\n"
-		"* INPUT LOOKS LIKE:                                                *\n"
-		"* ./draw_membrane2a infix  z_m0 l_m pdie V I R_m1 R_m0  [gz]       *\n"
-		"********************************************************************\n\n"
-	  );
+int get_argv_float(char **argv, const int index) {
+  return atof(argv[index + optind]);
+}
+
+char * get_argv_str(char **argv, const int index) {
+  return argv[index + optind];
 }
 
 
@@ -356,47 +339,117 @@ float *y_x, *y_y, *y_z;
 float *z_x, *z_y, *z_z;
 float *kk, *cc;
 float *x, *y, *z;
-float tmp_x,tmp_y,tmp_z,dx,dy,dz,l_c_x,l_c_y,l_c_z,l_m;
+float tmp_x,tmp_y,tmp_z,dx,dy,dz,l_c_x,l_c_y,l_c_z;
 float x0_p, y0_p, z0_p;
 float x0_x, y0_x, z0_x;
 float x0_y, y0_y, z0_y; 
 float x0_z, y0_z, z0_z; 
 float x0, y0, z0;
-float V, I, sdie;
-float z_m0, z_m1, R_m0, R_m1, R_x, R_y, R_z, R, pdie, mdie;
-float R_temp;
+float V=0, I=0.1, sdie=80, pdie=10, mdie=2;
+float l_m=40;
+float z_m0=0, z_m1, R_m0=0, R_m1=0;
+float R_x, R_y, R_z, R, R_temp;
 char infix[MAXLEN];
 char *file_name_x, *file_name_y, *file_name_z;
 char *file_name_k, *file_name_c;
 char *f1, *f2, *f3, *f4, *f5, *f6;
 char ext[5]="m.dx";
 bool compression = FALSE;
+int c;
+
 
 printf("----------------------------------------------------------------\n");
+printf("* draw_membrane2a.c                                   11/22/10 *\n");  /* magic version line */
+printf("----------------------------------------------------------------\n");
 printf("draw_membrane2a -- (c) 2008 Michael Grabe [09/02/08]\n");
-printf("                   (c) 2010 Oliver Beckstein, minor modifications [11/13/10]\n");
+printf("                   (c) 2010 Oliver Beckstein (options&gzipped files) [11/22/10]\n");
+printf("Published under the Open Source MIT License (see http://sourceforge.net/projects/apbsmem/).\n");
 printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
 printf("----------------------------------------------------------------\n");
 
-if (argc < 9) {
-	printhelp();
-	return 1;
+/* explicit defaults for options */
+mdie = 2.0;    /* watch out for this it used to be 10.0 */ 
+sdie = 80.0;
+pdie = 10.0;
+
+z_m0 = -20;    /* lower z of membrane */  
+l_m = 40;      /* thickness of membrane */
+
+R_m1 = 0;      /* upper exclusion radius */
+R_m0 = 0;      /* lower exclusion radius */
+
+
+ opterr = 0;
+ while ((c = getopt(argc, argv, "hZz:d:s:m:p:V:I:r:R:")) != -1) {
+   switch(c) {
+   case 'h':
+     printhelp();
+     return 1;
+   case 'z':
+     z_m0 = atof(optarg);
+     break;
+   case 'd':
+     l_m = atof(optarg);
+     break;
+   case 's':
+     sdie = atof(optarg);
+     break;
+   case 'm':
+     mdie = atof(optarg);
+     break;
+   case 'p':
+     pdie = atof(optarg);
+     break;
+   case 'V':
+     V = atof(optarg);  /* membrane potential --- convert from mV to kT/e */
+     break;
+   case 'I':
+     I = atof(optarg);  /* ionic strength in mol/l */
+     break;
+   case 'r':
+     R_m0 = atof(optarg);
+     break;
+   case 'R':
+     R_m1 = atof(optarg);
+     break;     
+   case 'Z':
+     compression = TRUE;
+     break;
+   case '?':
+     if (optopt == 'z' || optopt == 'd' || optopt == 's' || optopt == 'm' ||
+	 optopt == 'p' || optopt == 'V' || optopt == 'I' || optopt == 'r' ||
+	 optopt == 'R')
+       fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+     else 
+       fprintf(stderr, "Unknown option `-%c'.\n", optopt);  // should check isprint(optopt)...
+     return 1;
+   default:
+     abort();
+   }
+ }
+
+if (argc-optind < 1) {
+  fprintf(stderr, "Only %d argument%s on the commandline, at least 1 "
+	  "required. See `-h' for help.\n", 
+	  argc-optind, argc-optind==1 ? "":"s");
+  return 1;
 }
 
-strcpy(infix,argv[1]);
+strcpy(infix, get_argv_str(argv, 0));
 printf("Using hard-coded names with your infix to find files: infix=%s\n", infix);
 
-if (argc == 10 && 0 == strcmp(argv[9], "gz")) {
-  compression = TRUE;
+if (compression) {
   printf("Reading gzip-compressed dx files.\n");
-} else {
-  compression = FALSE;
+} 
+else {
   printf("Reading un-compressed dx files (default).\n");
-}  
+}   
 
-printf(">>> draw_membrane2a  %s  %s %s %s %s %s %s %s  %s\n",
-       argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7], argv[8],
-       compression ? "gz" : "none");
+printf("Running with these arguments:\n");
+printf(">>> draw_membrane2a %s -s %.1f -m %.1f -p %.1f -V %.3f -I %.3f "
+       "-z %.3f -d %.3f -r %.1f -R %.1f  %s\n",
+       compression ? "-Z" : "", sdie, mdie, pdie, V, I,
+       z_m0, l_m, R_m0, R_m1, infix);
 
 /* Find the x-shifted dielectric map 
    Construct the name as <basename><infix><suffix>
@@ -417,27 +470,18 @@ file_name_k = newname("kappa", infix, NULL, compression);
 /* Find the charge map */
 file_name_c = newname("charge", infix, NULL, compression);
 
-z_m0=atof(argv[2]);
-l_m=atof(argv[3]);
-pdie=atof(argv[4]);
-V=atof(argv[5]);
-I=atof(argv[6]);
-
-R_m1=atof(argv[7]);
-R_m0=atof(argv[8]);
-
+ 
 z_m1=z_m0+l_m;   /* top of the membrane */
-mdie = 2.0;    /* watch out for this it used to be 10.0 */ 
-sdie = 80.0;
+
 /*****************************************************/
 /* read in the x-shifted dielectric data             */
 /*****************************************************/
 
 in = gzopen(file_name_x,"r");
 if (in == NULL) {
-	printhelp();
-	printf("Make sure %s exists in current directory!!!\n\n", file_name_x);
-	return 1;
+  fprintf(stderr, "ERROR: %s not found in current directory.\n",  file_name_x);
+  fprintf(stderr, "       See -h for usage.\n");
+  return 1;
 }
 printf("Reading %s...\n", file_name_x);
 

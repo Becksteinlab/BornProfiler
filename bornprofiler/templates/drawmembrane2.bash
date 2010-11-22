@@ -40,13 +40,20 @@ function run_apbs () {
 }
 
 function run_drawmembrane () {
-    local infix=$1 targets
+    # all draw_membrane interpolations are done here!
+    local infix=$1 compression="%(dxformat)s"
+    local targets compress_option=""
     targets=$(ls {dielx,diely,dielz,kappa,charge}${infix}m.dx* 2>/dev/null)
     if [ $(echo $targets | wc -w) -eq 5 ]; then
 	echo "Files for $infix already exist .. skipping"
 	return
     fi
-    ${DRAW_MEMBRANE2A} $infix %(zmem)f %(lmem)f %(pdie)f %(Vmem)f %(conc)f %(Rtop)f %(Rbot)f %(dxformat)s \
+    if [ "$compression" == "gz" ]; then
+	compress_option="-Z"
+    fi
+    ${DRAW_MEMBRANE2A} $compress_option -z %(zmem)f -d %(lmem)f \
+	-p %(pdie)f -s %(sdie)f -m %(mdie)f  \
+	-V %(Vmem)f -I %(conc)f -R %(Rtop)f -r %(Rbot)f  $infix \
 	|| die "${DRAW_MEMBRANE2A} $infix failed."
 }    
 
