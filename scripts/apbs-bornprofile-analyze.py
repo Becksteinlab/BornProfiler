@@ -150,7 +150,7 @@ if __name__ == "__main__":
   parser = OptionParser(usage=usage)
   parser.add_option("--name", dest="jobName",
                     metavar="STRING",
-                    help="name for the job submission script [%default]")
+                    help="name used in output files (welec_STRING.{dat,pdf})")
   parser.add_option("--plotter", dest="plotter", type="choice",
                     choices=('matplotlib','Gnuplot'),
                     help="plotting backend [%default]")
@@ -159,7 +159,7 @@ if __name__ == "__main__":
                     help="when using a run parameter file, the job output is found under "
                     "'DIR/<job.name>/w[0-9][0-9][0-9][0-9]/job*.out', with job.name taken from "
                     "the run parameter file [%default]")
-  parser.set_defaults(jobName="bornprofile", plotter='matplotlib', basedir=os.path.curdir)
+  parser.set_defaults(plotter='matplotlib', basedir=os.path.curdir)
 
 
   opts,args = parser.parse_args()
@@ -175,6 +175,7 @@ if __name__ == "__main__":
       samplepoints = p.get_bornprofile_kwargs('points')
       fileglob = os.path.join(opts.basedir, p.get_bornprofile_kwargs('name'), 
                               'w[0-9][0-9][0-9][0-9]', 'job*.out')
+      opts.jobName = p.get_bornprofile_kwargs('name')
     except:
       logger.fatal("Cannot obtain information about the sample points and directory from the "
                    "run parameter file %r.", args[0])
@@ -184,6 +185,9 @@ if __name__ == "__main__":
     # maybe the shell did not expand globs or we run in ipython?
     samplepoints,fileglob = args
     args = [samplepoints] + glob.glob(fileglob)
+
+  if opts.jobName is None:
+    opts.jobName = "bornprofile"
 
   kwargs = {'jobName': opts.jobName}
   A = AnalyzeElec(*args, **kwargs)
