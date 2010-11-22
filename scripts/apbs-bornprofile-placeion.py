@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# apbs-bornprofile-placeion.py: originally based on placeion.py
 
 """
 :Author: Kaihsu Tai, Oliver Beckstein
@@ -11,7 +12,7 @@
 
 I wrote some Python code to automate this process. The job submission
 requires a queuing system called Grid Engine. Copyright © 2008 Kaihsu
-Tai. Moral rights asserted (why?). Hereby licensed under either GFDL
+Tai. Moral rights asserted. Hereby licensed under either GFDL
 or GNU General Public License at your option.
 """
 from __future__ import with_statement
@@ -21,10 +22,20 @@ import logging
 logger = logging.getLogger('bornprofile') 
 
 usage = """%prog [options] pqr-file samplepoints-file
+        %prog [options] run-parameters
 
-This script sets up input files for Born energy calculations for
-APBS. It expects to find ion positions in the file samplepoints, one
-xyz coordinate per line.
+This script sets up input files for Born energy calculations for APBS.
+
+One can either provide the samplepoinst and the protein PQR file on
+the commandline and control the setup through options, *or* collect
+all options in a run parameter file (preferred). To get a run
+parameter file template, just run the script with the --template
+option and the desired filename and then edit the template with your
+favourite editor.
+
+The ion positions in the file samplepoints (``[bornprofile] points``
+in the run parameter file) should be formatted as one white-space
+separated xyz coordinate per line.
 
 The "Born radii" for ions were taken from Table III in
 
@@ -44,6 +55,8 @@ if __name__ == "__main__":
   logging.basicConfig()
 
   parser = OptionParser(usage=usage)
+  parser.add_option("--template", dest="write_template", action="store_true",
+                    help="write template parameter file and exit")
   parser.add_option("--name", dest="jobName",
                     metavar="STRING",
                     help="name for the job submission script [%default]")
@@ -67,23 +80,30 @@ if __name__ == "__main__":
                       ionName="Na", dime=[97,97,193], script="local")
 
   opts,args = parser.parse_args()
-  
-  try:
-    pqrfile, pointsfile = args
-  except:
-    logger.fatal("Needs PQR file and sample points. See --help.")
+
+  if len(args) == 0 or len(args) > 3:
+    logger.fatal("Needs run parameters file or PQR file and sample points. See --help.")
     sys.exit(1)
 
-  try:
-    script_template = JOBSCRIPTS[opts.script]
-  except KeyError:
+  if len(args) == 1:
+    filename = args[0]
+    if opts.write_template:
+      bornprofiler.write_parameters(filename)
+      sys.exit(0)
+    P = Placeion(filename)
+  else:
+    pqrfile, pointsfile = args
     try:
-      script_template = open(opts.script).readlines()
-    except:
-      logger.fatal("--scripts=NAME must be either a filename or one of %r; see the " 
-                   "source for the correct format of the file." % JOBSCRIPTS.keys())
-      sys.exit(2)
+      script_template = JOBSCRIPTS[opts.script]
+    except KeyError:
+      try:
+        script_template = open(opts.script).readlines()
+      except:
+        logger.fatal("--scripts=NAME must be either a filename or one of %r; see the " 
+                     "source for the correct format of the file." % JOBSCRIPTS.keys())
+        sys.exit(2)
 
-  P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
-               dime=opts.dime, jobName=opts.jobName, script=script_template)
+      P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
+                   dime=opts.dime, jobName=opts.jobName, script=script_template)
+
   P.generate()
