@@ -14,6 +14,7 @@ logger = logging.getLogger('bornprofiler.core')
 
 TEMPLATES = {'born': read_template('mplaceion.in'),
              'q_array.sge': read_template('q_array.sge'),
+             'placeion': read_template('placeion.in'),
              }
 TABLE_IONS = read_template('bornions.dat')
 
@@ -124,6 +125,44 @@ class BPbase(object):
         points.append(map(float, fields[0:3]))
     self.points = numpy.array(points)
     self.numPoints = self.points.shape[0]
+
+  def writePQRs(self, windows=None):
+    """Generate input pqr files for all windows and store them in separate directories."""
+    # NOTE: This is the only place where window numbers reference the sample points
+    #       at the moment: point = self.points[num]
+    windows = self._process_window_numbers(windows)
+    with in_dir(self.jobName):
+      # make directory if it does not exist and cd into it      
+      for num in windows:
+        windowdirname = self.get_windowdirname(num)
+        with in_dir(windowdirname):
+          # write protein (make hard-link to save space)
+          try:
+            os.link(self.pqrName, self.get_protein_name())
+          except OSError, err:
+            if err.errno == errno.EEXIST:
+              pass
+            elif err.errno == errno.EXDEV:
+              import shutil
+              shutil.copy(self.pqrName, self.get_protein_name())
+            else:
+              raise
+          # write complex and ion 
+          x,y,z = self.points[num]  # index points with window id
+          aID = 99999
+          rID = 9999
+          # born ion is always resname ION
+          ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
+          # write ion
+          with open(self.get_ion_name(num), "w") as ionFile:
+            ionFile.write(ionLines)
+          # write complex
+          with open(self.get_complex_name(num), "w") as cpxFile:
+            for line in self.pqrLines:
+              cpxFile.write(line)
+            cpxFile.write(ionLines)
+    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
+                self.jobName, len(windows), self.ion.atomname)
  
   def get_XYZ_dict(self, name, vec):
     return {name.upper()+'_XYZ': " ".join(map(str, vec))}
@@ -137,37 +176,53 @@ class BPbase(object):
                                            os.path.basename(self.pointsName))
 
 
-# For Placeion:
-# change this to a monolithic script and hardcode stages!
-# (The partite approach still exists for historic reasons)
-APBS_SCRIPT_COMPONENTS = {
-  'header': read_template("000_placeion_header.in"),
-  'read':   read_template("001_placeion_read.in"),
-  # stage must be one of [cpx,ion,pro]
-  'elec':   read_template("002_placeion_elec.in"),
-  'printEnergy': read_template("003_placeion_printEnergy.in"),
-}
-def apbs_component(name, **kwargs):
-  return APBS_SCRIPT_COMPONENTS[name] % kwargs
-
 class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
 
-  padding_xy = 40.0
+  padding_xy = 40.0  # xy only used with use_cub_boundaries = False
   padding_z  = 80.0
  
-  def __init__(self, pqrfile, pointsfile, ionName='Na', ionicStrength=0.15, 
-               jobName='bornprofile', script=None, dime=None, temperature=300.0):
-    self.pqrName = pqrfile
-    self.pointsName = pointsfile
-    self.jobName = jobName
-    self.ion = IONS[ionName]
-    self.ionicStrength = ionicStrength
-    self.dime = dime or [97, 97, 193]
-    self.temperature = temperature
-    self.script = script
+  def __init__(self, *args, **kwargs):
+    if len(args) == 1:
+      # new style
+      import io
+      params = io.RunParameters(args[0])
+      self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
+      self.pqrName = os.path.realpath(kw.pop('pqr'))
+      self.pointsName = os.path.realpath(kw.pop('points'))
+      self.ion = IONS[kw.pop('ion', 'Na')]
+      self.jobName = kw.pop('name', "bornprofile")
+      self.ionicStrength = kw.pop('conc', 0.15)
+      self.temperature = kw.pop('temperature', 300.0)
+      self.sdie = kw.pop('sdie', 78.5)
+      self.pdie = kw.pop('pdie', 10.0)
+      self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
+      self.script = read_template(kw.pop('script', 'q_local.sh'))
+      dime = numpy.array(kw.pop('dime', [129,129,129]))
+      if len(dime.shape) == 2:
+        self.dime = dime[0]   # only take the first one in a triplet
+      else:
+        self.dime = dime
+      self.fglen = numpy.array(kw.pop('fglen', [40,40,40]))
+      # glen not needed, auto-set from pqr and padding
+    else:
+      import warnings
+      warnings.warn("Using deprecated Placeion(pqr,points) call", DeprecationWarning)
+      self.pqrName = os.path.realpath(args[0])
+      self.pointsName = os.path.realpath(args[1])
+      self.jobName = kwargs.pop('jobName', "bornprofile")
+      self.ion = IONS[kwargs.pop('ionName', 'Na')]
+      self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
+      self.temperature = kwargs.pop('temperature', 300.0)
+      self.sdie = kwargs.pop('sdie', 78.5)
+      self.pdie = kwargs.pop('pdie', 10.0)
+      self.dime = numpy.array(kwargs.pop('dime', [129,129,129]))
+      self.fglen = numpy.array(kwargs.pop('fglen', [40,40,40]))
+      self.script = read_template(kwargs.pop('script', 'q_local.sh'))
+      self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
 
-    self.cglen = [0, 0, 0]
+    self.cglen = numpy.array([0, 0, 0])  # automatically set by readPQR() + padding!
+    self.use_cubic_boundaries = True     # False uses old placeion.py algorithm: manually adjust fglen!!
     self.pqrLines = []
 
     self.readPQR()
@@ -180,99 +235,81 @@ class Placeion(BPbase):
     return self.writeJob()
 
   def readPQR(self):
+    """Read PQR file and determine the bounding box."""
     with open(self.pqrName, "r") as pqrFile:
       for line in pqrFile:
         if (line[0:4] == "ATOM"):
           self.pqrLines.append(line)
  
     # finding the cglen (coarse grid lengths) automatically
-    # This depends on correct spacing in the PQR file.
-    minDim = [+100000, +100000, +100000]
-    maxDim = [-100000, -100000, -100000]
-    for line in lines:
+    _coords = []
+    for line in self.pqrLines:
       if (line[0:4] == "ATOM"):
-        tokens = line.split()
-        for i in range(0, 3):
-          if float(tokens[i+5]) < minDim[i]:
-            minDim[i] = float(tokens[i+5])
-          if float(tokens[i+5]) > maxDim[i]:
-            maxDim[i] = float(tokens[i+5])
-    for i in [0, 1]:
-      self.cglen[i] = (maxDim[i] - minDim[i]) + self.padding_xy
-    self.cglen[2] = (maxDim[2] - minDim[2]) + self.padding_z
- 
-  def writePQRs(self):
-    # make directory
-    if (not os.path.exists(self.jobName)):
-      os.mkdir(self.jobName)
- 
-    # write protein
-    with open(self.jobpath(self.get_protein_name()), "w") as proFile:
-      for line in self.pqrLines:
-        proFile.write(line)
- 
-    # write complex and ion
-    for num,point in enumerate(self.points):
-      x,y,z = point
-      aID = 50000
-      rID = 10000
-      # born ion is always resname ION
-      ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
-      # write ion
-      with open(self.jobpath(self.get_ion_name(num)), "w") as ionFile:
-        ionFile.write(ionLines)
-      # write complex
-      with open(self.jobpath(self.get_complex_name(num)), "w") as cpxFile:
-        for line in self.pqrLines:
-          cpxFile.write(line)
-        cpxFile.write(ionLines)
-    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
-                self.jobName, num+1, self.ion.atomname)
-  
-  def writeIn(self):
-    for num,point in enumerate(self.points):
-      z = point[2]
-      with open(self.jobpath(self.infilename(num)), "w") as inFile:
-        inFile.write(apbs_component('header', z=z))
-        inFile.write(apbs_component('read', protein_pqr=self.get_protein_name(num),
-                                    ion_pqr=self.get_ion_name(num),
-                                    complex_pqr=self.get_complex_name(num)))
-        # TODO: make this a single monolithic template and get rid of 
-        # the baroque split-template thing
-        for count,what in enumerate(["pro", "ion", "cpx"]):          
-          inFile.write(apbs_component('elec', stage=what, molnum=count+1,
-                                      DIME_XYZ=self.get_XYZ_str(self.dime),
-                                      CGLEN_XYZ=self.get_XYZ_str(self.cglen),
-                                      conc=self.ionicStrength, temperature=self.temperature))
-        inFile.write(apbs_component('printEnergy', complex='cpx', ion='ion', protein='pro'))
+        fields = line.split()      # This depends on correct spacing in the PQR file.
+        _coords.append(map(float, fields[5:8]))
+    coords = numpy.array(_coords)
+    if self.use_cubic_boundaries:
+      # use largest cubic box (note: fglen is cubic in templates/placeion.in)
+      # but can be set in run parameters bornprofile.fglen.
+      paddings = numpy.max([self.padding_xy, self.padding_z])
+      L = (coords.max() - coords.min()) + paddings
+      self.cglen = numpy.array([L,L,L])
+    else:
+      # original placeion.py algorithm
+      # (note: for this to work better, the fglen in templates/placeion.in should
+      # match the ratio of box lengths)
+      paddings = numpy.array([self.padding_xy, self.padding_xy, self.padding_z])
+      self.cglen = (coords.max(axis=0) - coords.min(axis=0)) + paddings
+         
+  def writeIn(self, windows=None):
+    windows = self._process_window_numbers(windows)
+    for num in windows:
+      x,y,z = self.points[num]
+      # old-style ... manual setting up :-p
+      params = {'x': x, 'y': y, 'z': z, 'protein_pqr': self.get_protein_name(num),
+                'ion_pqr': self.get_ion_name(num), 'complex_pqr': self.get_complex_name(num),
+                'DIME_XYZ': self.get_XYZ_str(self.dime), 'CGLEN_XYZ': self.get_XYZ_str(self.cglen),
+                'FGLEN_XYZ': self.get_XYZ_str(self.fglen),
+                'conc': self.ionicStrength, 'temperature': self.temperature,
+                'sdie': self.sdie, 'pdie': self.pdie}
+      inPath = self.jobpath(self.get_windowdirname(num), self.infilename(num))
+      with open(inPath, "w") as inFile:
+        inFile.write(TEMPLATES['placeion'] % params)
 
-  def writeJob(self):
+  def writeJob(self, windows=None):
+    # TODO: consolidate with MPlaceion.writeJob
     if self.script is None:
       logger.warn("No script template provided; no queuing system scripts are written.")
       return None
 
+    windows = self._process_window_numbers(windows)
+
     bash_jobarray = []
-    for num,point in enumerate(self.points):
-      z = point[2]
+    for num in windows:
       scriptargs = {
         'jobname': self.window_jobname(num),
         'infile': self.infilename(num),
         'outfile': self.outfilename(num),
+        'drawmembrane_script': 'false',  # hack so that we can use th MPlaceion scripts...
+        'unpack_dxgz': 'false',          # hack so that we can use th MPlaceion scripts...
+        'apbs_version': '*',             # hack so that we can use th MPlaceion scripts...
         }
       scriptname = self.jobscriptname(num)
-      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptname))  # job array ids are 1-based!
-      with open(self.jobpath(scriptname), "w") as jobFile:
+      scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
+      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptpath))  # job array ids are 1-based!
+      with open(scriptpath, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
- 
+      os.chmod(scriptpath, 0755)
+
     qsubName = "qsub_" + self.jobName + ".bash"
     self.numJobs = self.points.shape[0]
     with open(qsubName, "w") as jobFile:
-      jobFile.write(TEMPLATES['q_array.sge'] % {
+      jobFile.write(self.arrayscript % {
           'jobName': self.jobName,
           'numJobs': self.numJobs,
           'jobArray': "\n".join(bash_jobarray),
           })
-    return num+1
+    return len(windows)
 
 
 class MPlaceion(BPbase):
@@ -344,6 +381,10 @@ class MPlaceion(BPbase):
       self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
       self.script = read_template(kw.pop('script', 'q_local.sh'))
 
+      # filter stuff... probably should do this in a cleaner manner (e.g. different
+      # sections in the parameter file?)
+      kw.pop('fglen', None)
+
       import membrane
       self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
     else:
@@ -386,43 +427,6 @@ class MPlaceion(BPbase):
         if (line[0:4] == "ATOM"):
           self.pqrLines.append(line)
 
-  def writePQRs(self, windows=None):
-    """Generate input pqr files for all windows and store them in separate directories."""
-    # NOTE: This is the only place where window numbers reference the sample points
-    #       at the moment: point = self.points[num]
-    windows = self._process_window_numbers(windows)
-    with in_dir(self.jobName):
-      # make directory if it does not exist and cd into it      
-      for num in windows:
-        windowdirname = self.get_windowdirname(num)
-        with in_dir(windowdirname):
-          # write protein (make hard-link to safe space)
-          try:
-            os.link(self.pqrName, self.get_protein_name())
-          except OSError, err:
-            if err.errno == errno.EEXIST:
-              pass
-            elif err.errno == errno.EXDEV:
-              import shutil
-              shutil.copy(self.pqrName, self.get_protein_name())
-            else:
-              raise
-          # write complex and ion 
-          x,y,z = self.points[num]  # index points with window id
-          aID = 99999
-          rID = 9999
-          # born ion is always resname ION
-          ionLines = self.getPqrLine(aID, self.ion.atomname, rID, 'ION', x, y, z, self.ion.charge, self.ion.radius)
-          # write ion
-          with open(self.get_ion_name(num), "w") as ionFile:
-            ionFile.write(ionLines)
-          # write complex
-          with open(self.get_complex_name(num), "w") as cpxFile:
-            for line in self.pqrLines:
-              cpxFile.write(line)
-            cpxFile.write(ionLines)
-    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
-                self.jobName, len(windows), self.ion.atomname)
 
   def writeJob(self, windows=None):
     """Write the job script.

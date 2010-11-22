@@ -25,13 +25,13 @@ class RunParameters(object):
     This class accesses these parameters and can create a template with the
     default values.
 
-    .. Note:: sdie=80 and mdie=2 are fixed in draw_membrane2.c at the moment
-
    :Parameters:
         - zmem : membrane centre (A)
         - lmem : membrane thickness (A)
-        - Vmem (untested)
+        - Vmem : cytosolic potential in kT/e (untested)
         - pdie : protein dielectric
+        - sdie:  solvent dielectric
+        - mdie:  membrane dielectric
         - Rtop : exclusion cylinder top
         - Rbot : exclusion cylinder bottom
         - temperature : temperature
@@ -47,6 +47,7 @@ class RunParameters(object):
     # list because this is how they are being used in the downstream code.
     # section -> key, convertor_function
     #     float, int, str: simple values
+    #     path:            expand ~ etc
     #     eval:            python expressions such as lists or tuples (NOT SAFE!!)
     bornprofile_parameters = \
         {'environment': [('temperature', float), ('conc', float), ('pdie', float),
@@ -54,7 +55,8 @@ class RunParameters(object):
          'membrane':    [('Rtop', float), ('Rbot', float), ('headgroup_die', float),
                          ('headgroup_l', float), ('mdie', float), ('Vmem', float),
                          ('lmem', float), ('zmem', float)],
-         'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('points', path)],
+         'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
+                         ('points', path)],
          'job': [('name', str), ('script', path), ('arrayscript', path)],
          }
 
@@ -100,16 +102,18 @@ class RunParameters(object):
         parser.set('environment', 'pqr', 'protein.pqr')
         parser.set('environment', 'temperature', '298.15')
         parser.set('environment', 'conc', '0.1')
-        parser.set('environment', 'pdie', '10.0') # hardcoded!
-        parser.set('environment', 'sdie', '80.0') # hardcoded in drawmembrane2a at the moment
+        parser.set('environment', 'pdie', '10.0')
+        parser.set('environment', 'sdie', '80.0')
         parser.add_section('bornprofile')
         parser.set('bornprofile', 'ion', 'Na')
         parser.set('bornprofile', 'dime', '[(129,129,129),(129,129,129),(129,129,129)]')
         parser.set('bornprofile', 'glen', '[(250,250,250),(100,100,100),(50,50,50)]')
+        parser.set('bornprofile', 'fglen', '(40,40,40)')
         parser.set('bornprofile', 'points', 'points.dat')
-        parser.add_section('potential')   # for membrane.APBSmem
+        parser.add_section('potential')   # for membrane.APBSmem -- not used yet
         parser.set('potential', 'dime', '(97,97,97)')
         parser.set('potential', 'glen', '(200,200,200)')
+        parser.set('potential', 'fglen', '(40,40,40)')
         parser.add_section('executables')
         parser.set('executables', 'drawmembrane', 'draw_membrane2a')
         parser.set('executables', 'apbs', 'apbs')
@@ -119,12 +123,15 @@ class RunParameters(object):
         parser.set('job', 'arrayscript', 'q_array.sge')
         
 
-    def get_bornprofile_kwargs(self, **kwargs):
+    def get_bornprofile_kwargs(self, *args, **kwargs):
         """Return a dict with kwargs appropriate for :class:`membrane.BornAPBSmem`.
 
         Default values can be supplied in *kwargs*. This method picks unique
         parameter keys from the relevant sections of the run parameters file
         (i.e. *bornprofile*, *membrane*, and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
         """
         kw = {}
         for section,parameters  in self.bornprofile_parameters.items():
@@ -135,6 +142,10 @@ class RunParameters(object):
                     logger.error("Problem obtaining required parameter "
                                  "[%(section)s] %(option)s from "+str(self.filename), vars())
                     raise
+        if len(args) == 1:
+            return kw[args[0]]
+        elif len(args) > 0:
+            return [kw[k] for k in args]
         return kw
 
     def write(self, filename=None):
