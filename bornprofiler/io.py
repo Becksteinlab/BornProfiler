@@ -119,12 +119,15 @@ class RunParameters(object):
         parser.set('job', 'arrayscript', 'q_array.sge')
         
 
-    def get_bornprofile_kwargs(self, **kwargs):
+    def get_bornprofile_kwargs(self, *args, **kwargs):
         """Return a dict with kwargs appropriate for :class:`membrane.BornAPBSmem`.
 
         Default values can be supplied in *kwargs*. This method picks unique
         parameter keys from the relevant sections of the run parameters file
         (i.e. *bornprofile*, *membrane*, and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
         """
         kw = {}
         for section,parameters  in self.bornprofile_parameters.items():
@@ -135,6 +138,10 @@ class RunParameters(object):
                     logger.error("Problem obtaining required parameter "
                                  "[%(section)s] %(option)s from "+str(self.filename), vars())
                     raise
+        if len(args) == 1:
+            return kw[args[0]]
+        elif len(args) > 0:
+            return [kw[k] for k in args]
         return kw
 
     def write(self, filename=None):
