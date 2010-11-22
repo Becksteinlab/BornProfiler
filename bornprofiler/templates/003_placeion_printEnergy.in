@@ -1,2 +1,0 @@
-PRINT elecEnergy %(complex)s - %(ion)s - %(protein)s END
-QUIT
