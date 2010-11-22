@@ -381,6 +381,10 @@ class MPlaceion(BPbase):
       self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
       self.script = read_template(kw.pop('script', 'q_local.sh'))
 
+      # filter stuff... probably should do this in a cleaner manner (e.g. different
+      # sections in the parameter file?)
+      kw.pop('fglen', None)
+
       import membrane
       self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
     else:

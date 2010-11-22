@@ -66,6 +66,26 @@ logger = logging.getLogger("bornprofiler.config")
 APBS_MINIMUM_VERSION = 1,3   # want to be able to read gzipped files
 DRAWMEMBRANE_REQUIRED_VERSION = "draw_membrane2a.c"
 
+# User-accessible configuration
+# -----------------------------
+#
+# TODO: move into config file!!
+# These are the default values; eventually they should be re-read from config
+
+defaults = {}
+
+#: Directory to store user templates and rc files.
+#: The default value is ``~/.bornprofiler``.
+defaults['configdir'] = os.path.expanduser(os.path.join("~",".bornprofiler"))
+
+#: Directory to store user supplied queuing system scripts.
+#: The default value is ``~/.bornprofiler/qscripts``.
+defaults['qscriptdir'] = os.path.join(defaults['configdir'], 'qscripts')
+
+#: Directory to store user supplied template files such as mdp files.
+#: The default value is ``~/.bornprofiler/templates``.
+defaults['templatesdir'] = os.path.join(defaults['configdir'], 'templates')
+
 
 # Processing of the configuration file
 # ------------------------------------ 
@@ -74,23 +94,38 @@ DRAWMEMBRANE_REQUIRED_VERSION = "draw_membrane2a.c"
 CONFIGNAME = os.path.expanduser(os.path.join("~",".bornprofiler.cfg"))
 
 #: Instance of :class:`ConfigParser.SafeConfigParser`.
-cfg = SafeConfigParser()
+class BPConfigParser(SafeConfigParser):
+    def get_path(self, section, option):
+        """Return option as an expanded path."""
+        return os.path.expanduser(os.path.expandvars(self.get(section, option)))
+
+cfg = BPConfigParser()
 
 def get_configuration(filename=CONFIGNAME):
     """Reads and parses the configuration file."""
+
+    # defaults
+    cfg.set('DEFAULT', 'configdir', defaults['configdir'])
+    cfg.set('DEFAULT', 'qscriptdir', 
+            os.path.join("%(configdir)s", os.path.basename(defaults['qscriptdir'])))
+    cfg.set('DEFAULT', 'templatesdir', 
+            os.path.join("%(configdir)s", os.path.basename(defaults['templatesdir'])))
+    cfg.add_section('membrane')
+    cfg.add_section('executables')
+    cfg.set('executables', 'drawmembrane', 'draw_membrane2a')
+    cfg.set('executables', 'apbs', 'apbs')
+
     if not os.path.exists(filename):
-        cfg.add_section('membrane')
-        cfg.set('membrane', 'class','APBSmem')
-        cfg.add_section('executables')
-        cfg.set('executables', 'drawmembrane', 'draw_membrane2a')
-        cfg.set('executables', 'apbs', 'apbs')
         with open(filename, 'w') as configfile:
-            cfg.write(configfile)  # write the default file
+            cfg.write(configfile)  # write the default file so that user can edit
+        print(("NOTE: BornProfiler created the configuration file \n\t%r\n"+
+               "      for you. Edit the file to customize the package.") % filename)
     else:
+        # overwrite defaults
         cfg.readfp(open(filename))
 
-    return {'apbs': cfg.get('executables', 'apbs'),
-            'drawmembrane': cfg.get('executables', 'drawmembrane'),
+    return {'apbs': cfg.get_path('executables', 'apbs'),
+            'drawmembrane': cfg.get_path('executables', 'drawmembrane'),
             'configfilename': filename,
             }
 
@@ -98,25 +133,10 @@ def get_configuration(filename=CONFIGNAME):
 #: :func:`get_configuration`.
 configuration = get_configuration()    
 
-# User-accessible configuration
-# -----------------------------
-#
-# TODO: move into config file!!
+configdir = cfg.get_path('DEFAULT', 'configdir')
+qscriptdir = cfg.get_path('DEFAULT', 'qscriptdir')
+templatesdir = cfg.get_path('DEFAULT', 'templatesdir')
 
-#: Directory to store user templates and rc files.
-#: The default value is ``~/.bornprofiler``.
-configdir = os.path.expanduser(os.path.join("~",".bornprofiler"))
-
-#: Directory to store user supplied queuing system scripts.
-#: The default value is ``~/.bornprofiler/qscripts``.
-qscriptdir = os.path.join(configdir, 'qscripts')
-
-#: Directory to store user supplied template files such as mdp files.
-#: The default value is ``~/.bornprofiler/templates``.
-templatesdir = os.path.join(configdir, 'templates')
-
-#: Directory to store user python modules.
-libdir = os.path.join(configdir, 'lib')
 
 def setup():
     """Create the directories in which the user can store template and config files.
