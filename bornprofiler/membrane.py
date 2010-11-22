@@ -55,6 +55,8 @@ class BaseMem(object):
            - lmem : membrane thickness (A)
            - Vmem (untested)
            - pdie : protein dielectric
+           - sdie: solvent dielectric
+           - mdie: membrane dielectric
            - Rtop : exclusion cylinder top
            - Rbot : exclusion cylinder bottom
            - temperature : temperature
@@ -88,8 +90,8 @@ class BaseMem(object):
         self.zmem = kwargs.pop('zmem', 0.0)
         self.lmem = kwargs.pop('lmem', 40.0)
         self.Vmem = kwargs.pop('Vmem', 0.0)  # potential (untested)
-        self.mdie = kwargs.pop('mdie', 2.0)  # membrane -- HARDCODED in draw_membrane2.c !!
-        self.sdie = kwargs.pop('sdie', 80.0)  # idie (solvent) -- HARDCODED in draw_membrane2.c !!
+        self.mdie = kwargs.pop('mdie', 2.0)  # membrane
+        self.sdie = kwargs.pop('sdie', 80.0)  # idie (solvent)
         #self.sdie = kwargs.pop('sdie', 78.5)  # idie (solvent), Eisenberg and Crothers Phys. Chem. book 1979
         self.pdie = kwargs.pop('pdie', 10.0)  # protein
         self.hdie = kwargs.pop('headgroup_die', 20.0)
@@ -146,11 +148,13 @@ class BaseMem(object):
         # hardcoded names dielx<infix>.dx etc!
         infix = kwargs.pop('infix', self.suffix)
         v.update(kwargs)  # override with kwargs
-        cmdline = [self.drawmembrane, infix] + \
-            map(str, [v['zmem'], v['lmem'], v['pdie'], v['Vmem'], v['conc'],
-                      v['Rtop'], v['Rbot']])
+        cmdline = [self.drawmembrane] + \
+            map(str, ["-z", v['zmem'], "-d", v['lmem'], "-p", v['pdie'], 
+                      "-s", v["sdie"], "-m", v["mdie"], "-V", v['Vmem'], 
+                      "-I", v['conc'], "-R", v['Rtop'], "-r", v['Rbot']])
         if self.dxformat == "gz":
-            cmdline.append('gz')   # special version draw_membrane2a that can deal with gz
+            cmdline.append('-Z')   # special version draw_membrane2a that can deal with gz
+        cmdline.append(infix)
         logger.info("COMMAND: %s", " ".join(cmdline))
         rc = call(cmdline)
         if rc != 0:
@@ -245,7 +249,7 @@ class APBSmem(BaseMem):
                      "pqr,suffix,pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ,GLEN_XYZ",
                      'drawmembrane2': 
-                     "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot,suffix"}
+                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot,suffix"}
         # generate names
         d = {}
         d['DIME_XYZ'] = self.vec2str(self.dime)
@@ -338,7 +342,7 @@ class BornAPBSmem(BaseMem):
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
                      'drawmembrane2': 
-                     "zmem,lmem,pdie,Vmem,conc,Rtop,Rbot",
+                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot",
                      }
         self.vars['born_setup_script'] = \
             ",".join([self.vars['drawmembrane2'],
@@ -353,12 +357,12 @@ class BornAPBSmem(BaseMem):
         # process the drawmembrane parameters
         super(BornAPBSmem, self).__init__(*args[3:], **kwargs)
 
-    def generate(self, run=True):
+    def generate(self, run=False):
         """Setup solvation calculation.
 
         If *run* = ``True`` then runs :program:`apbs` and
-        :program:`draw_membrane2` (which can take a few minutes);
-        otherwise just generate scripts.
+        :program:`draw_membrane2` (which can take a few minutes); otherwise
+        just generate scripts (default).
 
         *run* = ``True``
           1. create exclusion maps (runs :program:`apbs` through :meth:`run_apbs`)

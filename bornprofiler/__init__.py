@@ -39,4 +39,17 @@ def stop_logging():
     logger.info("BornProfiler STOPPED logging")
     log.clear_handlers(logger)  # this _should_ do the job...
 
-import core, custom
+import core, custom, io
+
+def write_parameters(filename, **defaults):
+    """Write a default parameter file to *filename*.
+
+    key-value pairs in *kwargs* are written to the DEFAULT section of
+    the parameter file. Edit the file with a text editor and then use
+    it as input for :class:`core.MPlaceion`.
+
+    .. Note:: If the file already exists then it will be updated but
+              not reset to the default values of all sections.
+    """
+    p = io.RunParameters(filename, **defaults)
+    return p.write()
