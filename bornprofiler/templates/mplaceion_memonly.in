@@ -141,7 +141,7 @@ ELEC name complex_L
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 1-3
+  usemap diel 1
   usemap kappa 1
   usemap charge 1
 END
@@ -170,7 +170,7 @@ ELEC name complex_M
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 4-6
+  usemap diel 2
   usemap kappa 2
   usemap charge 2
 END
@@ -196,7 +196,7 @@ ELEC name complex_S
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 7-9
+  usemap diel 3
   usemap kappa 3
   usemap charge 3
 END

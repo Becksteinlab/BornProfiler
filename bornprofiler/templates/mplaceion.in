@@ -68,7 +68,7 @@ ELEC name protein_L
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 1-3
+  usemap diel 1
   usemap kappa 1
   usemap charge 1
 END
@@ -96,7 +96,7 @@ ELEC name protein_M
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 4-6
+  usemap diel 2
   usemap kappa 2
   usemap charge 2
 END
@@ -122,7 +122,7 @@ ELEC name protein_S
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 7-9
+  usemap diel 3
   usemap kappa 3
   usemap charge 3
 END
@@ -233,7 +233,7 @@ ELEC name complex_L
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 10-12
+  usemap diel 4
   usemap kappa 4
   usemap charge 4
 END
@@ -262,7 +262,7 @@ ELEC name complex_M
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 13-15
+  usemap diel 5
   usemap kappa 5
   usemap charge 5
 END
@@ -288,7 +288,7 @@ ELEC name complex_S
   temp %(temperature).2f
   calcenergy total
   calcforce no
-  usemap diel 16-18
+  usemap diel 6
   usemap kappa 6
   usemap charge 6
 END
