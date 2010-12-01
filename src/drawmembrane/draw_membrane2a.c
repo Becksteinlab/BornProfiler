@@ -26,6 +26,8 @@
              added reading/writing of gz-compressed files
  2010-11-22  OB: switched to opt processing (completely breaks interface
              but allows setting of sdie, mdie and pdie)
+ 2010-12-01  OB: added cdie: cylinder dielectric
+
  */
 
 #include <stdio.h>
@@ -297,12 +299,13 @@ void printhelp() {
 	 "  -h          this help\n"
 	 "  -z z_m0     bottom of the membrane [-20]\n"
 	 "  -d l_m      membrane thickness (Angstrom) [40]\n"
-	 "  -V V        cytoplasmic potential (kT/e)  [0]\n"
+	 "  -V V        cytoplasmic potential (kT/e)  [0] UNTESTED\n"
 	 "  -I I        molar conc. of one salt-species [0.1]\n"
 	 "  -R R_m1     excl. radius at top of  membrane [0]\n" 
 	 "  -r R_m0     excl. radius at  bottom of membrane [0]\n"
 	 "  -p PDIE     protein dielectric constant [10]\n"
 	 "  -s SDIE     solvent dielectric [80]\n"   
+	 "  -c CDIE     channel dielectric for (z_m0,R_m0)->(z_m0+l_m,R_m1) [SDIE]\n"   
 	 "  -m MDIE     membrane dielectric [2]\n"            
 	 "  -Z          read and write gzipped files\n"                    
 	 "\n"	                                               
@@ -345,7 +348,7 @@ float x0_x, y0_x, z0_x;
 float x0_y, y0_y, z0_y; 
 float x0_z, y0_z, z0_z; 
 float x0, y0, z0;
-float V=0, I=0.1, sdie=80, pdie=10, mdie=2;
+float V=0, I=0.1, sdie, cdie, pdie, mdie;
 float l_m=40;
 float z_m0=0, z_m1, R_m0=0, R_m1=0;
 float R_x, R_y, R_z, R, R_temp;
@@ -359,10 +362,10 @@ int c;
 
 
 printf("----------------------------------------------------------------\n");
-printf("* draw_membrane2a.c                                   11/22/10 *\n");  /* magic version line */
+printf("* draw_membrane2a.c                                   12/01/10 *\n");  /* magic version line */
 printf("----------------------------------------------------------------\n");
 printf("draw_membrane2a -- (c) 2008 Michael Grabe [09/02/08]\n");
-printf("                   (c) 2010 Oliver Beckstein (options&gzipped files) [11/22/10]\n");
+printf("                   (c) 2010 Oliver Beckstein (options&gzipped files) [12/01/10]\n");
 printf("Published under the Open Source MIT License (see http://sourceforge.net/projects/apbsmem/).\n");
 printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
 printf("----------------------------------------------------------------\n");
@@ -370,6 +373,7 @@ printf("----------------------------------------------------------------\n");
 /* explicit defaults for options */
 mdie = 2.0;    /* watch out for this it used to be 10.0 */ 
 sdie = 80.0;
+cdie = -1;     /* set to sdie iff < 0 */
 pdie = 10.0;
 
 z_m0 = -20;    /* lower z of membrane */  
@@ -380,7 +384,7 @@ R_m0 = 0;      /* lower exclusion radius */
 
 
  opterr = 0;
- while ((c = getopt(argc, argv, "hZz:d:s:m:p:V:I:r:R:")) != -1) {
+ while ((c = getopt(argc, argv, "hZz:d:s:c:m:p:V:I:r:R:")) != -1) {
    switch(c) {
    case 'h':
      printhelp();
@@ -394,6 +398,9 @@ R_m0 = 0;      /* lower exclusion radius */
    case 's':
      sdie = atof(optarg);
      break;
+   case 'c':
+     cdie = atof(optarg);
+     break;
    case 'm':
      mdie = atof(optarg);
      break;
@@ -401,7 +408,7 @@ R_m0 = 0;      /* lower exclusion radius */
      pdie = atof(optarg);
      break;
    case 'V':
-     V = atof(optarg);  /* membrane potential --- convert from mV to kT/e */
+     V = atof(optarg);  /* membrane potential in kT/e--- TODO: use mV as input */
      break;
    case 'I':
      I = atof(optarg);  /* ionic strength in mol/l */
@@ -416,9 +423,9 @@ R_m0 = 0;      /* lower exclusion radius */
      compression = TRUE;
      break;
    case '?':
-     if (optopt == 'z' || optopt == 'd' || optopt == 's' || optopt == 'm' ||
-	 optopt == 'p' || optopt == 'V' || optopt == 'I' || optopt == 'r' ||
-	 optopt == 'R')
+     if (optopt == 'z' || optopt == 'd' || optopt == 's' || optopt == 'c' ||
+	 optopt == 'm' || optopt == 'p' || optopt == 'V' || optopt == 'I' || 
+	 optopt == 'r' || optopt == 'R')
        fprintf(stderr, "Option -%c requires an argument.\n", optopt);
      else 
        fprintf(stderr, "Unknown option `-%c'.\n", optopt);  // should check isprint(optopt)...
@@ -429,7 +436,7 @@ R_m0 = 0;      /* lower exclusion radius */
  }
 
 if (argc-optind < 1) {
-  fprintf(stderr, "Only %d argument%s on the commandline, at least 1 "
+  fprintf(stderr, "Only %d argument%s on the commandline, one (the infix) is "
 	  "required. See `-h' for help.\n", 
 	  argc-optind, argc-optind==1 ? "":"s");
   return 1;
@@ -445,10 +452,16 @@ else {
   printf("Reading un-compressed dx files (default).\n");
 }   
 
+if (cdie < 0)
+  cdie = sdie;
+if (cdie != sdie && (R_m0 > 0 || R_m1 > 0)) {
+  printf("Using different dielectric in channel (%.1f) than in bulk (%.1f)\n", cdie, sdie);
+}
+	 
 printf("Running with these arguments:\n");
-printf(">>> draw_membrane2a %s -s %.1f -m %.1f -p %.1f -V %.3f -I %.3f "
+printf(">>> draw_membrane2a %s -s %.1f -c %.1f -m %.1f -p %.1f -V %.3f -I %.3f "
        "-z %.3f -d %.3f -r %.1f -R %.1f  %s\n",
-       compression ? "-Z" : "", sdie, mdie, pdie, V, I,
+       compression ? "-Z" : "", sdie, cdie, mdie, pdie, V, I,
        z_m0, l_m, R_m0, R_m1, infix);
 
 /* Find the x-shifted dielectric map 
@@ -735,26 +748,23 @@ for (k=1; k <= dim_x; ++k)  /* loop over z */
                         R_x = sqrt((x_x[k]-x0_p)*(x_x[k]-x0_p) + (y_x[j]-y0_p)*(y_x[j]-y0_p));	
 		        R_temp = (R_m1*(z_x[i]-z_m0) - R_m0*(z_x[i]-z_m1))/(z_m1 - z_m0);  	
 
-                        if (z_x[i] <= z_m1 && z_x[i] >= z_m0 && R_x > R_temp && d_x[cnt] > pdie+0.05) 
-		        {	
-                        d_x[cnt] = mdie;   /* bilayer dielectric constant */
-                        }
+                        if (z_x[i] <= z_m1 && z_x[i] >= z_m0 && d_x[cnt] > pdie+0.05) 
+			  d_x[cnt] = (R_x > R_temp) ? mdie : cdie;
+			/* bilayer dielectric constant outside channel,
+			   channel dielectric constant inside channel 
+			*/
 
                         R_y = sqrt((x_y[k]-x0_p)*(x_y[k]-x0_p) + (y_y[j]-y0_p)*(y_y[j]-y0_p));
                         R_temp = (R_m1*(z_y[i]-z_m0) - R_m0*(z_y[i]-z_m1))/(z_m1 - z_m0);
  
-                        if (z_y[i] <= z_m1 && z_y[i] >= z_m0 && R_y > R_temp && d_y[cnt] > pdie+0.05)
-                        {      
-                        d_y[cnt] = mdie;   /* bilayer dielectric constant */
-                        }
+                        if (z_y[i] <= z_m1 && z_y[i] >= z_m0 && d_y[cnt] > pdie+0.05)
+			  d_y[cnt] = (R_y > R_temp) ? mdie : cdie;
 
                         R_z = sqrt((x_z[k]-x0_p)*(x_z[k]-x0_p) + (y_z[j]-y0_p)*(y_z[j]-y0_p));
                         R_temp = (R_m1*(z_z[i]-z_m0) - R_m0*(z_z[i]-z_m1))/(z_m1 - z_m0);
 
-                        if (z_z[i] <= z_m1 && z_z[i] >= z_m0 && R_z > R_temp && d_z[cnt] > pdie+0.05)
-                        {      
-                        d_z[cnt] = mdie;   /* bilayer dielectric constant */
-                        }
+                        if (z_z[i] <= z_m1 && z_z[i] >= z_m0 && d_z[cnt] > pdie+0.05)
+			  d_z[cnt] = (R_z > R_temp) ? mdie : cdie;
 
                         R = sqrt((x[k]-x0_p)*(x[k]-x0_p) + (y[j]-y0_p)*(y[j]-y0_p));
 
