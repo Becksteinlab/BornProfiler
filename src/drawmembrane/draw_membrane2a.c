@@ -67,7 +67,7 @@ char *newname(const char *prefix, const char *infix, const char *suffix, const b
   n = strlen(suffix);
   p = strlen(compression_suffix);
   
-  s = (char*)calloc(l+m+n+p+1, sizeof(char)); /* must be free in calling code! */
+  s = calloc(l+m+n+p+1, sizeof(char)); /* must be free in calling code! */
   if (NULL == s) {
     printf("newname: Failed to allocate string.");
     exit(EXIT_FAILURE);
@@ -279,6 +279,40 @@ int write_attr_positions(const bool compression, void *stream) {
   return status;
 }
 
+typedef struct {
+  float z_m0;
+  float z_m1;
+  float z_h0;
+  float z_h1;
+  float pdie;
+  float mdie;
+  float cdie;
+  float idie;
+  float R_m0; /* exclusion radii */
+  float R_m1;
+  float x0_p; /* x and y of protein */
+  float y0_p;
+} t_membrane;
+
+#define SQR(x) ((x)*(x))
+
+void draw_diel(const t_membrane *M, float *d, const float x, const float y, const float z) {
+  float R, R_temp;
+  R = sqrt(SQR(x - M->x0_p) + SQR(y - M->y0_p));	
+  R_temp = (M->R_m1*(z - M->z_m0) - M->R_m0*(z - M->z_m1))/(M->z_m1 - M->z_m0);  	
+
+  if (z <= M->z_m1 && z >= M->z_m0 && *d > M->pdie+0.05) {
+    if (R > R_temp) {
+      *d =  (z <= M->z_h1 && z >= M->z_h0 ) ? M->mdie: M->idie; 
+      /* bilayer or headgroup dielectric constant outside channel */
+    }
+    else {
+      *d = M->cdie;   /* channel dielectric */
+    }
+  }
+}
+  
+
 void printhelp() {
   printf("\nusage: draw_membrane2a [options] infix\n"
 	 "\n"
@@ -289,6 +323,8 @@ void printhelp() {
 	 "before running this program.  We also output a charge_change_map that\n"
 	 "tells me which positions in the charge matrix were edited by the\n"
 	 "addition of the membrane.\n"
+	 "If a headgroup region (-a l_h -i IDIE) is selected, then the hydrophobic core\n"
+	 "of the membrane (eps=MDIE) is modelled with a thickness of l_m - 2*l_h.\n"
 	 "\n"
 	 "ARGUMENTS:\n"
 	 "\n"
@@ -298,7 +334,8 @@ void printhelp() {
 	 "OPTIONS:\n"
 	 "  -h          this help\n"
 	 "  -z z_m0     bottom of the membrane [-20]\n"
-	 "  -d l_m      membrane thickness (Angstrom) [40]\n"
+	 "  -d l_m      total membrane thickness (Angstrom) [40]\n"
+	 "  -a l_h      headgroup thickness (Angstrom) [0]\n"
 	 "  -V V        cytoplasmic potential (kT/e)  [0] UNTESTED\n"
 	 "  -I I        molar conc. of one salt-species [0.1]\n"
 	 "  -R R_m1     excl. radius at top of  membrane [0]\n" 
@@ -307,6 +344,7 @@ void printhelp() {
 	 "  -s SDIE     solvent dielectric [80]\n"   
 	 "  -c CDIE     channel dielectric for (z_m0,R_m0)->(z_m0+l_m,R_m1) [SDIE]\n"   
 	 "  -m MDIE     membrane dielectric [2]\n"            
+	 "  -i IDIE     headgroup dielectric [MDIR]\n"            
 	 "  -Z          read and write gzipped files\n"                    
 	 "\n"	                                               
 	 "OUTPUTS:\n"
@@ -348,10 +386,10 @@ int main(int argc, char *argv[])
   float x0_y, y0_y, z0_y; 
   float x0_z, y0_z, z0_z; 
   float x0, y0, z0;
-  float V=0, I=0.1, sdie, cdie, pdie, mdie;
-  float l_m=40;
-  float z_m0=0, z_m1, R_m0=0, R_m1=0;
-  float R_x, R_y, R_z, R, R_temp;
+  float V=0, I=0.1, sdie, cdie, pdie, mdie, idie;
+  float l_m=40, a0=0;
+  float z_m0=0, z_m1, au, ad, R_m0=0, R_m1=0;
+  float R, R_temp;
   char infix[MAXLEN];
   char *file_name_x, *file_name_y, *file_name_z;
   char *file_name_k, *file_name_c;
@@ -359,22 +397,25 @@ int main(int argc, char *argv[])
   char ext[5]="m.dx";
   bool compression = FALSE;
   int c;
+  t_membrane Membrane;
  
 
   printf("----------------------------------------------------------------\n");
   printf("* draw_membrane2a.c                                   12/01/10 *\n");  /* magic version line */
   printf("----------------------------------------------------------------\n");
-  printf("draw_membrane2a -- (c) 2008 Michael Grabe [09/02/08]\n");
-  printf("                   (c) 2010 Oliver Beckstein (options&gzipped files) [12/01/10]\n");
+  printf("draw_membrane2  -- (c) 2008 Michael Grabe [09/02/08]\n");
+  printf("draw_membrane4  -- (c) 2010 Michael Grabe [07/29/10]\n");
+  printf("draw_membrane2a -- (c) 2010 Oliver Beckstein (options&gzipped files) [12/01/10]\n");
   printf("Published under the Open Source MIT License (see http://sourceforge.net/projects/apbsmem/).\n");
   printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
   printf("----------------------------------------------------------------\n");
   
   /* explicit defaults for options */
-  mdie = 2.0;    /* watch out for this it used to be 10.0 */ 
+  mdie = 2.0;    /* watch out for this used to be 10.0 */ 
+  idie = -1;     /* set to mdie iff < 0 */
   sdie = 80.0;
   cdie = -1;     /* set to sdie iff < 0 */
-  pdie = 10.0;
+  pdie = 10.0;   /* MUST match the value set in APBS !! */
   
   z_m0 = -20;    /* lower z of membrane */  
   l_m = 40;      /* thickness of membrane */
@@ -384,7 +425,7 @@ int main(int argc, char *argv[])
 
 
   opterr = 0;
-  while ((c = getopt(argc, argv, "hZz:d:s:c:m:p:V:I:r:R:")) != -1) {
+  while ((c = getopt(argc, argv, "hZz:d:s:c:m:p:i:a:V:I:r:R:")) != -1) {
     switch(c) {
     case 'h':
       printhelp();
@@ -395,6 +436,9 @@ int main(int argc, char *argv[])
     case 'd':
       l_m = atof(optarg);
       break;
+    case 'a':
+      a0 = atof(optarg);
+      break;
     case 's':
       sdie = atof(optarg);
       break;
@@ -403,6 +447,9 @@ int main(int argc, char *argv[])
       break;
     case 'm':
       mdie = atof(optarg);
+      break;
+    case 'i':
+      idie = atof(optarg);
       break;
     case 'p':
       pdie = atof(optarg);
@@ -424,6 +471,7 @@ int main(int argc, char *argv[])
       break;
     case '?':
       if (optopt == 'z' || optopt == 'd' || optopt == 's' || optopt == 'c' ||
+	  optopt == 'i' || optopt == 'a' ||
 	  optopt == 'm' || optopt == 'p' || optopt == 'V' || optopt == 'I' || 
 	  optopt == 'r' || optopt == 'R')
 	fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -457,10 +505,15 @@ int main(int argc, char *argv[])
   if (cdie != sdie && (R_m0 > 0 || R_m1 > 0))
     printf("Using different dielectric in channel (%.1f) than in bulk (%.1f)\n", cdie, sdie);
   
+  if (idie < 0)
+    idie = mdie;
+  if (idie != mdie || a0 > 0)
+    printf("Modelling headgroup region of thickness %.1f with epsilon=%.1f\n", a0, idie);
+
   printf("Running with these arguments:\n");
-  printf(">>> draw_membrane2a %s -s %.1f -c %.1f -m %.1f -p %.1f -V %.3f -I %.3f "
-	 "-z %.3f -d %.3f -r %.1f -R %.1f  %s\n",
-	 compression ? "-Z" : "", sdie, cdie, mdie, pdie, V, I,
+  printf(">>> draw_membrane2a %s -s %.1f -c %.1f -m %.1f -p %.1f -i %.1f -a %.1f "
+	 "-V %.3f -I %.3f -z %.3f -d %.3f -r %.1f -R %.1f  %s\n",
+	 compression ? "-Z" : "", sdie, cdie, mdie, pdie, idie, a0, V, I,
 	 z_m0, l_m, R_m0, R_m1, infix);
 
   /* Find the x-shifted dielectric map 
@@ -483,7 +536,9 @@ int main(int argc, char *argv[])
   file_name_c = newname("charge", infix, NULL, compression);
 
 
-  z_m1=z_m0+l_m;   /* top of the membrane */
+  z_m1 = z_m0 + l_m;   /* top of the membrane */
+  au = z_m1 - a0;      /* bottom of upper head group region */
+  ad = z_m0 + a0;      /* top of lower head group region */
 
   /*****************************************************/
   /* read in the x-shifted dielectric data             */
@@ -502,25 +557,25 @@ int main(int argc, char *argv[])
 
   /* assign the memory to the arrays */
 
-  x_x = (float *) calloc(dim_x+1,sizeof(float));
-  y_x = (float *) calloc(dim_y+1,sizeof(float));
-  z_x = (float *) calloc(dim_z+1,sizeof(float));
-  x_y = (float *) calloc(dim_x+1,sizeof(float));
-  y_y = (float *) calloc(dim_y+1,sizeof(float));
-  z_y = (float *) calloc(dim_z+1,sizeof(float));
-  x_z = (float *) calloc(dim_x+1,sizeof(float));
-  y_z = (float *) calloc(dim_y+1,sizeof(float));
-  z_z = (float *) calloc(dim_z+1,sizeof(float));
-  d_x = (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  d_y = (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  d_z = (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
+  x_x = calloc(dim_x+1,sizeof(float));
+  y_x = calloc(dim_y+1,sizeof(float));
+  z_x = calloc(dim_z+1,sizeof(float));
+  x_y = calloc(dim_x+1,sizeof(float));
+  y_y = calloc(dim_y+1,sizeof(float));
+  z_y = calloc(dim_z+1,sizeof(float));
+  x_z = calloc(dim_x+1,sizeof(float));
+  y_z = calloc(dim_y+1,sizeof(float));
+  z_z = calloc(dim_z+1,sizeof(float));
+  d_x = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
+  d_y = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
+  d_z = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
   /* Now the Kappa and charge Arrays */
-  x = (float *) calloc(dim_x+1,sizeof(float));
-  y = (float *) calloc(dim_y+1,sizeof(float));
-  z = (float *) calloc(dim_z+1,sizeof(float));
-  kk = (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  cc = (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  map = (int *) calloc(dim_x*dim_y*dim_z+1,sizeof(int));
+  x = calloc(dim_x+1,sizeof(float));
+  y = calloc(dim_y+1,sizeof(float));
+  z = calloc(dim_z+1,sizeof(float));
+  kk = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
+  cc = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
+  map = calloc(dim_x*dim_y*dim_z+1,sizeof(int));
 
   /* initialize x,y,z, and diel vectors */
 
@@ -560,11 +615,23 @@ int main(int argc, char *argv[])
   /* This will be used to determine where to add      */
   /* membrane.                                        */ 
   /****************************************************/
-
-  x0_p = x0_x+l_c_x/2-dx/2;  /* this is the shift term that */ 
-                             /* moves half-step off grid    */ 
+  x0_p = x0_x+l_c_x/2-dx/2;  /* this is the shift term that moves half-step off grid */ 
   y0_p = y0_x+l_c_y/2;
   z0_p = z0_x+l_c_z/2;
+
+  /* TODO: use t_membrane throughout, currently only used for draw() */
+  Membrane.z_m0 = z_m0;
+  Membrane.z_m1 = z_m1;
+  Membrane.z_h0 = ad;
+  Membrane.z_h1 = au;
+  Membrane.pdie = pdie;
+  Membrane.mdie = mdie;
+  Membrane.cdie = cdie;
+  Membrane.idie = idie;
+  Membrane.R_m0 = R_m0;
+  Membrane.R_m1 = R_m1;
+  Membrane.x0_p = x0_p;
+  Membrane.y0_p = y0_p;
 
 
   /*****************************************************/
@@ -720,7 +787,7 @@ int main(int argc, char *argv[])
   /*****************************************************/
   /* MANIPULATE THE DATA BY ADDING THE MEMBRANE        */      
   /*****************************************************/
-
+  
   /******************************************************/
   /* set up the vector                                  */
   /******************************************************/
@@ -729,28 +796,9 @@ int main(int argc, char *argv[])
   for (k=1; k <= dim_x; ++k) {  /* loop over z */
     for (j=1; j <= dim_y; ++j) {  /* loop over y */
       for (i=1; i <= dim_z; ++i) {  /* loop over x */
-	R_x = sqrt((x_x[k]-x0_p)*(x_x[k]-x0_p) + (y_x[j]-y0_p)*(y_x[j]-y0_p));	
-	R_temp = (R_m1*(z_x[i]-z_m0) - R_m0*(z_x[i]-z_m1))/(z_m1 - z_m0);  	
-
-	if (z_x[i] <= z_m1 && z_x[i] >= z_m0 && d_x[cnt] > pdie+0.05) 
-	  d_x[cnt] = (R_x > R_temp) ? mdie : cdie;
-	/* bilayer dielectric constant outside channel,
-	   channel dielectric constant inside channel 
-	*/
-
-	R_y = sqrt((x_y[k]-x0_p)*(x_y[k]-x0_p) + (y_y[j]-y0_p)*(y_y[j]-y0_p));
-	R_temp = (R_m1*(z_y[i]-z_m0) - R_m0*(z_y[i]-z_m1))/(z_m1 - z_m0);
- 
-	if (z_y[i] <= z_m1 && z_y[i] >= z_m0 && d_y[cnt] > pdie+0.05)
-	  d_y[cnt] = (R_y > R_temp) ? mdie : cdie;
-
-	R_z = sqrt((x_z[k]-x0_p)*(x_z[k]-x0_p) + (y_z[j]-y0_p)*(y_z[j]-y0_p));
-	R_temp = (R_m1*(z_z[i]-z_m0) - R_m0*(z_z[i]-z_m1))/(z_m1 - z_m0);
-
-	if (z_z[i] <= z_m1 && z_z[i] >= z_m0 && d_z[cnt] > pdie+0.05)
-	  d_z[cnt] = (R_z > R_temp) ? mdie : cdie;
-
-	R = sqrt((x[k]-x0_p)*(x[k]-x0_p) + (y[j]-y0_p)*(y[j]-y0_p));
+	draw_diel(&Membrane, &(d_x[cnt]), x_x[k], y_x[j], z_x[i]);
+	draw_diel(&Membrane, &(d_y[cnt]), x_y[k], y_y[j], z_y[i]);
+	draw_diel(&Membrane, &(d_z[cnt]), x_z[k], y_z[j], z_z[i]);
 
 	if (z[i] <= z_m0 && kk[cnt] != 0.0) {
 	  /* charge for mem V */
@@ -763,7 +811,8 @@ int main(int argc, char *argv[])
 	  /* position was not changed */
 	  map[cnt] = 0;
 	}
-                      
+
+	R = sqrt((x[k]-x0_p)*(x[k]-x0_p) + (y[j]-y0_p)*(y[j]-y0_p));                      
 	R_temp = (R_m1*(z[i]-z_m0) - R_m0*(z[i]-z_m1))/(z_m1 - z_m0);
 
 	if (z[i] <= z_m1 && z[i] >= z_m0 && R > R_temp) {
