@@ -82,6 +82,7 @@ int write_attr_positions(const bool compression, void *stream);
 float draw_diel(const t_membrane *M, float *d, const float x, const float y, const float z);
 void print_help();
 void print_membrane(const t_membrane *M);
+void print_exclusionzone(const t_membrane *M);
 int get_argv_int(char **argv, const int index);
 int get_argv_float(char **argv, const int index);
 char *get_argv_str(char **argv, const int index);
@@ -380,18 +381,60 @@ void print_help() {
 }
 
 void print_membrane(const t_membrane *M) {
-  printf("Membrane geometry:\n"
-	 "\n"
-	 "  -------------------- z_m1 = %.1f\n"
-	 "     headgroups        idie = %.1f\n"
-	 "  ==================== z_h1 = %.1f\n"
-	 "     hydrophobic       mdie = %.1f\n"
-	 "        core                    \n"
-	 "  ==================== z_h0 = %.1f\n"
-	 "     headgroups        idie = %.1f\n"
-	 "  -------------------- z_m0 = %.1f\n"
-	 "\n",
-	 M->z_m1, M->idie, M->z_h1, M->mdie, M->z_h0, M->idie, M->z_m0);
+  if (M->idie != M->mdie && M->z_m0 != M->z_h0) {
+    /* we model headgroups */
+    printf("Membrane geometry (with headgroups):\n"
+	   "\n"
+	   "  -------------------- z_m1 = %.1f\n"
+	   "     headgroups        idie = %.1f\n"
+	   "  ==================== z_h1 = %.1f\n"
+	   "     hydrophobic       mdie = %.1f\n"
+	   "        core                      \n"
+	   "  ==================== z_h0 = %.1f\n"
+	   "     headgroups        idie = %.1f\n"
+	   "  -------------------- z_m0 = %.1f\n"
+	   "\n",
+	   M->z_m1, M->idie, M->z_h1, M->mdie, M->z_h0, M->idie, M->z_m0);
+  }
+  else {
+    /* just the slab */
+    printf("Membrane geometry (slab only):\n"
+	   "\n"
+	   "  ==================== z_m1 = %.1f\n"
+	   "     hydrophobic       mdie = %.1f\n"
+	   "        core                      \n"
+	   "  ==================== z_m0 = %.1f\n"
+	   "\n",
+	   M->z_m1, M->mdie, M->z_m0);
+  }
+}
+
+void print_exclusionzone(const t_membrane *M) {
+  if (M->cdie != M->mdie && (M->R_m1 != 0 || M->R_m0 != 0)) {
+    printf("Channel exclusion zone:\n\n");
+    if (M->R_m1 > M->R_m0) {
+      printf("   ******     R_top = %.1f A   z_m1 = %.1f\n"
+	     "    ****      cdie  = %.1f\n"
+	     "     **       R_bot = %.1f A   z_m0 = %.1f\n",
+	     M->R_m1, M->z_m1, M->cdie, M->R_m0, M->z_m0);
+    }
+    else if (M->R_m1 < M->R_m0) {
+      printf("     **       R_top = %.1f A   z_m1 = %.1f\n"
+	     "    ****      cdie  = %.1f\n"
+	     "   ******     R_bot = %.1f A   z_m0 = %.1f\n",
+	       M->R_m1, M->z_m1, M->cdie, M->R_m0, M->z_m0);
+    }
+    else {
+      printf("     ***      R_top = %.1f A   z_m1 = %.1f\n"
+	     "     ***      cdie  = %.1f\n"
+	     "     ***      R_bot = %.1f A   z_m0 = %.1f\n",
+	     M->R_m1, M->z_m1, M->cdie, M->R_m0, M->z_m0);
+    }
+    printf("\n");
+  }
+  else {
+    printf("No channel exclusion zone defined.\n");
+  }
 }
 
 /* access argv after getopt
@@ -662,6 +705,7 @@ int main(int argc, char *argv[])
   Membrane.z0_p = z0_p;
 
   print_membrane(&Membrane);
+  print_exclusionzone(&Membrane);
 
   /*****************************************************/
   /* read in the y-shifted dielectric data             */
