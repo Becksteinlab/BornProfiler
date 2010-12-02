@@ -52,16 +52,26 @@ class RunParameters(object):
     #     float, int, str: simple values
     #     path:            expand ~ etc
     #     eval:            python expressions such as lists or tuples (NOT SAFE!!)
-    bornprofile_parameters = \
-        {'environment': [('temperature', float), ('conc', float), ('pdie', float),
-                         ('sdie', float), ('pqr', path), ('runtype', str)],
-         'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
-                         ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
-                         ('lmem', float), ('zmem', float), ('mdie', float)],
-         'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
-                         ('points', path)],
-         'job': [('name', str), ('script', path), ('arrayscript', path)],
-         }
+    parameter_selections = {
+        'bornprofile':
+            {'environment': [('temperature', float), ('conc', float), ('pdie', float),
+                             ('sdie', float), ('pqr', path), ('runtype', str)],
+             'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
+                             ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
+                             ('lmem', float), ('zmem', float), ('mdie', float)],
+             'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
+                             ('points', path)],
+             'job': [('name', str), ('script', path), ('arrayscript', path)],
+             },
+        'apbsmem':
+            {'environment': [('temperature', float), ('conc', float), ('pdie', float),
+                             ('sdie', float), ('pqr', path),],
+             'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
+                             ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
+                             ('lmem', float), ('zmem', float), ('mdie', float)],
+             'potential':   [('dime', eval), ('glen', eval),],
+             }
+        }
 
     def __init__(self, filename, **defaults):
         """Reads and parses the configuration file for a job."""
@@ -116,10 +126,9 @@ class RunParameters(object):
         parser.set('bornprofile', 'glen', '[(250,250,250),(100,100,100),(50,50,50)]')
         parser.set('bornprofile', 'fglen', '(40,40,40)')
         parser.set('bornprofile', 'points', 'points.dat')
-        parser.add_section('potential')   # for membrane.APBSmem -- not used yet
+        parser.add_section('potential')   # for membrane.APBSmem
         parser.set('potential', 'dime', '(97,97,97)')
         parser.set('potential', 'glen', '(200,200,200)')
-        parser.set('potential', 'fglen', '(40,40,40)')
         parser.add_section('executables')
         parser.set('executables', 'drawmembrane', 'draw_membrane2a')
         parser.set('executables', 'apbs', 'apbs')
@@ -128,19 +137,14 @@ class RunParameters(object):
         parser.set('job', 'script', 'q_local.sh')
         parser.set('job', 'arrayscript', 'q_array.sge')
         
+    def _get_kwargs(self, *args, **kwargs):
+        """Prepare kwargs for a specified task."""
+        task = args[0]
+        args = args[1:]
+        parameter_selection = self.parameter_selections[task]
 
-    def get_bornprofile_kwargs(self, *args, **kwargs):
-        """Return a dict with kwargs appropriate for :class:`membrane.BornAPBSmem`.
-
-        Default values can be supplied in *kwargs*. This method picks unique
-        parameter keys from the relevant sections of the run parameters file
-        (i.e. *bornprofile*, *membrane*, and *environment*).
-
-        If args are provided, then either a single value corresponding
-        to the key or a list of such values is returned instead.
-        """
         kw = {}
-        for section,parameters  in self.bornprofile_parameters.items():
+        for section,parameters in parameter_selection.items():
             for option,convertor in parameters:
                 try:
                     kw[option] = convertor(self.parser.get(section,option,vars=kwargs))
@@ -153,6 +157,32 @@ class RunParameters(object):
         elif len(args) > 0:
             return [kw[k] for k in args]
         return kw
+
+    def get_bornprofile_kwargs(self, *args, **kwargs):
+        """Return a dict with kwargs appropriate for :class:`membrane.BornAPBSmem`.
+
+        Default values can be supplied in *kwargs*. This method picks unique
+        parameter keys from the relevant sections of the run parameters file
+        (i.e. *bornprofile*, *membrane*, and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
+        """
+        _args = ('bornprofile',) + args
+        return self._get_kwargs(*_args, **kwargs)
+
+    def get_apbsmem_kwargs(self, *args, **kwargs):
+        """Return a dict with kwargs appropriate for :class:`membrane.APBSmem`.
+
+        Default values can be supplied in *kwargs*. This method picks unique
+        parameter keys from the relevant sections of the run parameters file
+        (i.e. *bornprofile*, *membrane*, and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
+        """
+        _args = ('apbsmem',) + args
+        return self._get_kwargs(*_args, **kwargs)
 
     def write(self, filename=None):
         """Write the current parameters to *filename*."""

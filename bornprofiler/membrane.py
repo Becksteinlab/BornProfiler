@@ -182,7 +182,10 @@ class BaseMem(object):
         from glob import glob
         if options is None:
             options = []
-        dxfiles = glob("*.dx")
+        if name == "gunzip" or '-d' in options:
+            dxfiles = glob("*.dx.gz")
+        else:
+            dxfiles = glob("*.dx")
         if len(dxfiles) == 0:
             logger.warn("No dx files for %(name)s.", vars())
             return 0
@@ -419,7 +422,3 @@ class BornAPBSmem(BaseMem):
         os.chmod(script, 0755)
         return script
 
-
-class MemonlyAPBSmem(BornAPBSmem):
-    # only kept around while we still have the old custom.py
-    default_runtype = "memonly"

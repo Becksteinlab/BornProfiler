@@ -23,7 +23,6 @@ assignments::
   drawmembrane = /path/to/drawmembrane2a
 
   [membrane]
-  class = APBSmem
 
 Meaning of variables
 --------------------
@@ -33,11 +32,6 @@ executables
    :envvar:`PATH`
 membrane
    configuration variables for apbs-mem-setup and friends
-     - *class*: name of a Python class that is derived from
-       :class:`bornprofiler.membrane.APBSmem`; needs to be in a file named
-       ``custom.py`` in the current directory or in :mod:`bornprofiler.custom`
-       (This is a bit of a hack...)
-
 
 Accessing the configuration
 ---------------------------

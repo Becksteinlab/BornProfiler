@@ -52,7 +52,7 @@ if __name__ == "__main__":
   import sys
   from optparse import OptionParser
 
-  logging.basicConfig()
+  bornprofiler.start_logging()
 
   parser = OptionParser(usage=usage)
   parser.add_option("--template", dest="write_template", action="store_true",
@@ -107,3 +107,5 @@ if __name__ == "__main__":
                    dime=opts.dime, jobName=opts.jobName, script=script_template)
 
   P.generate()
+
+  bornprofiler.stop_logging()

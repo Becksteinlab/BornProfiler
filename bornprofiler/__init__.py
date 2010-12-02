@@ -39,7 +39,7 @@ def stop_logging():
     logger.info("BornProfiler STOPPED logging")
     log.clear_handlers(logger)  # this _should_ do the job...
 
-import core, custom, io
+import core, io
 
 def write_parameters(filename, **defaults):
     """Write a default parameter file to *filename*.

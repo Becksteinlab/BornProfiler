@@ -145,7 +145,7 @@ if __name__ == "__main__":
   import glob
   from optparse import OptionParser
 
-  logging.basicConfig()
+  bornprofiler.start_logging()
 
   parser = OptionParser(usage=usage)
   parser.add_option("--name", dest="jobName",
@@ -193,3 +193,4 @@ if __name__ == "__main__":
   A = AnalyzeElec(*args, **kwargs)
   A.plot(plotter=opts.plotter)
 
+  bornprofiler.stop_logging()
