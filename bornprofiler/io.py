@@ -34,6 +34,9 @@ class RunParameters(object):
         - mdie:  membrane dielectric
         - Rtop : exclusion cylinder top
         - Rbot : exclusion cylinder bottom
+        - cdie : dielectric in the channel (e.g. SDIE)
+        - headgroup_l : thicknes of headgroup region
+        - headgroup_die : dielectric for headgroup region
         - temperature : temperature
         - conc : ionic strength in mol/l  
 
@@ -51,10 +54,10 @@ class RunParameters(object):
     #     eval:            python expressions such as lists or tuples (NOT SAFE!!)
     bornprofile_parameters = \
         {'environment': [('temperature', float), ('conc', float), ('pdie', float),
-                         ('sdie', float), ('pqr', path)],
-         'membrane':    [('Rtop', float), ('Rbot', float), ('headgroup_die', float),
-                         ('headgroup_l', float), ('mdie', float), ('Vmem', float),
-                         ('lmem', float), ('zmem', float)],
+                         ('sdie', float), ('pqr', path), ('runtype', str)],
+         'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
+                         ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
+                         ('lmem', float), ('zmem', float), ('mdie', float)],
          'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
                          ('points', path)],
          'job': [('name', str), ('script', path), ('arrayscript', path)],
@@ -89,21 +92,24 @@ class RunParameters(object):
             parser = self.parser
         # can use %(basedir)s in other entries
         parser.set('DEFAULT', 'basedir', os.path.realpath(os.path.curdir))
+        parser.set('DEFAULT', 'solvent_dielectric', '80')
         parser.add_section('membrane')
-        parser.set('membrane', 'Rtop', '0.0')
-        parser.set('membrane', 'Rbot', '0.0')
-        parser.set('membrane', 'headgroup_die', '20.0')
-        parser.set('membrane', 'headgroup_l', '0.0')
-        parser.set('membrane', 'mdie', '2.0')
-        parser.set('membrane', 'Vmem', '0.0')
-        parser.set('membrane', 'lmem', '40.0')
-        parser.set('membrane', 'zmem','0.0')
+        parser.set('membrane', 'Rtop', '0')
+        parser.set('membrane', 'Rbot', '0')
+        parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
+        parser.set('membrane', 'headgroup_die', '20')
+        parser.set('membrane', 'headgroup_l', '0')
+        parser.set('membrane', 'mdie', '2')
+        parser.set('membrane', 'Vmem', '0')
+        parser.set('membrane', 'lmem', '40')
+        parser.set('membrane', 'zmem','0')
         parser.add_section('environment')
         parser.set('environment', 'pqr', 'protein.pqr')
         parser.set('environment', 'temperature', '298.15')
         parser.set('environment', 'conc', '0.1')
-        parser.set('environment', 'pdie', '10.0')
-        parser.set('environment', 'sdie', '80.0')
+        parser.set('environment', 'pdie', '10')
+        parser.set('environment', 'sdie', '%(solvent_dielectric)s')
+        parser.set('environment', 'runtype', 'with_protein')  # alternative: mem_only
         parser.add_section('bornprofile')
         parser.set('bornprofile', 'ion', 'Na')
         parser.set('bornprofile', 'dime', '[(129,129,129),(129,129,129),(129,129,129)]')

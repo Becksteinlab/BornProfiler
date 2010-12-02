@@ -64,7 +64,8 @@ logger = logging.getLogger("bornprofiler.config")
 
 
 APBS_MINIMUM_VERSION = 1,3   # want to be able to read gzipped files
-DRAWMEMBRANE_REQUIRED_VERSION = "draw_membrane2a.c"
+DRAWMEMBRANE_REQUIRED_NAME = "draw_membrane2a.c"
+DRAWMEMBRANE_MINIMUM_VERSION = 12,1,10  # date in MM/DD/YY (!)
 
 # User-accessible configuration
 # -----------------------------
@@ -99,6 +100,8 @@ class BPConfigParser(SafeConfigParser):
         """Return option as an expanded path."""
         return os.path.expanduser(os.path.expandvars(self.get(section, option)))
 
+#: :data:`cfg` is the instance of :class:`BPConfigParser` that makes all
+#: global configuration data accessible
 cfg = BPConfigParser()
 
 def get_configuration(filename=CONFIGNAME):
@@ -130,8 +133,8 @@ def get_configuration(filename=CONFIGNAME):
             }
 
 #: Dict containing important configuration variables, populated by 
-#: :func:`get_configuration`.
-configuration = get_configuration()    
+#: :func:`get_configuration` (mainly a shortcut; use :data:`cfg` in most cases)
+configuration = get_configuration()    # also initializes cfg...
 
 configdir = cfg.get_path('DEFAULT', 'configdir')
 qscriptdir = cfg.get_path('DEFAULT', 'qscriptdir')
@@ -312,7 +315,7 @@ def check_APBS(name=None):
         raise EnvironmentError(errno.EIO, APBS,
                                "Cannot obtain APBS version string from %r." % err)        
     major,minor = int(m.group('major')), int(m.group('minor'))
-    if not (major,minor) >= APBS_MINIMUM_VERSION:
+    if not ((major,minor) >= APBS_MINIMUM_VERSION):
         raise EnvironmentError(errno.EIO, APBS, "APBS version %d.%d is too old, need at least %d.%d." % 
                                ((major,minor)+APBS_MINIMUM_VERSION))        
     return major,minor
@@ -329,10 +332,14 @@ def check_drawmembrane(name=None):
     m = re.search(r"\*\s*(?P<name>[^\s]+)\s+(?P<date>[/\d]+)", out)
     if m is None:
         raise EnvironmentError(errno.EIO, drawmembrane, "Cannot obtain version string from %r." % out)        
-    if not m.group('name') == DRAWMEMBRANE_REQUIRED_VERSION:
+    if not m.group('name') == DRAWMEMBRANE_REQUIRED_NAME:
         raise EnvironmentError(errno.EIO, drawmembrane, "drawmembrane version %r does not work here, "
                                "need exactly %r (compile it from the src/drawmembrane directory)." % 
-                               (m.group('name'), DRAWMEMBRANE_REQUIRED_VERSION))
-    return m.group('name'), m.group('date')
-        
+                               (m.group('name'), DRAWMEMBRANE_REQUIRED_NAME))
+    month,day,year = map(int, m.group('date').split('/'))
+    if not ((month,day,year) >= DRAWMEMBRANE_MINIMUM_VERSION):
+        raise EnvironmentError(errno.EIO, drawmembrane, 
+                               "version %d/%d/%d is too old, need at least %d/%d/%d" % 
+                               ((month,day,year)+DRAWMEMBRANE_MINIMUM_VERSION))    
+    return m.group('name'), (month,day,year) 
 

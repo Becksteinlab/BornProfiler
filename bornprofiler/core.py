@@ -12,10 +12,9 @@ from utilities import in_dir, asiterable
 import logging
 logger = logging.getLogger('bornprofiler.core') 
 
-TEMPLATES = {'born': read_template('mplaceion.in'),
-             'q_array.sge': read_template('q_array.sge'),
-             'placeion': read_template('placeion.in'),
-             }
+# TODO: get rid of this TEMPLATE dict and hard-code directly in WriteIn()?
+TEMPLATES = {'placeion': read_template('placeion.in'), }
+
 TABLE_IONS = read_template('bornions.dat')
 
 class Ion(dict):
@@ -40,14 +39,6 @@ def _parse_TABLE_IONS():
 
 #: Rashin&Honig ion data as a dict, read from :file:`templates/bornions.dat`.
 IONS = _parse_TABLE_IONS()
-
-#: A job script template finds input and output filename in %(infile)s
-#: and %(outfile)s; the string is interpolated by python.
-JOBSCRIPTS = {
-  'local': read_template('q_local.sh'),
-  'SBCB':  read_template('q_SBCB.sh'),
-  'darthtater': read_template('q_darthtater.sge'),
-}
 
 class BPbase(object):
   """Provide basic infra structure methods for bornprofiler classes.
@@ -179,7 +170,7 @@ class BPbase(object):
 class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
 
-  padding_xy = 40.0  # xy only used with use_cub_boundaries = False
+  padding_xy = 40.0  # xy only used with use_cubic_boundaries = False
   padding_z  = 80.0
  
   def __init__(self, *args, **kwargs):

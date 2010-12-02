@@ -37,29 +37,29 @@ APBS = configuration["apbs"]
 TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
              'born_dummy': read_template('mdummy.in'),
-             'born_run': read_template('mplaceion.in'),
-             'memonly_run': read_template('mplaceion_memonly.in'),
+             'with_protein': read_template('mplaceion.in'),
+             'memonly': read_template('mplaceion_memonly.in'),
              'born_setup_script': read_template('drawmembrane2.bash'),
 }
 
 class BaseMem(object):
-    #drawmembrane = "draw_membrane4"  # from the 1.04 tarball -- segfaults
-    drawmembrane = DRAWMEMBRANE  # from the APBS website (no headgroups)
+    drawmembrane = DRAWMEMBRANE
     apbs = APBS
     def __init__(self, *args, **kwargs):
         """draw_membrane and common APBS run  parameters
 
-        .. Note:: sdie=80 and mdie=2 are fixed in draw_membrane2.c at the moment
-
         :Keywords:
            - zmem : membrane centre (A)
            - lmem : membrane thickness (A)
-           - Vmem (untested)
+           - Vmem : cytosolic membrane potential in kT/e (untested)
            - pdie : protein dielectric
            - sdie: solvent dielectric
            - mdie: membrane dielectric
            - Rtop : exclusion cylinder top
            - Rbot : exclusion cylinder bottom
+           - cdie : channel solvent dielectric (by default same as sdie)
+           - headgroup_l : thickness of headgroup region (A)
+           - headgroup_die : headgroup dielectric
            - temperature : temperature
            - conc : ionic strength in mol/l  
            - basedir: full path to the directory from which files are read and written; 
@@ -95,10 +95,11 @@ class BaseMem(object):
         self.sdie = kwargs.pop('sdie', 80.0)  # idie (solvent)
         #self.sdie = kwargs.pop('sdie', 78.5)  # idie (solvent), Eisenberg and Crothers Phys. Chem. book 1979
         self.pdie = kwargs.pop('pdie', 10.0)  # protein
-        self.hdie = kwargs.pop('headgroup_die', 20.0)
-        self.lhgp = kwargs.pop('headgroup_l', 0.0)  # geo3
+        self.headgroup_die = kwargs.pop('headgroup_die', 20.0)
+        self.headgroup_l = kwargs.pop('headgroup_l', 0.0)  # geo3
         self.Rtop = kwargs.pop('Rtop', 0)  # geo1
         self.Rbot = kwargs.pop('Rbot', 0)  # geo2
+        self.cdie = kwargs.pop('cdie', self.sdie)
         self.temperature = kwargs.pop('temperature', 298.15)
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
         self.basedir = kwargs.pop('basedir', os.path.realpath(os.path.curdir))
@@ -150,9 +151,12 @@ class BaseMem(object):
         infix = kwargs.pop('infix', self.suffix)
         v.update(kwargs)  # override with kwargs
         cmdline = [self.drawmembrane] + \
-            map(str, ["-z", v['zmem'], "-d", v['lmem'], "-p", v['pdie'], 
-                      "-s", v["sdie"], "-m", v["mdie"], "-V", v['Vmem'], 
-                      "-I", v['conc'], "-R", v['Rtop'], "-r", v['Rbot']])
+            map(str, ["-z", v['zmem'], "-d", v['lmem'], "-m", v["mdie"],   # membrane
+                      "-a", v["headgroup_l"], "-i", v["headgroup_die"],    # headgrops
+                      "-s", v["sdie"], "-p", v['pdie'],                    # environment
+                      "-V", v['Vmem'], "-I", v['conc'], 
+                      "-R", v['Rtop'], "-r", v['Rbot'], "-c", v['cdie'],   # channel exclusion
+                      ])
         if self.dxformat == "gz":
             cmdline.append('-Z')   # special version draw_membrane2a that can deal with gz
         cmdline.append(infix)
@@ -250,7 +254,9 @@ class APBSmem(BaseMem):
                      "pqr,suffix,pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ,GLEN_XYZ",
                      'drawmembrane2': 
-                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot,suffix"}
+                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot,cdie,"
+                     "headgroup_l,headgroup_die,suffix",
+                     }
         # generate names
         d = {}
         d['DIME_XYZ'] = self.vec2str(self.dime)
@@ -283,7 +289,7 @@ class BornAPBSmem(BaseMem):
     #: be changed; see ``templates/mdummy.in`` and ``templates/mplaceion.in``.
     #: The order of the suffices corresponds to the sequence in the schedule.
     suffices = ('L','M','S')
-    runtype = "born_run"
+    default_runtype = "with_protein"
     
     def __init__(self, *args, **kwargs):
         """Set up calculation.
@@ -300,6 +306,9 @@ class BornAPBSmem(BaseMem):
                   then the same dime is used for all focusing stages [(97,97,97)]
           - glen: grid length, as list in  Angstroem, must contain three triplets
                   [(250,250,250),(100,100,100),(50,50,50)]
+          - runtype: for standard Born calculations use 'with_protein'; if one only wants to
+                  look at geometrically defined dielectric regions and uncharged proteins
+                  (see the ``example/parsegian``) then use 'memonly' ['with_protein']
         """
         self.protein_pqr = args[0]
         self.ion_pqr = args[1]
@@ -310,6 +319,7 @@ class BornAPBSmem(BaseMem):
         self.infices = ('_prot_L','_prot_M','_prot_S', '_cpx_L','_cpx_M','_cpx_S')
         self.suffix = ""  # hack to keep parent class happy :-p[
         self.comment = kwargs.pop('comment', "BORNPROFILE")
+        self.runtype = kwargs.pop('runtype', self.default_runtype)
 
         dime = numpy.array(kwargs.pop('dime', (97,97,97)))     # grid points -- check allowed values!!
         if not (dime.shape == (3,) or dime.shape == (3,3)):
@@ -343,7 +353,8 @@ class BornAPBSmem(BaseMem):
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
                      'drawmembrane2': 
-                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot",
+                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot,cdie,"
+                     "headgroup_l,headgroup_die,suffix",
                      }
         self.vars['born_setup_script'] = \
             ",".join([self.vars['drawmembrane2'],
@@ -410,4 +421,5 @@ class BornAPBSmem(BaseMem):
 
 
 class MemonlyAPBSmem(BornAPBSmem):
-    runtype = "memonly_run"
+    # only kept around while we still have the old custom.py
+    default_runtype = "memonly"
