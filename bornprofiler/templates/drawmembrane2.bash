@@ -53,7 +53,9 @@ function run_drawmembrane () {
     fi
     ${DRAW_MEMBRANE2A} $compress_option -z %(zmem)f -d %(lmem)f \
 	-p %(pdie)f -s %(sdie)f -m %(mdie)f  \
-	-V %(Vmem)f -I %(conc)f -R %(Rtop)f -r %(Rbot)f  $infix \
+	-R %(Rtop)f -r %(Rbot)f -c %(cdie)s  \
+	-a %(headgroup_l)f -i %(headgroup_die)f \
+	-V %(Vmem)f -I %(conc)f   $infix \
 	|| die "${DRAW_MEMBRANE2A} $infix failed."
 }    
 

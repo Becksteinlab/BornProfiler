@@ -1,31 +1,39 @@
 #!/usr/bin/env python
 # (c) 2010 Oliver Beckstein
 # Licensed under GPL
-"""%%prog PQR-file
+"""%%prog [options] parameter-file [pqr]
 
-Runs customized apbs calculation of PQR file in a membrane.
+Runs customized apbs calculation of a protein in a membrane. Because
+the number of options is pretty large, everything must be specified in
+a parameter file. The one exception is the pqr file: if provided as a
+second argument, it override the setting of ``environment: pqr`` in
+the configuration file.
 
-A custom APBSmem class must be available in a python file ``custom.py``. 
+A new parameter-file can be generated with the --template
+option; in this case only the file is written and no further actions are
+performed.
 
-Currently only the *CFTRmem* class, customized for Yohei's CFTR
-structures (from the 30 ns MD) is available; see the source for
-details.
-
-Uses draw_membrane2 to add a low-dielectric (eps=2) region and sets
-protein dielectric to eps=10.
+We use :program:`draw_membrane2a` to add a low-dielectric region
+representing the membrane and optional a medium-dielectric region for
+the headgroups. It is also possible to specify a channel exclusion
+zone for a pore through a channel.
 
 Paths to draw_membrane2 and apbs are set in the configuration file
-%(configfilename)r:
+%(configfilename)r or in the parameter file::
 
  - apbs = %(apbs)r
  - draw_membrane2 = %(drawmembrane)r
 
-Commandline version of apbsmem, following
-http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
+.. SeeAlso: apbsmem_ and the `APBS PMF tutorial`_.
+
+.. _APBS PMF tutorial:
+   http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
+.. _apbsmem: http://mgrabe1.bio.pitt.edu/apbsmem/
+
 """
 
 import os.path
-from bornprofiler.config import cfg, configuration
+import bornprofiler, bornprofiler.membrane
 import logging
 logger = logging.getLogger('bornprofiler')
 
@@ -34,42 +42,47 @@ if __name__ == "__main__":
     import errno
     from optparse import OptionParser
 
-    logging.basicConfig()
+    bornprofiler.start_logging()
 
-    parser = OptionParser(usage=__doc__ % configuration)
-    parser.add_option("-C","--class-name", dest="clsname",
-                      help="Python name of a class derived from "
-                      "bornprofiler.membrane.APBSmem [%default]")
+    parser = OptionParser(usage=__doc__ % bornprofiler.config.configuration)
+    parser.add_option("--template", dest="write_template", action="store_true",
+                      help="write template parameter file and exit")
     parser.add_option("-s", "--suffix", dest="suffix",
-                      help="suffix for all generated files [%default]")    
-    parser.set_defaults(clsname=cfg.get('membrane','class'), 
-                        suffix="S")
+                      help="suffix for all generated files [%default]")
+    parser.add_option("--no-run", dest="run", action="store_false",
+                      help="do not immediately run apbs for the Poisson-Boltzmann calculation "
+                      "and only produce all required input files. apbs is still run in order "
+                      "to obtain the dielectric, charge, and kappa maps needed for draw_membrane.")
+    parser.set_defaults(suffix="S", run=True)
     
-    options, args = parser.parse_args()
+    opts,args = parser.parse_args()
     
     try:
-        pqr = args[0]
-    except IndexError:
-        raise ValueError("Need PQR file as input")
-
-    if not os.path.exists(pqr):
-        raise IOError(errno.ENOENT, "PQR file not found", pqr)
+        filename = args[0]
+    except:
+        logger.fatal("Provide the parameter filename. See --help.")
+        sys.exit(1)
         
-    suffix = 'S'
+    if opts.write_template:
+        bornprofiler.write_parameters(filename)
+        sys.exit(0)
+        
+    params = bornprofiler.io.RunParameters(args[0])
+    kw = params.get_apbsmem_kwargs()
 
-    cls = None
-    for modname in 'custom', 'bornprofiler.custom':
-        try:
-            mod = __import__(modname, fromlist=[opts.clsname])
-            cls = mod.__getattribute__(opts.clsname)
-        except (ImportError, AttributeError):
-            pass
     try:
-        C = cls(pqr, options.suffix)
-    except TypeError:
-        ermsg = "No setup class %r found in custom.py or bornprofiler.custom" % opts.clsname
-        logger.fatal(errmsg)
-        raise ValueError(errmsg)
+        pqr = args[1]
+        del kw['pqr']
+    except IndexError:
+        pqr = kw.pop('pqr')    
+    
+    A = bornprofiler.membrane.APBSmem(pqr, opts.suffix, **kw)
+    A.generate()
+    if opts.run:
+        if A.unpack_dxgz:
+            A.ungzip_dx()
+        A.run_apbs('solvation')
+        if A.unpack_dxgz:
+            A.gzip_dx()
 
-    C.setup()
-    C.run_apbs('solvation')
+    bornprofiler.stop_logging()

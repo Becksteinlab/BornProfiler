@@ -34,7 +34,7 @@ if __name__ == "__main__":
   import sys
   from optparse import OptionParser
 
-  logging.basicConfig()
+  bornprofiler.start_logging()
 
   parser = OptionParser(usage=__doc__)
   parser.add_option("--template", dest="write_template", action="store_true",
@@ -59,3 +59,4 @@ if __name__ == "__main__":
   P = bornprofiler.core.MPlaceion(filename)
   P.generate(run=opts.run)
 
+  bornprofiler.stop_logging()
