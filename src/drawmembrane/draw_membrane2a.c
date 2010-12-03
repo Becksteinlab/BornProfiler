@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
   float l_m=40, a0=0;
   float z_m0=0, R_m0=0, R_m1=0;
   float R, R_temp;
-  char infix[MAXLEN];
+  char *infix;
   char *file_name_x, *file_name_y, *file_name_z;
   char *file_name_k, *file_name_c;
   char *f1, *f2, *f3, *f4, *f5, *f6;
@@ -530,7 +530,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  strcpy(infix, get_argv_str(argv, 0));
+  infix = get_argv_str(argv, 0);  /* use the string allocated for argv! */
   printf("Using hard-coded names with your infix to find files: infix=%s\n", infix);
 
   if (compression)
