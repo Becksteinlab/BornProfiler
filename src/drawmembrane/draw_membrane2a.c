@@ -632,25 +632,25 @@ int main(int argc, char *argv[])
   read_header(in, &dim_x, &dim_y, &dim_z, &x0_x, &y0_x, &z0_x, &dx, &dy, &dz, &dim3);
 
   /* assign the memory to the arrays */
-  x_x = calloc(dim_x+1,sizeof(float));
-  y_x = calloc(dim_y+1,sizeof(float));
-  z_x = calloc(dim_z+1,sizeof(float));
-  x_y = calloc(dim_x+1,sizeof(float));
-  y_y = calloc(dim_y+1,sizeof(float));
-  z_y = calloc(dim_z+1,sizeof(float));
-  x_z = calloc(dim_x+1,sizeof(float));
-  y_z = calloc(dim_y+1,sizeof(float));
-  z_z = calloc(dim_z+1,sizeof(float));
-  d_x = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  d_y = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  d_z = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
+  x_x = calloc(dim_x,sizeof(float));
+  y_x = calloc(dim_y,sizeof(float));
+  z_x = calloc(dim_z,sizeof(float));
+  x_y = calloc(dim_x,sizeof(float));
+  y_y = calloc(dim_y,sizeof(float));
+  z_y = calloc(dim_z,sizeof(float));
+  x_z = calloc(dim_x,sizeof(float));
+  y_z = calloc(dim_y,sizeof(float));
+  z_z = calloc(dim_z,sizeof(float));
+  d_x = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  d_y = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  d_z = calloc(dim_x*dim_y*dim_z,sizeof(float));
   /* Now the Kappa and charge Arrays */
-  x = calloc(dim_x+1,sizeof(float));
-  y = calloc(dim_y+1,sizeof(float));
-  z = calloc(dim_z+1,sizeof(float));
-  kk = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  cc = calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-  map = calloc(dim_x*dim_y*dim_z+1,sizeof(int));
+  x = calloc(dim_x,sizeof(float));
+  y = calloc(dim_y,sizeof(float));
+  z = calloc(dim_z,sizeof(float));
+  kk = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  cc = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  map = calloc(dim_x*dim_y*dim_z,sizeof(int));
 
   /* initialize x,y,z, and diel vectors */
   l_c_x = dim_x*dx;
@@ -661,15 +661,15 @@ int main(int argc, char *argv[])
   tmp_y = y0_x;
   tmp_z = z0_x;
 
-  for (i=1; i <= dim_x; ++i) {
+  for (i=0; i < dim_x; ++i) {
     x_x[i]=tmp_x;
     tmp_x+=dx;
   }
-  for (i=1; i <= dim_y; ++i) {
+  for (i=0; i < dim_y; ++i) {
     y_x[i]=tmp_y;
     tmp_y+=dy;
   }
-  for (i=1; i <= dim_z; ++i) {
+  for (i=0; i < dim_z; ++i) {
     z_x[i]=tmp_z;
     tmp_z+=dz;
   }
@@ -726,15 +726,15 @@ int main(int argc, char *argv[])
   tmp_y = y0_y;
   tmp_z = z0_y;
 
-  for (i=1; i <= dim_x; ++i) {
+  for (i=0; i < dim_x; ++i) {
     x_y[i]=tmp_x;
     tmp_x+=dx;
   }
-  for (i=1; i <= dim_y; ++i) {
+  for (i=0; i < dim_y; ++i) {
     y_y[i]=tmp_y;
     tmp_y+=dy;
   }
-  for (i=1; i <= dim_z; ++i) {
+  for (i=0; i < dim_z; ++i) {
     z_y[i]=tmp_z;
     tmp_z+=dz;
   }
@@ -761,15 +761,15 @@ int main(int argc, char *argv[])
   tmp_y = y0_z;
   tmp_z = z0_z;
 
-  for (i=1; i <= dim_x; ++i) {
+  for (i=0; i < dim_x; ++i) {
     x_z[i]=tmp_x;
     tmp_x+=dx;
   }
-  for (i=1; i <= dim_y; ++i) {
+  for (i=0; i < dim_y; ++i) {
     y_z[i]=tmp_y;
     tmp_y+=dy;
   }
-  for (i=1; i <= dim_z; ++i) {
+  for (i=0; i < dim_z; ++i) {
     z_z[i]=tmp_z;
     tmp_z+=dz;
   }
@@ -798,15 +798,15 @@ int main(int argc, char *argv[])
   tmp_y = y0;
   tmp_z = z0;
 
-  for (i=1; i <= dim_x; ++i) {
+  for (i=0; i < dim_x; ++i) {
     x[i]=tmp_x;
     tmp_x+=dx;
   }
-  for (i=1; i <= dim_y; ++i) {
+  for (i=0; i < dim_y; ++i) {
     y[i]=tmp_y;
     tmp_y+=dy;
   }
-  for (i=1; i <= dim_z; ++i) {
+  for (i=0; i < dim_z; ++i) {
     z[i]=tmp_z;
     tmp_z+=dz;
   }
@@ -842,12 +842,12 @@ int main(int argc, char *argv[])
   /******************************************************/
   /* set up the vector                                  */
   /******************************************************/
-  /* NOTE: Array indexing is done by FORTRAN convention (1-based, z fastest varying) */
-  cnt=1;
+  /* NOTE: access array by z fastest varying */
+  cnt=0;
 
-  for (k=1; k <= dim_x; ++k) {  /* loop over x */
-    for (j=1; j <= dim_y; ++j) {  /* loop over y */
-      for (i=1; i <= dim_z; ++i) {  /* loop over z */
+  for (k=0; k < dim_x; ++k) {  /* loop over x */
+    for (j=0; j < dim_y; ++j) {  /* loop over y */
+      for (i=0; i < dim_z; ++i) {  /* loop over z */
 	draw_diel(&Membrane, &(d_x[cnt]), x_x[k], y_x[j], z_x[i]);
 	draw_diel(&Membrane, &(d_y[cnt]), x_y[k], y_y[j], z_y[i]);
 	draw_diel(&Membrane, &(d_z[cnt]), x_z[k], y_z[j], z_z[i]);
