@@ -1,7 +1,8 @@
-/* draw_membrane2.c                     09/02/08 *
- * draw_membrane2a.c                    11/22/10 * 
+/* draw_membrane2a.c                    12/01/10 * 
+ * draw_membrane2.c                     09/02/08 *
  *-----------------------------------------------* 
  * By Michael Grabe                              *
+ * (gzipped files & options by Oliver Beckstein) *
  * This program takes the dielectric, kappa, and * 
  * charge  maps from APBS and accounts for the   *
  * membrane. the thickness and the bottom of the *
@@ -17,7 +18,8 @@
  * extra command line argument was added that    *
  * will cause a fault if run without it from     *
  * older scripts pre 2005.                       *
- * OB's changes completely break input as we are now using standard option
+
+ * WARNING: OB's changes completely break input as we are now using standard option
  * processing. 
 
  2010-11-11  Oliver Beckstein
@@ -90,6 +92,10 @@ char *get_argv_str(char **argv, const int index);
 /**************************************************************/
 
 char *newname(const char *prefix, const char *infix, const char *suffix, const bool gzipped) {
+  /* generate a new name for map with membrane inserted
+     NOTE: The string is allocated here but must be free'ed in the
+           calling code!
+   */
   int l,m,n,p;
   char *s;
   static char default_suffix[] = ".dx";
@@ -146,6 +152,7 @@ int read_header(gzFile *in, int *dim_x, int *dim_y, int *dim_z,
 		float *x0, float *y0, float *z0,
 		float *dx, float *dy, float *dz,
 		int *num_data) {
+  /* read fixed-format (including comment lines !!!)  APBS DX file header */
   char s[MAXLEN];
   float tmp;
   int tmp1;
@@ -166,6 +173,7 @@ int read_header(gzFile *in, int *dim_x, int *dim_y, int *dim_z,
 }
 
 int read_data(gzFile *in, int num_data, float *x) {
+  /* read APBS formatted DX data (MUST be in NUMCOLS==3 columns */
   int n = 0;          /* data read from one line */
   int data_read = 0;  /* to check that we have everything */
   int idata = 0;      /* index of next data entry (sequential number) */
@@ -244,6 +252,7 @@ int write_header(const bool compression, void *out, char *name, float z_m0, floa
 		 int dim_x, int dim_y, int dim_z,
 		 float x0, float y0, float z0,
 		 float dx, float dy, float dz) {
+  /* write fixed-format APBS-style DX header */
   int status;
   const char fmt[] =   
     "# Data from draw_membrane2a.c\n"
@@ -294,6 +303,7 @@ int write_header(const bool compression, void *out, char *name, float z_m0, floa
   } while(0)
 
 int write_data(const bool compression, void *out, int num_data, void *data) {
+  /* write fixed-format APBS-style DX data */
   float *x = (float *)data;     /* allows us to take int and write as float */
   int i;
 
@@ -305,6 +315,7 @@ int write_data(const bool compression, void *out, int num_data, void *data) {
 }
 
 int write_attr_positions(const bool compression, void *stream) {
+  /* write fixed-format APBS-style DX attributes section */
   int status;
   const char attr_positions[] = 
     "\n"
@@ -326,6 +337,10 @@ int write_attr_positions(const bool compression, void *stream) {
 #define PDIE_FUDGE_DELTA 0.05
 
 float draw_diel(const t_membrane *M, float *diel, const float x, const float y, const float z) {
+  /* change dielectric value of grid cells corresponding to the membrane 
+
+     changes *diel in place (and also returns the value)
+  */
   float R, R_temp;
   R = sqrt(SQR(x - M->x0_p) + SQR(y - M->y0_p));	
   R_temp = (M->R_m1*(z - M->z_m0) - M->R_m0*(z - M->z_m1))/(M->z_m1 - M->z_m0);  	
