@@ -20,7 +20,7 @@ import os
 import numpy
 
 import logging
-logger = logging.getLogger('bornprofile') 
+logger = logging.getLogger('bornprofiler') 
 
 usage = """%prog [options] samplepoints-file *.out
        %prog [options] parameter-file

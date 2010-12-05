@@ -28,7 +28,7 @@ import sys
 import os
 
 import logging
-logger = logging.getLogger('bornprofile') 
+logger = logging.getLogger('bornprofiler') 
 
 if __name__ == "__main__":
     from optparse import OptionParser

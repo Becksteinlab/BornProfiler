@@ -28,7 +28,7 @@ import bornprofiler
 
 import os
 import logging
-logger = logging.getLogger('bornprofile') 
+logger = logging.getLogger('bornprofiler') 
 
 if __name__ == "__main__":
   import sys
