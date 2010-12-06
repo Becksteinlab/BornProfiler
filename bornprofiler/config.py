@@ -90,7 +90,7 @@ CONFIGNAME = os.path.expanduser(os.path.join("~",".bornprofiler.cfg"))
 
 #: Instance of :class:`ConfigParser.SafeConfigParser`.
 class BPConfigParser(SafeConfigParser):
-    def get_path(self, section, option):
+    def getpath(self, section, option):
         """Return option as an expanded path."""
         return os.path.expanduser(os.path.expandvars(self.get(section, option)))
 
@@ -111,6 +111,7 @@ def get_configuration(filename=CONFIGNAME):
     cfg.add_section('executables')
     cfg.set('executables', 'drawmembrane', 'draw_membrane2a')
     cfg.set('executables', 'apbs', 'apbs')
+    cfg.set('executables', 'apbs_always_read_dxgz', 'False')  # hack when using svn 1623+
 
     if not os.path.exists(filename):
         with open(filename, 'w') as configfile:
@@ -121,8 +122,8 @@ def get_configuration(filename=CONFIGNAME):
         # overwrite defaults
         cfg.readfp(open(filename))
 
-    return {'apbs': cfg.get_path('executables', 'apbs'),
-            'drawmembrane': cfg.get_path('executables', 'drawmembrane'),
+    return {'apbs': cfg.getpath('executables', 'apbs'),
+            'drawmembrane': cfg.getpath('executables', 'drawmembrane'),
             'configfilename': filename,
             }
 
@@ -130,9 +131,9 @@ def get_configuration(filename=CONFIGNAME):
 #: :func:`get_configuration` (mainly a shortcut; use :data:`cfg` in most cases)
 configuration = get_configuration()    # also initializes cfg...
 
-configdir = cfg.get_path('DEFAULT', 'configdir')
-qscriptdir = cfg.get_path('DEFAULT', 'qscriptdir')
-templatesdir = cfg.get_path('DEFAULT', 'templatesdir')
+configdir = cfg.getpath('DEFAULT', 'configdir')
+qscriptdir = cfg.getpath('DEFAULT', 'qscriptdir')
+templatesdir = cfg.getpath('DEFAULT', 'templatesdir')
 
 
 def setup():

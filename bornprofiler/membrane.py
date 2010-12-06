@@ -77,10 +77,14 @@ class BaseMem(object):
         if self.versions['APBS'] >= (1,3):
             self.dxformat = "gz"     # format in an APBS read/write statement
             self.dxsuffix = "dx.gz"  # APBS automatically adds .dx.gz when writing
-            if self.versions['APBS'] == (1,3):
+            if self.versions['APBS'] == (1,3) \
+                    and not config.cfg.getboolean('executables', 'apbs_always_read_dxgz'):
                 # note that 1.3 'READ gz' is broken (at least on Mac OS X) so we hack around 
                 # this by gunzipping in the queuing script and replacing the gz format in readstatements
                 # with the dx one :-p            
+                # svn 1623+ are fixed and work so one can set the hack in the config file:
+                # [executables]
+                # apbs_always_read_dxgz = True
                 self.unpack_dxgz = True
         else:
             self.dxformat = "dx"
