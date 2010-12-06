@@ -105,7 +105,10 @@ class BPbase(object):
 
   def getPqrLine(self, aID, aType, rID, rType, x, y, z, q, r):
     # PQR is white space separated!
-    fmt =  "ATOM %(aID)d %(aType)-4s %(rType)3s %(rID)5d   %(x)8.3f %(y)8.3f %(z)8.3f %(q)7.4f %(r)7.4f\n"
+    # but try to be close to PDB... http://www.wwpdb.org/documentation/format32/sect9.html
+    #123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.
+    #ATOM  seria name res reSeq    x-------y-------z-------occup-tempFa
+    fmt =  "ATOM  %(aID)5d %(aType)-4s %(rType)3s %(rID)5d    %(x)7.3f %(y)7.3f %(z)7.3f %(q)5.3f %(r)5.3f\n"
     return fmt % vars()
  
   def readPoints(self):
