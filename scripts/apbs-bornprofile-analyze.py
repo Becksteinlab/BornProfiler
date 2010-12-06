@@ -32,6 +32,7 @@ Extract the electrostatic free energy from the numbered APBS output files
    up the APBS calculations.
 """
 
+import bornprofiler
 from bornprofiler.core import BPbase
  
 class AnalyzeElec(BPbase):
@@ -78,7 +79,7 @@ class AnalyzeElec(BPbase):
       outFile.write("# z/angstrom E/(kJ/mol)\n")
       for z,E in self.zE.T:
         outFile.write("%(z)8.3f %(E)8.3e\n" % vars())
-    logger.info("Wrote Born profile to %(outName)r.", vars(self)) 
+    logger.info("Wrote Born profile to %(outName)r.", vars()) 
 
   def plot(self, filename=None, plotter='matplotlib', **kwargs):
     """Plot Born profile.
