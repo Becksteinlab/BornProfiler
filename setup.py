@@ -9,7 +9,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(name="APBS-BornProfiler",
-      version="0.3",
+      version="0.4",
       description="Setting up of Born profile calculations for APBS",
       long_description="""
 """,
@@ -19,7 +19,7 @@ setup(name="APBS-BornProfiler",
       url="http://sbcb.bioch.ox.ac.uk/oliver/software/",
       keywords="science",
       packages=find_packages(exclude=['scripts']),
-      package_data = {'bornprofiler': ['templates/*.sh', 'templates/*.sge',
+      package_data = {'bornprofiler': ['templates/*.sh', 'templates/*.bash', 'templates/*.sge',
                                        'templates/*.in', 'templates/*.dat']},
       scripts = ["scripts/apbs-bornprofile-analyze.py",
                  "scripts/apbs-bornprofile-placeion.py",
@@ -28,7 +28,7 @@ setup(name="APBS-BornProfiler",
                  "scripts/parallel.py", "scripts/fake_qsub",
                  "scripts/apbs-mem-setup.py",
                  ],
-      install_requires=['numpy>=1.0.3',
+      install_requires=[ #'numpy>=1.0.3',   # getting fed up with easy_install's broken dependency tracking...
                         ], 
       zip_safe=True,
 )

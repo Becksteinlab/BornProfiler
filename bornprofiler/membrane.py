@@ -17,6 +17,7 @@ http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar
 and modified (see ``src/drawmembrane/draw_membrane2a.c`` in the BornProfiler distribution).
 
 """
+from __future__ import with_statement
 
 import os, errno
 import warnings
