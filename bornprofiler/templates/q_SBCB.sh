@@ -24,20 +24,46 @@ ORIGDIR=$PWD
 IS_STAGED=False
 WORKDIR=.
 
+function stage () {
 # Using local disks to avoid nfs problems
 # see https://sbcb.bioch.ox.ac.uk/wiki/index.php/Talk:Sun_Grid_Engine_6.2_on_local_workstations
-if [ -n "$TMPDIR" ]; then
-    echo "-- Using TMPDIR=$TMPDIR"
-    # uses TMPDIR (use BSD mktemp syntax!)
-    WORKDIR=$(mktemp -d -t bornprofiler.XXXXXXXX) \
-	|| die "Failed to create temp work dir." 2
-    echo "-- staging into $WORKDIR..."
-    cp -v *.pqr *.in *.bash $WORKDIR
-    IS_STAGED=True
-    cd $WORKDIR || die "Failed to 'cd $WORKDIR'" 2
-fi
+    if [ -n "$TMPDIR" ]; then
+	echo "-- Using TMPDIR=$TMPDIR"
+        # uses TMPDIR (use BSD mktemp syntax!)
+	WORKDIR=$(mktemp -d -t bornprofiler.XXXXXXXX) \
+	    || die "Failed to create temp work dir." 2
+	echo "-- staging into $WORKDIR..."
+	cp -v *.pqr *.in *.bash $WORKDIR
+	IS_STAGED=True
+	cd $WORKDIR || die "Failed to 'cd $WORKDIR'" 2
+    fi
+}
+
+function unstage () {
+    case ${IS_STAGED} in
+	True|1)
+	    echo "-- unstaging from $WORKDIR..."
+	    cp -v *.dx *.dx.gz *.out $ORIGDIR
+	    echo "-- copied files from $HOSTNAME:$WORKDIR --> $ORIGDIR"
+	    cd $ORIGDIR || die "Failed to 'cd $ORIGDIR' --- WTF, dude?" 2
+	    if [ $(count_files *.out) -lt 2 ] || [ $(count_files *.dx *.dx.gz) -lt 66 ]; then
+		die "Missing results from $HOSTNAME:$WORKDIR. Investigate manually!" 2
+	    fi
+	    rm -rf $WORKDIR
+	    echo "-- removed $WORKDIR"
+	    ;;
+    esac
+}
+
+# copy files to TMPDIR
+stage
+
+# clean up if we get killed (e.g. qdel): KILL TERM HUP
+trap unstage  9 11 1
+
 #
 #------------------------------
+
 
 # These binaries need to be on the PATH or supplied with their full path
 # (The RUN_DRAWMEMBRANE script can pick them up from the environment.)
@@ -77,8 +103,8 @@ esac
 echo "-- ensuring single threaded calculation OMP_NUM_THREADS=1"
 export OMP_NUM_THREADS=1
 echo "-- APBS Born profile job running on $HOSTNAME"
-echo "++ apbs %(infile)s > %(outfile)s"
-nice ${APBS} %(infile)s > %(outfile)s
+echo "++ apbs %(infile)s 2>&1 | tee %(outfile)s"
+nice ${APBS} %(infile)s 2>&1 | tee %(outfile)s
 rc=$?
 echo "-- job complete: results in %(outfile)s"
 
@@ -88,18 +114,7 @@ case "${UNPACK_DXGZ}" in
 	nice gzip -v {diel,kappa,charge}*.dx;;
 esac
 
-case ${IS_STAGED} in
-    True|1)
-	echo "-- unstaging from $WORKDIR..."
-	cp -v *.dx *.dx.gz *.out $ORIGDIR
-	echo "-- copied files from $HOSTNAME:$WORKDIR --> $ORIGDIR"
-	cd $ORIGDIR || die "Failed to 'cd $ORIGDIR' --- WTF, dude?" 2
-	if [ $(count_files *.out) -lt 2 ] || [ $(count_files *.dx *.dx.gz) -lt 66 ]; then
-	    die "Missing results from $HOSTNAME:$WORKDIR. Investigate manually!" 2
-	fi
-	rm -rf $WORKDIR
-	echo "-- removed $WORKDIR"
-	;;
-esac
+# copy files back
+unstage
 
 exit $rc
