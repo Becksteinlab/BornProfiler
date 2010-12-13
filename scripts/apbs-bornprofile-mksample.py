@@ -39,6 +39,9 @@ if __name__ == "__main__":
     parser.add_option("--outfile", "-o", dest="outfile",
                       metavar="FILE",
                       help="write sample points to FILE [%default]")
+    parser.add_option("--pdb", "-s", dest="pdb",
+                      metavar="FILE",
+                      help="write path to pdb-formatted FILE [%default]")
     parser.add_option("--profile", "-p", dest="radiusfile",
                       metavar="FILE",
                       help="write radius profile R(z) to FILE (only HOLE sph "
@@ -49,7 +52,7 @@ if __name__ == "__main__":
     parser.add_option("--every", dest="every", type="int",
                       metavar="N",
                       help="use every Nth data point (same as --skip=N-1)")
-    parser.set_defaults(outfile="/dev/stdout", skip=0)
+    parser.set_defaults(outfile="/dev/stdout", pdb="path.pdb", skip=0)
 
     opts,args = parser.parse_args()
 
@@ -114,12 +117,22 @@ if __name__ == "__main__":
             radius.write('# sphere file: %s\n' % infile)
             logger.info("Opened radius file '%s'.", opts.radiusfile)
 
+        if opts.pdb:
+            try:
+                pdb = open(opts.pdb, "w")
+            except IOError, details:
+                sys.stderr.write("Error opening output PDB file '%s'. %s\n"
+                                 % (opts.pdb,details))
+                sys.exit(2)
+
         skipN += 1
         printcount = linecount = 0
         for (x,y,z,r) in spheredata:
             if (0 == linecount % skipN):              
                 sample.write("%(x)8.3f %(y)8.3f %(z)8.3f\n" % locals())
-                printcount += 1            
+                printcount += 1
+                if opts.pdb:
+                    pdb.write("ATOM%(printcount)7i  C   XXX X   1    %(x)8.3f%(y)8.3f%(z)8.3f\n" % locals())
             if opts.radiusfile:
                 radius.write("%8.3(z)f %(r)6.2f\n" % locals())
             linecount += 1
@@ -128,4 +141,5 @@ if __name__ == "__main__":
 
     if opts.radiusfile:
         radius.close()
-
+    if opts.pdb:
+        pdb.close()
