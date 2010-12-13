@@ -86,6 +86,8 @@ echo "** %(jobname)s"
 echo "-- APBS =${APBS}"
 echo "-- Detected apbs version ${APBS_VERSION}"
 echo "-- Script was written for version %(apbs_version)s"
+echo "-- ensuring single threaded calculation of APBS: OMP_NUM_THREADS=1"
+export OMP_NUM_THREADS=1
 
 if [ -e "${RUN_DRAWMEMBRANE}" ]; then
     echo "Running ${RUN_DRAWMEMBRANE}..."
@@ -100,8 +102,6 @@ case "${UNPACK_DXGZ}" in
 	nice gunzip -v {diel,kappa,charge}*m.dx.gz;;
 esac
 
-echo "-- ensuring single threaded calculation OMP_NUM_THREADS=1"
-export OMP_NUM_THREADS=1
 echo "-- APBS Born profile job running on $HOSTNAME"
 echo "++ apbs %(infile)s 2>&1 | tee %(outfile)s"
 nice ${APBS} %(infile)s 2>&1 | tee %(outfile)s
