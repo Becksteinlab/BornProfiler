@@ -1,0 +1,109 @@
+=======
+ USAGE
+=======
+
+Notes on how to use the BornProfiler package.
+
+Simple dielectric regions
+=========================
+
+See ``examples/parsegian``.
+
+
+Generic
+=======
+
+Prepare a pqr file of, say, an ion channel and create a list of points
+(e.g. along the pore axis) on which you want to calculate the
+electrostatic potential of mean force.
+
+See the help functions of the ``apbs-bornprofiler-mplaceion.py`` and
+other ``apbs-bornprofiler-*.py`` scripts.
+
+
+With a membrane
+---------------
+
+First generate a blank parameter file::
+
+  apbs-bornprofile-mplaceion.py --template Mine.cfg
+
+Edit the parameter file::
+
+  nano Mine.cfg
+
+For instance, set the *pqr* file and the position of the membrane. The
+*qscript* and *arrayscript* can also be your own templates. For what's
+available see ``BornProfiler/bornprofiler/templates/``.
+
+.. TODO: explanation of the individual sections. (See the template
+..       file itself, bornprofiler.io, and the APBS ELEC keywords.)
+
+Set-up the individual windows::
+
+  apbs-bornprofile-mplaceion.py Mine.cfg
+
+Run the individual windows. For instance, if you have a working SGE
+system, run the whole job array with ::
+
+  qsub qsub_mine.sge
+
+.. Note for SBCB: The current default does not work for the Workstation
+..                queue. I'll add something once we have appropriate versions of APBS
+..                and draw_membrane in the Software repository. 
+..                (Preliminary notes for running the calculations on
+..                Workstation queue can be found on the Talk:BornProfiler page.) 
+
+
+Analyze::
+
+  apbs-bornprofile-analyze.py Mine.cfg
+
+In bulk solvent
+---------------
+
+Pretty much as above but use apbs-bornprofiler-placeion.py and the
+[membrane] section of the parameter file is ignored. This is very
+similar to what the old placeion.sh and placeion.py did.
+
+
+Potential for visualization
+===========================
+
+Use APBSmem_ or edit the **[potential]** section in the parameter file to
+run a single APBS calculation on a large and fairly coarse grid::
+
+  apbs-mem-potential.py Mine.cfg
+
+The main output consists of two electrostatics potential files:
+
+pot_membrane.dx
+    potential in kT/e of the protein in the membrane (low dielectric 2
+    or the value of *mdie* in the parameter file)  
+pot_bulksolvent.dx
+    potential in kT/e of the protein in the solvent (typically, a
+    dielectric of ~80 or whatever was set for *sdie* in the parameter
+    file)  
+
+Note that you probably have to gunzip the resulting potential dx files
+so that you can read it in Chimera, VMD or PyMOL. 
+
+The default values for the grid probably work for most proteins but
+depending on size you might have to change the values in ::
+
+  [potential]
+  glen = (200,200,200)
+  dime = (97,97,97)
+
+glen_ is the size of the box in Å; the box is centered on the
+protein. dime_ are the grid dimensions. For more accurate calculations,
+increase dime but be warned that the memory requirements rise
+accordingly.
+
+
+.. _APBSmem: 
+   http://mgrabe1.bio.pitt.edu/apbsmem/
+.. _glen:
+   http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/glen
+.. _dime:
+   http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime

@@ -1,4 +1,4 @@
-include README INSTALL CHANGELOG COPYING  AUTHORS
+include README INSTALL USAGE CHANGELOG COPYING  AUTHORS
 include ez_setup.py setup.py
 graft   bornprofiler/templates/
 

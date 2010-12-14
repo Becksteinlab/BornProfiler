@@ -1,0 +1,68 @@
+======================
+ INSTALL BornProfiler
+======================
+
+.. Warning: THIS IS ALPHA SOFTWARE. By using it you acknowledge that
+   you understand that it can potentially produce wrong results,
+   delete files, drink your beer from the fridge, and post an
+   embarassing picture of you on Facebook. Thanks for all feedback.
+   Oli 01:20, 6 December 2010 (UTC)
+
+Required pre-requisites
+=======================
+
+* python2.5 or better
+* NumPy http://numpy.scipy.org
+* a C compiler such as GNU gcc
+* APBS 
+
+
+Installation
+============
+
+Get the source from Oli's repository (within SBCB) or unpack the tar
+ball.
+
+Install the python module and scripts::
+
+  cd BornProfile
+  python setup.py install --user
+
+Compile the customized (and improved) version of draw_membrane::
+
+  mkdir BUILD && cd BUILD
+  cmake -D CMAKE_INSTALL_PREFIX=$HOME/bin -D CMAKE_BUILD_TYPE=Release ../src/drawmembrane
+  make
+  make install
+
+(cmake is not really needed; if you don't have. try the following::
+
+   gcc ./src/drawmembrane/draw_membrane2a.c -o draw_membrane2a -lm -lz
+
+and install manually in a place where you or your shell can find it.)
+
+
+Configuration
+=============
+
+When a BornProfiler script is run for the very first time, the package
+will create your master configuration file
+``~/.bornprofiler.cfg``. The defaults look like this::
+
+   [DEFAULT]
+   configdir = ~/.bornprofiler
+   templatesdir = %(configdir)s/templates
+   qscriptdir = %(configdir)s/qscripts
+
+   [executables]
+   apbs = apbs
+   drawmembrane = draw_membrane2a
+
+This file can be edited in a text editor. For instance, one can add
+the full path to the apbs and draw_membrane2a executable binaries.
+
+Any other variables used in run configuration input files can also be
+added here and will be used as defaults.
+
+Advanced use: You can drop templates for run scripts into *qscriptdir*
+and have the BornProfiler package pick them up automagically. 

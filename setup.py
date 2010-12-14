@@ -9,7 +9,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(name="APBS-BornProfiler",
-      version="0.4.1",
+      version="0.5",
       description="Setting up of Born profile calculations for APBS",
       long_description="""
 """,
@@ -27,7 +27,7 @@ setup(name="APBS-BornProfiler",
                  "scripts/apbs-bornprofile-mksample.py",
                  "scripts/apbs-bornprofile-newpath.py",
                  "scripts/parallel.py", "scripts/fake_qsub",
-                 "scripts/apbs-mem-setup.py",
+                 "scripts/apbs-mem-potential.py",
                  ],
       install_requires=[ #'numpy>=1.0.3',   # getting fed up with easy_install's broken dependency tracking...
                         ], 
