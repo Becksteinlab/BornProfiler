@@ -21,8 +21,8 @@ import os
 import logging
 logger = logging.getLogger('bornprofiler') 
 
-usage = """%prog [options] pqr-file samplepoints-file
-        %prog [options] run-parameters
+usage = """%prog [options] run-parameters
+        %prog [options] pqr-file samplepoints-file        
 
 This script sets up input files for Born energy calculations for APBS.
 
@@ -46,7 +46,8 @@ This paper suggests using the corrected covalent radius (Born radius)
 and not the Pauling radius.
 """
 
-from bornprofiler.core import IONS, JOBSCRIPTS, Placeion
+import bornprofiler
+from bornprofiler.core import IONS, Placeion
    
 if __name__ == "__main__":
   import sys
@@ -74,10 +75,10 @@ if __name__ == "__main__":
                     "CONC in mol/l [%default]")
   parser.add_option("--script", dest="script",
                     metavar="NAME",
-                    help="name of a stored script template %r or (advanced usage!) a "
-                    "filename that contains appropriate place holders [%%default]" % JOBSCRIPTS.keys())
+                    help="name of a stored script template or (advanced usage!) a "
+                    "filename that contains appropriate place holders [%%default]")
   parser.set_defaults(ionicStrength=0.15, jobName="bornprofile", 
-                      ionName="Na", dime=[97,97,193], script="local")
+                      ionName="Na", dime=[97,97,193], script="q_local.sh")
 
   opts,args = parser.parse_args()
 
@@ -93,18 +94,8 @@ if __name__ == "__main__":
     P = Placeion(filename)
   else:
     pqrfile, pointsfile = args
-    try:
-      script_template = JOBSCRIPTS[opts.script]
-    except KeyError:
-      try:
-        script_template = open(opts.script).readlines()
-      except:
-        logger.fatal("--scripts=NAME must be either a filename or one of %r; see the " 
-                     "source for the correct format of the file." % JOBSCRIPTS.keys())
-        sys.exit(2)
-
-      P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
-                   dime=opts.dime, jobName=opts.jobName, script=script_template)
+    P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
+                 dime=opts.dime, jobName=opts.jobName, script=opts.script)
 
   P.generate()
 

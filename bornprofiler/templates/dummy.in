@@ -1,5 +1,5 @@
-# APBSmem: prepare the coefficient maps
-# (modified by OB)
+# APBS: write coefficient maps
+# (based on APBSmem-generated output)
 read
     mol pqr "%(pqr)s"
 end
