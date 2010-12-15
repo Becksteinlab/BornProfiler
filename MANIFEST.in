@@ -1,5 +1,7 @@
 include README INSTALL USAGE CHANGELOG COPYING  AUTHORS
-include ez_setup.py setup.py
+include ez_setup.py setup.py 
+graft   examples/Parsegian
+graft   examples/2BG9
 graft   bornprofiler/templates/
 
 
