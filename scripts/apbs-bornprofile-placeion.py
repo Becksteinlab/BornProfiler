@@ -91,9 +91,13 @@ if __name__ == "__main__":
     if opts.write_template:
       bornprofiler.write_parameters(filename)
       sys.exit(0)
+    logger.info("run config = %(filename)r", vars())
     P = Placeion(filename)
   else:
     pqrfile, pointsfile = args
+    logger.warn("Deprecated use of PQR file with points list!")
+    logger.warn("Use a run configuration file in the future.")
+    logger.info("pqr = %(pqrfile)r, points = %(pointsfile)r", vars())
     P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
                  dime=opts.dime, jobName=opts.jobName, script=opts.script)
 

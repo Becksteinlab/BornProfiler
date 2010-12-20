@@ -56,6 +56,8 @@ if __name__ == "__main__":
       bornprofiler.write_parameters(filename)
       sys.exit(0)
 
+  logger.info("run config = %(filename)r", vars())
+
   P = bornprofiler.core.MPlaceion(filename)
   P.generate(run=opts.run)
 
