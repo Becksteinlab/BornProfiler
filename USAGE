@@ -15,7 +15,13 @@ Generic
 
 Prepare a pqr file of, say, an ion channel and create a list of points
 (e.g. along the pore axis) on which you want to calculate the
-electrostatic potential of mean force.
+electrostatic potential of mean force. 
+
+The list of points should be either a simple data file with one set of
+white-space separate coordinates (x, y, and z in angstroem) per line
+(comment lines starting with "#" and empty lines are ignored) or a PDB
+file (the x, y, and z coordinates of all ATOM and HETATM records are
+used).
 
 See the help functions of the ``apbs-bornprofiler-mplaceion.py`` and
 other ``apbs-bornprofiler-*.py`` scripts.

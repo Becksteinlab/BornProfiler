@@ -9,7 +9,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(name="APBS-BornProfiler",
-      version="0.5",
+      version="0.6",
       description="Setting up of Born profile calculations for APBS",
       long_description="""
 """,
