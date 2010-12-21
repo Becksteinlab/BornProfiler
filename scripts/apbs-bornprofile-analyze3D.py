@@ -1,18 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-:Author: Kaihsu Tai, Oliver Beckstein
-:Year: 2008, 2010
+:Author: Oliver Beckstein
+:Year: 2010
 :Licence: GPL
-:Copyright: (c) 2008 Kaihsu Tai
 :Copyright: (c) 2010 Oliver Beckstein
-:URL: http://en.wikiversity.org/wiki/Talk:Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
-
-I wrote some Python code to automate this process. The job submission
-requires a queuing system called Grid Engine. Copyright © 2008 Kaihsu
-Tai. Moral rights asserted (why?). Hereby licensed under either GFDL
-or GNU General Public License at your option.
-
 """
 from __future__ import with_statement
 
@@ -27,6 +19,9 @@ usage = """%prog [options] samplepoints-file *.out
 
 Extract the electrostatic free energy from the numbered APBS output files
 (produced via the placeion.py script) and associate each energy with the position of the ion. 
+
+A 3D electrostatic free energy landscape is constructred from the
+values at the sample points.
 
 .. Note:: The same samplepoints-file must be provided that was used for setting
    up the APBS calculations.
@@ -49,12 +44,15 @@ class AnalyzeElec(BPbase):
                        "of data files (%d). They MUST correspond 1-to-1." % 
                        (self.points.shape[0], len(self.datafiles)))
     self.accumulate()
-    self.write()
 
   def accumulate(self):
-    zE = []
+    """Read the energy from each datafile and store with the coordinates.
+
+    Populates :attr:`AnalyzeElec.data`, a (4,N) array where N is the
+    number of windows.
+    """
+    data = []
     for num, point in enumerate(self.points):
-      z = point[2]
       outName = self.outfilename(num)
       lines = ""
       # find file name in list of input files
@@ -70,16 +68,93 @@ class AnalyzeElec(BPbase):
       with open(outPath) as outFile:
         for line in outFile:
           if (line[0:18] == "  Local net energy"):
-            zE.append([z, float(line.split()[6])])
-    self.zE = numpy.array(zE).T
+            data.append(numpy.concatenate((point, [float(line.split()[6])])))
+            break
+      print "[%5.1f%%] Read point %6d/%6d  %r \r" % (100. * float(num+1)/len(self.points), 
+                                                     num, len(self.points)-1, outPath),
+    self.data = numpy.array(data).T
+    print
  
+  def ranges(self, padding=0):
+    """Returns the range of values in each dimension.
+
+    :Returns: Array *r* of shape (2,3): r[0] contains the smallest and 
+              r[1] the largest values.
+    """
+    def minmax(dim):
+      return numpy.array([self.data[dim,:].min(), self.data[dim,:].max()])
+    ranges = numpy.array([minmax(dim) for dim in (0,1,2)]).T
+    ranges[0] -= padding
+    ranges[1] += padding
+    return ranges
+    
+  def histogramdd(self, delta, fillfac=5):
+    """Histogram PMF on a regular grid.
+
+    The spacing *delta* must be the same or larger than used in Hollow; to be
+    on the safe side, just use the value of *grid_spacing* (e.g. 2.0 for 2 A).
+    The histogram grid is chosen large enough to encompass all data points.
+
+    If *delta* is bigger than *grid_spacing* or points are not on a
+    regular grid the values are averaged over each bin.
+
+    Points without data are filled with fillfac * max(histogram).
+
+    :Returns: histogram, edges (same as :func:`numpy.histogramdd`)
+    """
+    ranges = self.ranges(padding=delta/2.)
+    bins = ((ranges[1] - ranges[0])/float(delta)).astype(int)
+    h,e = numpy.histogramdd(self.data[:3].T, range=ranges.T, bins=bins, 
+                            weights=self.data[3])
+    N,e = numpy.histogramdd(self.data[:3].T, range=ranges.T, bins=bins)    
+    h[N>0] /= N[N>0]  # average PMF
+    h[N==0] = fillfac*h.max()
+    return h,e
+
+  def Grid(self, delta, resample_factor=None, interpolation_spline_order=3):
+    """Package the PMF as a :class:`gridData.Grid` object.
+
+    *delta* should be the original spacing of the points in angstroem.
+
+    With a *resample_factor*, the data are interpolated on a new grid
+    with *resample_factor* times as many bins as in the original
+    histogram (See :meth:`gridData.Grid.resample_factor`).
+
+    *interpolation_order* sets the interpolation order for the
+     resampling procedure. 
+
+    .. Warning:: Interpolating can lead to artifacts in the 3D PMF. If
+                 in doubt, **do not resample**.
+    """
+    from gridData import Grid
+    g = Grid(*self.histogramdd(delta), interpolation_spline_order=interpolation_spline_order)
+    if not resample_factor:
+      return g
+    return g.resample_factor(resample_factor)
+
   def write(self):
     outName = self.datafile("welec")
     with open(outName, "w") as outFile:
-      outFile.write("# z/angstrom E/(kJ/mol)\n")
-      for z,E in self.zE.T:
-        outFile.write("%(z)8.3f %(E)8.3e\n" % vars())
-    logger.info("Wrote Born profile to %(outName)r.", vars()) 
+      outFile.write("# x/A y/A z/A  W/(kJ/mol)\n")
+      for x,y,z,E in self.data.T:
+        outFile.write("%(x)8.3f %(y)8.3f %(z)8.3f %(E)8.3e\n" % vars())
+    logger.info("Wrote Born PMF to %(outName)r.", vars()) 
+
+  def export(self, delta, filename=None, **kwargs):
+    """Write data to dx file *filename*.
+
+    export(delta[,filename[,kwargs]])
+
+    Requires grid spacing delta of original data points. *filename* is
+    automatically chosen if not supplied. Other *kwargs* are passed on
+    to :meth:`AnalElec.Grid`.
+    """
+    if filename is None:
+      filename = self.datafile("welec", ext=".dx")
+    g = self.Grid(delta, **kwargs)
+    g.export(filename, format="dx")
+    logger.info("Wrote Born PMF to dx file  %(filename)r with spacing %(delta)g A.",
+                vars())
 
   def plot(self, filename=None, plotter='matplotlib', **kwargs):
     """Plot Born profile.
@@ -97,7 +172,6 @@ class AnalyzeElec(BPbase):
          for Gnuplot
     """
     plotters = {'matplotlib': self._plot_matplotlib,
-                'Gnuplot': self._plot_Gnuplot,
                 }
     kwargs['filename'] = filename
     plotName = plotters[plotter](**kwargs)
@@ -119,32 +193,9 @@ class AnalyzeElec(BPbase):
     savefig(plotName)
     return plotName
 
-  def _plot_Gnuplot(self, filename=None, **kwargs):
-    import Gnuplot    
-    outName = self.datafile("welec")
-    if filename is None:
-      plotName = self.datafile("welec",".eps")
-    else:
-      plotName = filename
- 
-    # initialize
-    g = Gnuplot.GnuplotProcess()
-    cmd  = "set terminal postscript eps colour\n"
-    cmd += 'set output "' + plotName + '"\n'
-    cmd += """set style data lines
-set xlabel "z / nm"
-set ylabel "energy / (kJ/mol)"
-"""
-    cmd += 'plot "%s" using ($1/10):($2) title "%s"\n' (outName,self.jobName)
- 
-    # do it
-    g(cmd)
-    return plotName
-
   def __repr__(self):
     return "<%s jobName=%r points=%r, %d data files>" % \
         (self.__class__.__name__, self.jobName, self.pointsName, len(self.datafiles))
-
  
 if __name__ == "__main__":
   import sys
@@ -157,8 +208,17 @@ if __name__ == "__main__":
   parser.add_option("--name", dest="jobName",
                     metavar="STRING",
                     help="name used in output files (welec_STRING.{dat,pdf})")
+  parser.add_option("--delta", "-d", dest="delta", type="float",
+                    metavar="FLOAT",
+                    help="When exporting to a DX grid, sample points on bins with "
+                    "size FLOAT Angstroem. Should be the value used for building the "
+                    "sample points (e.g. Hollow's grid_spacing).")
+  parser.add_option("--export", "-x", dest="dxfilename", 
+                    metavar="FILE",
+                    help="Export grid to dx file FILE (see --delta). If set to 'auto' "
+                    "then a filename is chosen.")
   parser.add_option("--plotter", dest="plotter", type="choice",
-                    choices=('matplotlib','Gnuplot'),
+                    choices=('matplotlib',),
                     help="plotting backend [%default]")
   parser.add_option("--basedir", dest="basedir",
                     metavar="DIR",
@@ -197,6 +257,11 @@ if __name__ == "__main__":
 
   kwargs = {'jobName': opts.jobName}
   A = AnalyzeElec(*args, **kwargs)
-  A.plot(plotter=opts.plotter)
+  A.write()
+
+  if opts.delta and opts.dxfilename:
+    if opts.dxfilename == "auto":
+      opts.dxfilename = None
+    A.export(opts.delta, filename=opts.dxfilename)
 
   bornprofiler.stop_logging()
