@@ -22,6 +22,7 @@ setup(name="APBS-BornProfiler",
       package_data = {'bornprofiler': ['templates/*.sh', 'templates/*.bash', 'templates/*.sge',
                                        'templates/*.in', 'templates/*.dat']},
       scripts = ["scripts/apbs-bornprofile-analyze.py",
+                 "scripts/apbs-bornprofile-analyze3D.py",
                  "scripts/apbs-bornprofile-placeion.py",
                  "scripts/apbs-bornprofile-mplaceion.py",
                  "scripts/apbs-bornprofile-mksample.py",
@@ -29,7 +30,14 @@ setup(name="APBS-BornProfiler",
                  "scripts/parallel.py", "scripts/fake_qsub",
                  "scripts/apbs-mem-potential.py",
                  ],
-      install_requires=[ #'numpy>=1.0.3',   # getting fed up with easy_install's broken dependency tracking...
-                        ], 
+      install_requires=[ 
+        # commented out because I get fed up with easy_install's broken(?) dependency tracking...
+        #'numpy>=1.0.3', 
+        ], 
+      extras_require = {
+        'analysis': ['gridData>=0.3',
+                     ],
+        },
+      dependency_links = ["http://sbcb.bioch.ox.ac.uk/oliver/download/Python/"],
       zip_safe=True,
 )
