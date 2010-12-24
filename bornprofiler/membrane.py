@@ -177,7 +177,7 @@ class BaseMem(object):
     def write_infile(self, name):
         if self.unpack_dxgz:
             extra = {'dxformat': 'dx', 'dxsuffix': 'dx'}
-            logger.info("Working around bug in APBS 1.3: reading gunzipped files")
+            logger.debug("Working around bug in APBS 1.3: reading gunzipped files")
         else:
             extra = {}
         self.write(name, **extra)
@@ -316,7 +316,7 @@ class BornAPBSmem(BaseMem):
                   [(250,250,250),(100,100,100),(50,50,50)]
           - runtype: for standard Born calculations use 'with_protein'; if one only wants to
                   look at geometrically defined dielectric regions and uncharged proteins
-                  (see the ``example/parsegian``) then use 'memonly' ['with_protein']
+                  (see the ``example/Parsegian``) then use 'memonly' ['with_protein']
         """
         self.protein_pqr = args[0]
         self.ion_pqr = args[1]
