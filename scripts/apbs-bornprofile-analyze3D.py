@@ -31,19 +31,30 @@ import bornprofiler
 from bornprofiler.core import BPbase
  
 class AnalyzeElec(BPbase):
-  "analyze APBS energy profiling results"
+  """analyze APBS energy profiling results
+
+  With create=True (default), reads position data from samplepoints
+  file and energies from APBS output files.
+
+  With create=False, reads positions and energies from a previous
+  output file.
+  """
 
   def __init__(self, *args, **kwargs):
     self.pointsName = args[0]
     self.datafiles = args[1:]
     self.jobName = kwargs.pop('jobName', 'bornprofile')
- 
-    self.readPoints()
-    if self.points.shape[0] != len(self.datafiles):
-      raise ValueError("Number of sampled points (%d) does not match the number "
-                       "of data files (%d). They MUST correspond 1-to-1." % 
-                       (self.points.shape[0], len(self.datafiles)))
-    self.accumulate()
+
+    create = kwargs.pop("create", True)
+    if create:
+      self.readPoints()
+      if self.points.shape[0] != len(self.datafiles):
+        raise ValueError("Number of sampled points (%d) does not match the number "
+                         "of data files (%d). They MUST correspond 1-to-1." % 
+                         (self.points.shape[0], len(self.datafiles)))
+      self.accumulate()
+    else:
+      self.read()
 
   def accumulate(self):
     """Read the energy from each datafile and store with the coordinates.
@@ -132,6 +143,13 @@ class AnalyzeElec(BPbase):
       return g
     return g.resample_factor(resample_factor)
 
+  def read(self, filename=None):
+    """Read datafile *filename* (format: x,y,z,W)"""
+    if filename is None:
+      filename = self.datafile("welec")
+    self.data = numpy.loadtxt(filename).T
+    logger.info("Read Born PMF from %(filename)r.", vars())
+
   def write(self):
     outName = self.datafile("welec")
     with open(outName, "w") as outFile:
@@ -140,7 +158,34 @@ class AnalyzeElec(BPbase):
         outFile.write("%(x)8.3f %(y)8.3f %(z)8.3f %(E)8.3e\n" % vars())
     logger.info("Wrote Born PMF to %(outName)r.", vars()) 
 
-  def export(self, delta, filename=None, **kwargs):
+  def export(self, filename=None, format="dx", **kwargs):
+    """Export data to different file format.
+
+    The format is deduced from the filename suffix or
+    *format*. *kwargs* are set according to the exporter.
+
+    dx
+       histogram on a grid; must provide kwarg *delta* for the 
+       grid spacing.
+    pdb
+       write PDB file with an ion for each sample point and the 
+       energy as the B-factor. The kwarg *ion* can be used to 
+       set the name/resName in the file (ION is the default).
+    """
+    formats = {'dx': {'ext': '.dx', 
+                      'exporter': self._export_dx},
+               'pdb': {'ext': '.pdb',
+                       'exporter': self._export_pdb},
+               }
+    if filename is None:
+      filename = self.datafile("welec", ext="."+format)
+    else:
+      format = os.path.splitext(filename)[1][1:]
+    if not format in formats:
+      raise ValueError("%r format is unsupported, only %r work" % (format, formats.keys()))    
+    return formats[format]['exporter'](filename, **kwargs)
+
+  def _export_dx(self, filename, delta=2.0, **kwargs):
     """Write data to dx file *filename*.
 
     export(delta[,filename[,kwargs]])
@@ -149,50 +194,41 @@ class AnalyzeElec(BPbase):
     automatically chosen if not supplied. Other *kwargs* are passed on
     to :meth:`AnalElec.Grid`.
     """
-    if filename is None:
-      filename = self.datafile("welec", ext=".dx")
     g = self.Grid(delta, **kwargs)
     g.export(filename, format="dx")
     logger.info("Wrote Born PMF to dx file  %(filename)r with spacing %(delta)g A.",
                 vars())
 
-  def plot(self, filename=None, plotter='matplotlib', **kwargs):
-    """Plot Born profile.
-
-    plot([filename[,plotter[,kwargs ...]]])
+  def _export_pdb(self, filename, **kwargs):
+    """Write datapoints to pdb file with energy in the B-factor field.
 
     :Keywords:
-      *filename*
-         name of image file to save the plot in; with *plotter* = 'Gnuplot'
-         only eps files are supported (I think...)
-      *plotter* either 'matplotlib' 
-         (default, requires matplotlib) or 'gnuplot' (requires Gnuplot package)
-      *kwargs*
-         other keyword arguments that are passed on to :func:`pylab.plot`; ignored
-         for Gnuplot
+      *ion*
+         name of the ion (name/resSeq in pdb)
     """
-    plotters = {'matplotlib': self._plot_matplotlib,
-                }
-    kwargs['filename'] = filename
-    plotName = plotters[plotter](**kwargs)
-    logger.info("Plotted grap %(plotName)r.", vars())
-    return plotName
- 
-  def _plot_matplotlib(self, filename=None, **kwargs):
-    from pylab import plot, xlabel, ylabel, savefig
-    if filename is None:
-      plotName = self.datafile("welec",".pdf")
-    else:
-      plotName = filename
-    kwargs.setdefault('color', 'black')
-    kwargs.setdefault('linewidth', 2)
-    z,E = self.zE
-    plot(z,E, **kwargs)
-    xlabel(r'$z$ in nm')
-    ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
-    savefig(plotName)
-    return plotName
+    
+    # http://www.wwpdb.org/documentation/format32/sect9.html
+    fmt = {'ATOM':   "ATOM  %(serial)5d %(name)-4s%(altLoc)1s%(resName)-3s %(chainID)1s%(resSeq)4d%(iCode)1s   %(x)8.3f%(y)8.3f%(z)8.3f%(occupancy)6.2f%(tempFactor)6.2f\n",
+           'REMARK': "REMARK     %s\n",
+           'TITLE':  "TITLE    %s\n",
+           'CRYST1': "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4d\n",
+           }
+    name = resName = kwargs.pop('ion', 'ION') or 'ION'  # None --> ION
+    chainID = "Z"
+    iCode = altLoc = " "
+    occupancy = 1.0
 
+    with open(filename, 'w') as pdb:
+      pdb.write(fmt['TITLE'] % "Poisson-Boltzmann electrostatic free energy")
+      pdb.write(fmt['REMARK'] % "W(x,y,z) in kJ/mol")
+      pdb.write(fmt['REMARK'] % "Written by apbs-bornprofile-analyze3D.py")
+      for serial,(x,y,z,W) in enumerate(self.data.T):
+        serial += 1
+        resSeq = serial
+        tempFactor = W
+        pdb.write(fmt['ATOM'] % vars())
+    logger.info("Wrote ion positions for %(name)s to pdb file %(filename)r", vars())
+                  
   def __repr__(self):
     return "<%s jobName=%r points=%r, %d data files>" % \
         (self.__class__.__name__, self.jobName, self.pointsName, len(self.datafiles))
@@ -213,19 +249,25 @@ if __name__ == "__main__":
                     help="When exporting to a DX grid, sample points on bins with "
                     "size FLOAT Angstroem. Should be the value used for building the "
                     "sample points (e.g. Hollow's grid_spacing).")
-  parser.add_option("--export", "-x", dest="dxfilename", 
+  parser.add_option("--dx", "-x", dest="dxfilename", 
                     metavar="FILE",
                     help="Export grid to dx file FILE (see --delta). If set to 'auto' "
                     "then a filename is chosen.")
-  parser.add_option("--plotter", dest="plotter", type="choice",
-                    choices=('matplotlib',),
-                    help="plotting backend [%default]")
+  parser.add_option("--pdb", "-p", dest="pdbfilename", 
+                    metavar="FILE",
+                    help="Export points to a PDB file with the energy in the B-factor. "
+                    "If set to 'auto' then a filename is chosen.")
+  parser.add_option("--ion", dest="ionName",
+                    metavar="STRING",
+                    help="Set the ion name for --pdb if not running from config file [%default]")
   parser.add_option("--basedir", dest="basedir",
                     metavar="DIR",
                     help="when using a run parameter file, the job output is found under "
                     "'DIR/<job.name>/w[0-9][0-9][0-9][0-9]/job*.out', with job.name taken from "
                     "the run parameter file [%default]")
-  parser.set_defaults(plotter='matplotlib', basedir=os.path.curdir)
+  parser.add_option("--read", dest="create", action="store_false",
+                    help="If set, read positions and enrgies from a previously created dat file.")
+  parser.set_defaults(basedir=os.path.curdir, ionName="ION", create=True)
 
 
   opts,args = parser.parse_args()
@@ -242,6 +284,7 @@ if __name__ == "__main__":
       fileglob = os.path.join(opts.basedir, p.get_bornprofile_kwargs('name'), 
                               'w[0-9][0-9][0-9][0-9]', 'job*.out')
       opts.jobName = p.get_bornprofile_kwargs('name')
+      opts.ionName = p.get_bornprofile_kwargs('ion')
     except:
       logger.fatal("Cannot obtain information about the sample points and directory from the "
                    "run parameter file %r.", args[0])
@@ -255,13 +298,17 @@ if __name__ == "__main__":
   if opts.jobName is None:
     opts.jobName = "bornprofile"
 
-  kwargs = {'jobName': opts.jobName}
+  kwargs = {'jobName': opts.jobName, 'create': opts.create}
   A = AnalyzeElec(*args, **kwargs)
   A.write()
 
   if opts.delta and opts.dxfilename:
     if opts.dxfilename == "auto":
       opts.dxfilename = None
-    A.export(opts.delta, filename=opts.dxfilename)
+    A.export(filename=opts.dxfilename, format="dx", delta=opts.delta)
+  if opts.pdbfilename:
+    if opts.pdbfilename == "auto":
+      opts.pdbfilename = None
+    A.export(filename=opts.pdbfilename, format="pdb", ion=opts.ionName)    
 
   bornprofiler.stop_logging()
