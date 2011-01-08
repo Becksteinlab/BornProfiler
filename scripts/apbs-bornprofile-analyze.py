@@ -22,14 +22,20 @@ import numpy
 import logging
 logger = logging.getLogger('bornprofiler') 
 
-usage = """%prog [options] samplepoints-file *.out
-       %prog [options] parameter-file
+usage = """%prog [options] parameter-file
+       %prog [options] samplepoints-file *.out       
 
 Extract the electrostatic free energy from the numbered APBS output files
-(produced via the placeion.py script) and associate each energy with the position of the ion. 
+(produced via the apbs-bornprofil-placeion.py script) and associate each energy
+with the position of the ion. The prefered usage is to supply the run
+configuration file and possibly the directory where the datafiles are stored
+(--basedir).
 
 .. Note:: The same samplepoints-file must be provided that was used for setting
    up the APBS calculations.
+
+.. SeeAlso:: apbs-bornprofile-analyze3d.py can also be used and has a number of
+   different options. (Eventually, the two programs will be merged.)
 """
 
 import bornprofiler

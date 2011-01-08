@@ -76,7 +76,7 @@ if __name__ == "__main__":
   parser.add_option("--script", dest="script",
                     metavar="NAME",
                     help="name of a stored script template or (advanced usage!) a "
-                    "filename that contains appropriate place holders [%%default]")
+                    "filename that contains appropriate place holders [%default]")
   parser.set_defaults(ionicStrength=0.15, jobName="bornprofile", 
                       ionName="Na", dime=[97,97,193], script="q_local.sh")
 

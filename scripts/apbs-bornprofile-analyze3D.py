@@ -20,7 +20,7 @@ usage = """%prog [options] samplepoints-file *.out
 Extract the electrostatic free energy from the numbered APBS output files
 (produced via the placeion.py script) and associate each energy with the position of the ion. 
 
-A 3D electrostatic free energy landscape is constructred from the
+A 3D electrostatic free energy landscape is constructed from the
 values at the sample points.
 
 .. Note:: The same samplepoints-file must be provided that was used for setting
