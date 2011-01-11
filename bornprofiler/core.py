@@ -6,6 +6,7 @@ from __future__ import with_statement
 import os, errno
 import numpy
 
+import io
 from config import configuration, read_template
 from utilities import in_dir, asiterable
 
@@ -117,48 +118,8 @@ class BPbase(object):
 
     Tries to be smart and autodetect standard x-y-z dat file or pdb.
     """
-    try:
-      points = self.readPointsDat(self.pointsName)
-    except ValueError:
-      points = self.readPointsPDB(self.pointsName)
-    self.points = numpy.array(points)
+    self.points = io.readPoints(self.pointsName)
     self.numPoints = self.points.shape[0]
-
-  def readPointsDat(self, filename):
-    """Read points from a simple data file.
-
-    Example::
-       # comment
-       x y z
-       x y z
-       ...
-    """
-    points = []
-    with open(filename) as pointsFile:
-      for line in pointsFile:
-        line = line.strip()
-        if line.startswith('#') or len(line) == 0:
-          continue
-        fields = line.split()
-        if len(fields) != 3:
-          raise ValueError("%(filename)r must contain exactly 3 entries x y z per line" % vars())
-        points.append(map(float, fields[0:3]))
-    return points
-
-  def readPointsPDB(self, filename):
-    """Read points form a PDB formatted file.
-
-    Takes x,y,z from any ATOM or HETATM record.
-    """
-    points = []
-    with open(filename) as pointsFile:
-      for line in pointsFile:
-        line = line.strip()
-        if not (line.startswith('ATOM') or line.startswith('HETATM')):
-          continue
-        x,y,z = float(line[31:39]), float(line[39:47]), float(line[47:55])
-        points.append((x,y,z))
-    return points
 
   def writePQRs(self, windows=None):
     """Generate input pqr files for all windows and store them in separate directories."""

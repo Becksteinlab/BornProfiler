@@ -2,7 +2,8 @@
 """%prog [options] path-datafile
 
 Quick hack in order to generate a nice path from a manually changed
-one. The input path must consist of xyz coordinates, one per line.
+one. The input path must consist of xyz coordinates, one per line, or
+a PDB file.
 
 At the moment, it is assumed that the points are supposed to describe
 a path roughly parallel to the z-axis --- this is used to find the
@@ -10,19 +11,41 @@ first and last point of the path.
 
 """
 
-import MDAnalysis.analysis.distances
-import networkx as NX
+# lazy import... this is a quick hack
 from numpy import *
 
-def modify_path(infile, outfile="newpath.dat", mindist=1.0):
-     #mindist = 1.0   # try to get a inter-point distance of  mindist or more if needed
+try:
+     from MDAnalysis.analysis.distances import distance_array
+except ImportError:
+     # slower fallback implementation (~100x for 10k array)
+     def distance_array(a,b):
+          """Return list of all distances between points in lists a and b."""
+          from numpy import zeros, float32
+          from numpy.linalg import norm
+          # naive implementation: build array d_ij = dist(xi, xj)
+          d = zeros((len(a), len(b)), dtype=float32)
+          for i,xi in enumerate(a):
+               for j,xj in enumerate(b):
+                    d[i,j] = norm(xi-xj)
+          return d
+          
+try:
+     import networkx as NX
+except ImportError:
+     raise ImportError("NetworkX http://networkx.lanl.gov/ is required.")
 
-     p = loadtxt(infile)
+import bornprofiler.io
+
+def modify_path(infile, outfile="newpath.dat", mindist=1.0):
+     """try to get a inter-point distance of  mindist or more if needed"""
+
+     p = bornprofiler.io.readPoints(infile)
+
      # inplace sort by z (col=2): 
      # http://stackoverflow.com/questions/2828059/sorting-arrays-in-numpy-by-column
      p[:] = p[p[:,2].argsort()]
 
-     d = MDAnalysis.analysis.distances.distance_array(p.astype(float32),p.astype(float32))
+     d = distance_array(p.astype(float32),p.astype(float32))
      G = NX.Graph(d < 20)   # cutoff 20 is sufficient to connect points
      for  (n,nbrdict) in G.adjacency_iter():
           for k,eattr in nbrdict.items():
@@ -41,7 +64,7 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
           for k,eattr in nbrdict.items():
                eattr['weight'] = delta
 
-
+     # remove points so that distance is the shortest distance larger than mindist
      pruned = NX.Graph()
 
      n = m = k = 0
@@ -76,15 +99,6 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
 
      return new_outfile, new_pdb
 
-# def grow(n0, dist, n,k):
-#     try:
-#         w = G2.edge[n][k]['weight']
-#         dist += w
-#         if dist < mindist:
-#             grow(n0, dist, n+1, k+1)
-#     except KeyError:
-#         pass
-#     return n0, k, dist
 
 if __name__ == "__main__":
      from optparse import OptionParser
@@ -92,11 +106,11 @@ if __name__ == "__main__":
      parser = OptionParser(usage=__doc__)
      parser.add_option("--outfile", "-o", dest="outfile",
                        metavar="FILE",
-                       help="write sample points to FILE [%default]")
+                       help="write sample points to FILE and FILE.pdb [%default]")
      parser.add_option("--mindist", "-d", dest="mindist", type="float",
                        metavar="FLOAT",
                        help="minimum distance between two points [%default]")
-     parser.set_defaults(outfile="/dev/stdout", mindist=1.0)
+     parser.set_defaults(outfile="newpath.dat", mindist=1.0)
 
      opts,args = parser.parse_args()
 

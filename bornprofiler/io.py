@@ -10,6 +10,7 @@ functionality to read and write files.
 from __future__ import with_statement
 import os.path, errno
 from ConfigParser import SafeConfigParser
+import numpy
 
 import config
 
@@ -191,3 +192,51 @@ class RunParameters(object):
         with open(filename, 'w') as f:
             self.parser.write(f)
         return filename
+
+def readPoints(filename):
+    """Read coordinates from either data file or pdb.
+
+    Returns (N,3) array.
+    """
+    try:
+        points = readPointsDat(filename)
+    except ValueError:
+        points = readPointsPDB(filename)
+    return points
+
+def readPointsDat(filename):
+    """Read points from a simple data file.
+
+    Example::
+       # comment
+       x y z
+       x y z
+       ...
+    """
+    # or could just use numpy.loadtxt(filename) ...
+    points = []
+    with open(filename) as pointsFile:
+        for line in pointsFile:
+            line = line.strip()
+            if line.startswith('#') or len(line) == 0:
+                continue
+            fields = line.split()
+            if len(fields) < 3:
+                raise ValueError("%(filename)r must contain at least 3 entries x y z per line. Offending line was %(line)r." % vars())
+            points.append(map(float, fields[0:3]))
+    return numpy.array(points)
+
+def readPointsPDB(filename):
+    """Read points form a PDB formatted file.
+
+    Takes x,y,z from any ATOM or HETATM record.
+    """
+    points = []
+    with open(filename) as pointsFile:
+        for line in pointsFile:
+            line = line.strip()
+            if not (line.startswith('ATOM') or line.startswith('HETATM')):
+                continue
+            x,y,z = float(line[30:38]), float(line[38:46]), float(line[46:54])
+            points.append((x,y,z))
+    return numpy.array(points)
