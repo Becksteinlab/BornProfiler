@@ -24,19 +24,22 @@ z-coordinates.
 from numpy import *
 
 try:
+     # our own distance_array is at least as fast as cdist()
      from MDAnalysis.analysis.distances import distance_array
 except ImportError:
-     # slower fallback implementation (~100x for 10k array)
-     def distance_array(a,b):
-          """Return list of all distances between points in lists a and b."""
-          from numpy import zeros, float32
-          from numpy.linalg import norm
-          # naive implementation: build array d_ij = dist(xi, xj)
-          d = zeros((len(a), len(b)), dtype=float32)
-          for i,xi in enumerate(a):
-               for j,xj in enumerate(b):
-                    d[i,j] = norm(xi-xj)
-          return d
+     # see  http://stackoverflow.com/questions/1871536/euclidean-distance-between-points-in-two-different-numpy-arrays-not-within
+     # for recipes
+     try:
+          from scipy.spatial.distance import cdist
+          def distance_array(xy1,xy2):          
+               return cdist(xy1, xy2, 'euclidean')
+     except ImportError:
+          # Alex Martelli's solution (still good but slower that above)
+          import numpy
+          def distance_array(xy1,xy2):
+               d0 = numpy.subtract.outer(xy1[:,0], xy2[:,0])
+               d1 = numpy.subtract.outer(xy1[:,1], xy2[:,1])
+               return numpy.hypot(d0, d1)          
           
 try:
      import networkx as NX
@@ -102,8 +105,6 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
 
      savetxt(new_outfile, pruned_coords, "%8.3f %8.3f %8.3f")
      print "Wrote pruned path to %(new_outfile)r" % locals()
-
-     1/0
 
      # write pdb
      with open(new_pdb, "w") as pdb:
