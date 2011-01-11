@@ -134,7 +134,7 @@ if __name__ == "__main__":
                 if opts.pdb:
                     pdb.write("ATOM%(printcount)7i  C   XXX X   1    %(x)8.3f%(y)8.3f%(z)8.3f\n" % locals())
             if opts.radiusfile:
-                radius.write("%8.3(z)f %(r)6.2f\n" % locals())
+                radius.write("%(z)8.3f %(r)6.2f\n" % locals())
             linecount += 1
 
     logger.info("total lines written: %d", printcount)
