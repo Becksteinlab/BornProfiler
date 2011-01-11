@@ -2,13 +2,22 @@
 """%prog [options] path-datafile
 
 Quick hack in order to generate a nice path from a manually changed
-one. The input path must consist of xyz coordinates, one per line, or
-a PDB file.
+one. The path is assumed to go roughly along the z direction. The
+script re-orders datapoints by connection so that the output file is
+the sequence of data points (the putative pathway), even if the path
+reverses direction.
 
-At the moment, it is assumed that the points are supposed to describe
-a path roughly parallel to the z-axis --- this is used to find the
-first and last point of the path.
+The input path must consist of xyz coordinates, one per line, or a PDB
+file. The points with highest and lowest z-value are considered the end
+points.
 
+Using the --mindist option, one can prune data points. The pruned path
+consists of those closest points that have the prescribed minimum
+distance.
+
+In the code we are building a graph of the path and in this way we can
+look at connectivity instead of having to rely on, e.g. the
+z-coordinates.
 """
 
 # lazy import... this is a quick hack
@@ -55,9 +64,11 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
      newp = p[dij3]
      savetxt(outfile, newp, "%8.3f %8.3f %8.3f")
 
-     # newp is ordered in traversal order
+     # newp is ordered in traversal order; 
+     # get the distances between adjacent nodes
      deltas = map(linalg.norm, newp[1:] - newp[:-1])	
 
+     # build new linear graph with distances between nodes as edge attribute
      G2 = NX.Graph()
      G2.add_path(arange(0,len(newp)), weight=0)
      for  ((n,nbrdict),delta) in zip(G2.adjacency_iter(), deltas):
@@ -79,7 +90,10 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
           #print "edge:", (n,k,dist)
           n = k
 
-     pruned_coords = newp[pruned.nodes()]
+     # sort nodes so that the output pdb is also in linear order
+     # (nodes() returns node numbers in arbirary order but by construction
+     # we know that the linear graph goes from 0 -> last)
+     pruned_coords = newp[sort(pruned.nodes())]
 
      import os.path
      root,ext = os.path.splitext(outfile)
@@ -89,6 +103,7 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
      savetxt(new_outfile, pruned_coords, "%8.3f %8.3f %8.3f")
      print "Wrote pruned path to %(new_outfile)r" % locals()
 
+     1/0
 
      # write pdb
      with open(new_pdb, "w") as pdb:
