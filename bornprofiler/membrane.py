@@ -109,6 +109,8 @@ class BaseMem(object):
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
         self.basedir = kwargs.pop('basedir', os.path.realpath(os.path.curdir))
 
+        #logger.debug("BornProfiler: detected APBS version %(apbs_version)r", vars(self))
+
         super(BaseMem, self).__init__(*args, **kwargs)
 
     def get_var_dict(self, stage):

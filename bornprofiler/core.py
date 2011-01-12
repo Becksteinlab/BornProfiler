@@ -220,6 +220,10 @@ class Placeion(BPbase):
     self.use_cubic_boundaries = True     # False uses old placeion.py algorithm: manually adjust fglen!!
     self.pqrLines = []
 
+    logger.info("Placeion: pqr=%(pqrName)r", vars(self))
+    logger.info("Placeion: points=%(pointsName)r", vars(self))
+    logger.info("Placeion: ion=%(ion)r", vars(self))
+
     self.readPQR()
     self.readPoints()
 
@@ -406,6 +410,9 @@ class MPlaceion(BPbase):
         import membrane
         self.SetupClass = membrane.BornAPBSmem  # to customize
 
+    logger.info("MPlaceion: pqr=%(pqrName)r", vars(self))
+    logger.info("MPlaceion: points=%(pointsName)r", vars(self))
+    logger.info("MPlaceion: ion=%(ion)r", vars(self))
       
     # sanity check
     assert len(self.schedule) != len(self.SetupClass.suffices), \

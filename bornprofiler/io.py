@@ -93,6 +93,8 @@ class RunParameters(object):
             # and then override with values from local file
             self.parser.readfp(open(filename))    
 
+        logger.info("Read run configuration from %(filename)r", vars())
+
     def _populate_default(self, parser=None):
         # NOTE: - the parser turns all keys into *lowercase*
         #       - values must be strings
@@ -202,6 +204,7 @@ def readPoints(filename):
         points = readPointsDat(filename)
     except ValueError:
         points = readPointsPDB(filename)
+    logger.info("Read points from %(filename)r.", vars())
     return points
 
 def readPointsDat(filename):
