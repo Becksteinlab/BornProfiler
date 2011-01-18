@@ -14,10 +14,6 @@ Tai. Moral rights asserted (why?). Hereby licensed under either GFDL
 or GNU General Public License at your option.
 
 """
-from __future__ import with_statement
-
-import os
-import numpy
 
 import logging
 logger = logging.getLogger('bornprofiler') 
@@ -39,121 +35,11 @@ configuration file and possibly the directory where the datafiles are stored
 """
 
 import bornprofiler
-from bornprofiler.core import BPbase
- 
-class AnalyzeElec(BPbase):
-  "analyze APBS energy profiling results"
-
-  def __init__(self, *args, **kwargs):
-    self.pointsName = args[0]
-    self.datafiles = args[1:]
-    self.jobName = kwargs.pop('jobName', 'bornprofile')
- 
-    self.readPoints()
-    if self.points.shape[0] != len(self.datafiles):
-      raise ValueError("Number of sampled points (%d) does not match the number "
-                       "of data files (%d). They MUST correspond 1-to-1." % 
-                       (self.points.shape[0], len(self.datafiles)))
-    self.accumulate()
-    self.write()
-
-  def accumulate(self):
-    zE = []
-    for num, point in enumerate(self.points):
-      z = point[2]
-      outName = self.outfilename(num)
-      lines = ""
-      # find file name in list of input files
-      outPath = None
-      for path in self.datafiles:
-        if path.endswith(outName):
-          outPath = path
-          break
-      if outPath is None:
-        logger.warn("Sample point %d %r: Could not find file %s." % 
-                    (num, point, outName))
-        continue
-      with open(outPath) as outFile:
-        for line in outFile:
-          if (line[0:18] == "  Local net energy"):
-            zE.append([z, float(line.split()[6])])
-    self.zE = numpy.array(zE).T
- 
-  def write(self):
-    outName = self.datafile("welec")
-    with open(outName, "w") as outFile:
-      outFile.write("# z/angstrom E/(kJ/mol)\n")
-      for z,E in self.zE.T:
-        outFile.write("%(z)8.3f %(E)8.3e\n" % vars())
-    logger.info("Wrote Born profile to %(outName)r.", vars()) 
-
-  def plot(self, filename=None, plotter='matplotlib', **kwargs):
-    """Plot Born profile.
-
-    plot([filename[,plotter[,kwargs ...]]])
-
-    :Keywords:
-      *filename*
-         name of image file to save the plot in; with *plotter* = 'Gnuplot'
-         only eps files are supported (I think...)
-      *plotter* either 'matplotlib' 
-         (default, requires matplotlib) or 'gnuplot' (requires Gnuplot package)
-      *kwargs*
-         other keyword arguments that are passed on to :func:`pylab.plot`; ignored
-         for Gnuplot
-    """
-    plotters = {'matplotlib': self._plot_matplotlib,
-                'Gnuplot': self._plot_Gnuplot,
-                }
-    kwargs['filename'] = filename
-    plotName = plotters[plotter](**kwargs)
-    logger.info("Plotted grap %(plotName)r.", vars())
-    return plotName
- 
-  def _plot_matplotlib(self, filename=None, **kwargs):
-    from pylab import plot, xlabel, ylabel, savefig
-    if filename is None:
-      plotName = self.datafile("welec",".pdf")
-    else:
-      plotName = filename
-    kwargs.setdefault('color', 'black')
-    kwargs.setdefault('linewidth', 2)
-    z,E = self.zE
-    plot(z,E, **kwargs)
-    xlabel(r'$z$ in nm')
-    ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
-    savefig(plotName)
-    return plotName
-
-  def _plot_Gnuplot(self, filename=None, **kwargs):
-    import Gnuplot    
-    outName = self.datafile("welec")
-    if filename is None:
-      plotName = self.datafile("welec",".eps")
-    else:
-      plotName = filename
- 
-    # initialize
-    g = Gnuplot.GnuplotProcess()
-    cmd  = "set terminal postscript eps colour\n"
-    cmd += 'set output "' + plotName + '"\n'
-    cmd += """set style data lines
-set xlabel "z / nm"
-set ylabel "energy / (kJ/mol)"
-"""
-    cmd += 'plot "%s" using ($1/10):($2) title "%s"\n' (outName,self.jobName)
- 
-    # do it
-    g(cmd)
-    return plotName
-
-  def __repr__(self):
-    return "<%s jobName=%r points=%r, %d data files>" % \
-        (self.__class__.__name__, self.jobName, self.pointsName, len(self.datafiles))
-
+from bornprofiler.analysis import AnalyzeElec
  
 if __name__ == "__main__":
   import sys
+  import os
   import glob
   from optparse import OptionParser
 
