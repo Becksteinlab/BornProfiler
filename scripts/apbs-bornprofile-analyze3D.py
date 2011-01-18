@@ -54,7 +54,7 @@ if __name__ == "__main__":
   parser.add_option("--ion", dest="ionName",
                     metavar="STRING",
                     help="Set the ion name for --pdb if not running from config file [%default]")
-  parser.add_option("--basedir", dest="basedir",
+  parser.add_option("--basedir", "-B", dest="basedir",
                     metavar="DIR",
                     help="when using a run parameter file, the job output is found under "
                     "'DIR/<job.name>/w[0-9][0-9][0-9][0-9]/job*.out', with job.name taken from "
@@ -70,19 +70,10 @@ if __name__ == "__main__":
     sys.exit(1)  
   elif len(args) == 1:
     # run parameter file
-    from bornprofiler.io import RunParameters
-    try:
-      p = RunParameters(args[0])
-      samplepoints = p.get_bornprofile_kwargs('points')
-      fileglob = os.path.join(opts.basedir, p.get_bornprofile_kwargs('name'), 
-                              'w[0-9][0-9][0-9][0-9]', 'job*.out')
-      opts.jobName = p.get_bornprofile_kwargs('name')
-      opts.ionName = p.get_bornprofile_kwargs('ion')
-    except:
-      logger.fatal("Cannot obtain information about the sample points and directory from the "
-                   "run parameter file %r.", args[0])
-      raise
-    args = [samplepoints] + glob.glob(fileglob)
+    f = bornprofiler.analysis.get_files(args[0], basedir=opts.basedir)
+    opts.jobName = f['jobName']
+    opts.ionName = f['ionName']
+    args = [f['samplepoints']] + f['datafiles']
   elif len(args) == 2:
     # maybe the shell did not expand globs or we run in ipython?
     samplepoints,fileglob = args
