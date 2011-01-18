@@ -1,3 +1,7 @@
+# BornProfiler -- integration with draw_membrane
+# Copyright (c) 2010-2011 Oliver Beckstein
+# Published under the GNU Public Licence, version 3
+
 """
 APBS calculations: Membrane simulations
 =======================================
