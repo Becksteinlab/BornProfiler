@@ -49,7 +49,7 @@
 #define FALSE 0
 #define NUMCOLS 3   /* number of columns in dx files, ABPS specific */
 
-typedef uint bool;
+typedef unsigned int bool;
 typedef struct {
   float z_m0; /* bottom of membrane */
   float z_m1; /* top of membrane */
