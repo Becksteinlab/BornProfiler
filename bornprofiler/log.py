@@ -1,5 +1,4 @@
-# log.py
-# logging for bornprofiler module
+# BornProfiler -- logging for bornprofiler module
 # Copyright (c) 2010 Oliver Beckstein
 # Published under the GNU Public Licence v3
 

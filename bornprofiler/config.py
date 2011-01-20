@@ -1,4 +1,5 @@
-# APBS BornProfiler
+# APBS BornProfiler -- dealing with configuration files
+# Copyright (c) 2010 Oliver Beckstein
 # -*- coding: utf-8 -*-
 """
 Configuration file handling and setup

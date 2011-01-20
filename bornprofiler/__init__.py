@@ -1,5 +1,6 @@
 # APBS BornProfiler python package
-# Copyright (c) 2005-2010 Oliver Beckstein, Kaihsu Tai
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2011 Oliver Beckstein
 # Published under the GNU Public Licence, version 3
 
 """
