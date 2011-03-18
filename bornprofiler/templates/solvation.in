@@ -19,7 +19,7 @@ elec name bulksolvent
     bcfl sdh
     ion charge  1  conc %(conc)f  radius 0.95  # sodium
     ion charge -1  conc %(conc)f  radius 1.81  # chloride
-    gcent 0 0 0
+    gcent mol 1
     mol 1
     chgm spl2
     srfm mol
@@ -42,7 +42,7 @@ elec name membrane
     bcfl sdh
     ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
     ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
-    gcent 0 0 0
+    gcent mol 1
     mol 1
     chgm spl2
     srfm mol
