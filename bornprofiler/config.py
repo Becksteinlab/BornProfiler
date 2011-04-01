@@ -156,8 +156,11 @@ def check_setup():
     if len(missing) > 0:
          print "NOTE: Some configuration directories are not set up yet"
          print "      %r" % missing
-         print "      You can create them with the command"
-         print "      >>> bornprofiler.config.setup()"
+         print "      You can create them from within python with"
+         print "        >>> import bornprofiler"
+         print "        >>> bornprofiler.config.setup()"
+         print "      or by running from the shell"
+         print "        apbs-bornprofile-init.py" 
     return len(missing) == 0
 check_setup()
 

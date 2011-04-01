@@ -1,5 +1,5 @@
 # setuptools installation of APBS BornProfiler
-# Copyright (c) 2005-2010 Oliver Beckstein <orbeckst@gmail.com>
+# Copyright (c) 2005-2011 Oliver Beckstein <orbeckst@gmail.com>
 #                         Kaihsu Tai <k@kauha.eu>
 # Released under the GNU Public License 3 (or higher, your choice)
 # See the file COPYING for details.
@@ -9,7 +9,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(name="APBS-BornProfiler",
-      version="0.6",
+      version="0.7",
       description="Setting up of Born profile calculations for APBS",
       long_description="""
 """,
@@ -21,7 +21,8 @@ setup(name="APBS-BornProfiler",
       packages=find_packages(exclude=['scripts']),
       package_data = {'bornprofiler': ['templates/*.sh', 'templates/*.bash', 'templates/*.sge',
                                        'templates/*.in', 'templates/*.dat']},
-      scripts = ["scripts/apbs-bornprofile-analyze.py",
+      scripts = ["scripts/apbs-bornprofile-init.py",
+                 "scripts/apbs-bornprofile-analyze.py",
                  "scripts/apbs-bornprofile-analyze3D.py",
                  "scripts/apbs-bornprofile-placeion.py",
                  "scripts/apbs-bornprofile-mplaceion.py",

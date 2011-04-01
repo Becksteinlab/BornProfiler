@@ -28,14 +28,22 @@ Install the python module and scripts::
   cd BornProfile
   python setup.py install --user
 
+(``--user`` might only work for Python 2.6; look at the output of
+``python setup.py install --help`` for guidance on what your options
+are.)
+
 Compile the customized (and improved) version of draw_membrane::
 
   mkdir BUILD && cd BUILD
-  cmake -D CMAKE_INSTALL_PREFIX=$HOME/bin -D CMAKE_BUILD_TYPE=Release ../src/drawmembrane
+  cmake -D CMAKE_INSTALL_PREFIX=$HOME -D CMAKE_BUILD_TYPE=Release ../src/drawmembrane
   make
   make install
 
-(cmake is not really needed; if you don't have. try the following::
+The ``make install`` step will install the executable
+``draw_membrane2a`` under ``CMAKE_INSTALL_PREFIX/bin``; change
+``CMAKE_INSTALL_PREFIX`` if you prefer another location.
+
+(cmake is not really needed; if you don't have it try the following::
 
    gcc ./src/drawmembrane/draw_membrane2a.c -o draw_membrane2a -lm -lz
 
@@ -44,6 +52,14 @@ and install manually in a place where you or your shell can find it.)
 
 Configuration
 =============
+
+Finalize your installation by running ::
+
+  apbs-bornprofile-init.py
+
+This should tell you that it set up a configuration file and a number
+of directories.
+
 
 When a BornProfiler script is run for the very first time, the package
 will create your master configuration file
