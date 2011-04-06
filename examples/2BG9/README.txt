@@ -7,8 +7,8 @@ Generation of input files
 
 From the example directory, prepare the input::
 
-  apbs-bornprofiler-mplaceion.py Na_nAChR.cfg
-  apbs-bornprofiler-mplaceion.py Cl_nAChR.cfg
+  apbs-bornprofile-mplaceion.py Na_nAChR.cfg
+  apbs-bornprofile-mplaceion.py Cl_nAChR.cfg
 
 These commands will generate input files in two directories
 corresponding to the *job:name* values in the run configuration (cfg)
@@ -39,7 +39,7 @@ The total electrostatic energy is read from the output file of APBS
 this easy (and plots the result if the Python package
 :mod:`matplotlib` is installed)::
 
-  apbs-bornprofiler-analyze.py Na_nAChR.cfg
+  apbs-bornprofile-analyze.py Na_nAChR.cfg
 
 The output would be
 
