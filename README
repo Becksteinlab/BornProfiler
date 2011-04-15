@@ -3,7 +3,7 @@
 ================================
 
 Copyright (c) 2008 Kaihsu Tai
-Copyright (c) 2010 Oliver Beckstein
+Copyright (c) 2010-2011 Oliver Beckstein
 
 A small Python package to set up "Born" calculations of an ion in a
 membrane protein and calculate the electrostatic free energy with
@@ -23,7 +23,7 @@ Features
 The BornProfiler package helps setting up Poisson-Boltzmann
 calculations of the electrostatic potential of mean force of an ion in
 a pore or channel under the influence of a membrane. The membrane is
-modelled as a dielectric slab of ε=2.
+modelled as a dielectric slab of epsilon=2.
 
  * Provide a path (list of coordinates) and a PQR file of the protein as input.
  * A membrane can be defined with arbitrary thickness, z-position, and
@@ -31,11 +31,12 @@ modelled as a dielectric slab of ε=2.
    dielectric constant. 
  * Define all input parameters in a compact parameter file so that
    there is always a record of the exact calculation setup available. 
- * Born radii for all ions from the Rashin & Honig paper are included;
+ * Born radii for all ions from the Rashin & Honig paper [Rashin1985]_ are included;
    just select the ion in the input file. 
  * Customize run scripts and queuing system submission scripts by
    providing your own templates.  
 
+.. [Rashin1985] A.Rashin & B.Honig, J Phys Chem B 89 (1985), 5588
 
 
 History and Contributions

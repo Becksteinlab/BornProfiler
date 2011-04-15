@@ -89,11 +89,12 @@ class RunParameters(object):
 
         if not os.path.exists(filename):
             self.write(filename)
+            logger.info("Created new run input configuration %(filename)r", vars())
         else:
             # and then override with values from local file
             self.parser.readfp(open(filename))    
 
-        logger.info("Read run configuration from %(filename)r", vars())
+        logger.info("Read run input configuration from %(filename)r", vars())
 
     def _populate_default(self, parser=None):
         # NOTE: - the parser turns all keys into *lowercase*
@@ -133,8 +134,9 @@ class RunParameters(object):
         parser.set('potential', 'dime', '(97,97,97)')
         parser.set('potential', 'glen', '(200,200,200)')
         parser.add_section('executables')
-        parser.set('executables', 'drawmembrane', 'draw_membrane2a')
-        parser.set('executables', 'apbs', 'apbs')
+        #should come from global file
+        #parser.set('executables', 'drawmembrane', 'draw_membrane2a')
+        #parser.set('executables', 'apbs', 'apbs')
         parser.add_section('job')
         parser.set('job', 'name', 'mbornprofile')
         parser.set('job', 'script', 'q_local.sh')

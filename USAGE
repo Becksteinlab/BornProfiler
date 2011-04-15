@@ -10,6 +10,12 @@ Simple dielectric regions
 See ``examples/parsegian``.
 
 
+Ion channel
+===========
+
+See ``examples/2BG9``.
+
+
 Generic
 =======
 
@@ -21,7 +27,10 @@ The list of points should be either a simple data file with one set of
 white-space separate coordinates (x, y, and z in angstroem) per line
 (comment lines starting with "#" and empty lines are ignored) or a PDB
 file (the x, y, and z coordinates of all ATOM and HETATM records are
-used).
+used). For simple, straight pores one can compute the list of points
+along the straight pore axis. For more complicated pores one can use a
+program such as HOLE (``apbs-bornprofile-mksample.py`` can process a
+range of points lists such as the ``sph`` output from HOLE.)
 
 See the help functions of the ``apbs-bornprofiler-mplaceion.py`` and
 other ``apbs-bornprofiler-*.py`` scripts.
@@ -42,8 +51,11 @@ For instance, set the *pqr* file and the position of the membrane. The
 *qscript* and *arrayscript* can also be your own templates. For what's
 available see ``BornProfiler/bornprofiler/templates/``.
 
-.. TODO: explanation of the individual sections. (See the template
-..       file itself, bornprofiler.io, and the APBS ELEC keywords.)
+The file format of a run input config file is explained in the comments of
+``examples/example_runinput.cfg``. You can use it as a basis for your own
+input, too. In any case, you should have a look at this file in order to
+understand how to use the BornProfiler package.
+
 
 Set-up the individual windows::
 
@@ -54,11 +66,8 @@ system, run the whole job array with ::
 
   qsub qsub_mine.sge
 
-.. Note for SBCB: The current default does not work for the Workstation
-..                queue. I'll add something once we have appropriate versions of APBS
-..                and draw_membrane in the Software repository. 
-..                (Preliminary notes for running the calculations on
-..                Workstation queue can be found on the Talk:BornProfiler page.) 
+.. Note for SBCB: Look at the Talk:BornProfiler page on the Wiki for
+..                notes that tell you how to run on the workstation queue!
 
 
 Analyze::
@@ -68,9 +77,19 @@ Analyze::
 In bulk solvent
 ---------------
 
-Pretty much as above but use apbs-bornprofiler-placeion.py and the
-[membrane] section of the parameter file is ignored. This is very
-similar to what the old placeion.sh and placeion.py did.
+If you do not want a membrane then use ``apbs-bornprofiler-placeion.py``. The
+``[membrane]`` section of the run configuration file is ignored. 
+
+A second major difference of ``apbs-bornprofiler-placeion.py`` compared to
+``apbs-bornprofiler-mplaceion.py`` is that ``apbs-bornprofiler-placeion.py``
+uses automatic focusing whereas ``apbs-bornprofiler-mplaceion.py`` must do
+manual focusing. Therefore, ``apbs-bornprofiler-placeion.py`` looks at the run
+configuration variables glen_ *and* fglen_ to determine the focusing
+schedule. (See the APBS documentation for explanations of the variables.)
+
+
+``apbs-bornprofiler-placeion.py`` behaves similarly to the old ``placeion.sh`` and
+``placeion.py`` scripts.
 
 
 Potential for visualization
@@ -91,8 +110,19 @@ pot_bulksolvent.dx
     dielectric of ~80 or whatever was set for *sdie* in the parameter
     file)  
 
-Note that you probably have to gunzip the resulting potential dx files
-so that you can read it in Chimera, VMD or PyMOL. 
+Other files of interest:
+
+dielxSm.dx.gz
+    dielectric map *with* membrane ("m"). This file can be visualized as a
+    density together with the input PQR or PDB structure in order to check that
+    the membrane was placed correctly. The values of the "density" are *mdie*
+    (e.g. 2) for the hydrophobic core of the membrane, *pdie* (10) for the
+    protein, *headgroup_die* (20) for the lipid headgroup region, *sdie* (80)
+    for the solvent and *cdie* (typically the same as *sdie*) for the channel
+    region.
+
+Note that you probably have to gunzip the resulting dx files so that you can
+read it in Chimera, VMD or PyMOL.
 
 The default values for the grid probably work for most proteins but
 depending on size you might have to change the values in ::
@@ -111,5 +141,7 @@ accordingly.
    http://mgrabe1.bio.pitt.edu/apbsmem/
 .. _glen:
    http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/glen
+.. _fglen:
+   http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/fglen
 .. _dime:
    http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime

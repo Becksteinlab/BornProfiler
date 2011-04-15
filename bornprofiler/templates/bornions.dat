@@ -1,7 +1,8 @@
 #----------------------------------------
 # ionic Born radii (Angstrom) 
 #----------------------------------------
-# from Table III in Rashin & Honig 1986
+# 'corrected radius' from Table III "Cavity Radii and Hydration Enthalpies" in 
+# A.Rashin & B.Honig, J Phys Chem B 89 (1985), 5588
 #
 # values are white-space separated
 #
