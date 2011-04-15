@@ -65,8 +65,9 @@ DRAWMEMBRANE_MINIMUM_VERSION = 12,1,10  # date in MM/DD/YY (!)
 # User-accessible configuration
 # -----------------------------
 #
-# TODO: move into config file!!
-# These are the default values; eventually they should be re-read from config
+# These are the default values. Only the name of the
+# ~/bornprofiler.cfg file is really fixed and cannot easily be changed
+# by the user.
 
 defaults = {}
 
@@ -100,7 +101,16 @@ class BPConfigParser(SafeConfigParser):
 cfg = BPConfigParser()
 
 def get_configuration(filename=CONFIGNAME):
-    """Reads and parses the configuration file."""
+    """Reads and parses the configuration file.
+
+    Default values are loaded and then replaced with the values from
+    ``~/.bornprofiler.cfg`` if that file exists. The global configuration
+    instance :data:`bornprofiler.config.cfg` is updated.
+
+    Normally, the configuration is only loaded when the :mod:`bornprofiler`
+    package is imported but a re-reading of the configuration can be forced
+    anytime by calling :func:`get_configuration`.
+    """
 
     # defaults
     cfg.set('DEFAULT', 'configdir', defaults['configdir'])
@@ -114,13 +124,8 @@ def get_configuration(filename=CONFIGNAME):
     cfg.set('executables', 'apbs', 'apbs')
     cfg.set('executables', 'apbs_always_read_dxgz', 'False')  # hack when using svn 1623+
 
-    if not os.path.exists(filename):
-        with open(filename, 'w') as configfile:
-            cfg.write(configfile)  # write the default file so that user can edit
-        print(("NOTE: BornProfiler created the configuration file \n\t%r\n"+
-               "      for you. Edit the file to customize the package.") % filename)
-    else:
-        # overwrite defaults
+    if os.path.exists(filename):
+        # defaults are overriden by existing cfg file
         cfg.readfp(open(filename))
 
     return {'apbs': cfg.getpath('executables', 'apbs'),
@@ -137,14 +142,27 @@ qscriptdir = cfg.getpath('DEFAULT', 'qscriptdir')
 templatesdir = cfg.getpath('DEFAULT', 'templatesdir')
 
 
-def setup():
-    """Create the directories in which the user can store template and config files.
+def setup(filename=CONFIGNAME):
+    """Prepare a default BornProfiler global environment.
+
+    1) Create the global config file.
+    2) Create the directories in which the user can store template and config files.
     
     This function can be run repeatedly without harm.
     """
     # setup() must be separate and NOT run automatically when config
     # is loaded so that easy_install installations work
     # (otherwise we get a sandbox violation)
+    # populate cfg with defaults (or existing data)
+    get_configuration()
+    if not os.path.exists(filename):
+        with open(filename, 'w') as configfile:
+            cfg.write(configfile)  # write the default file so that user can edit
+        msg = "NOTE: BornProfiler created the configuration file \n\t%r\n" + \
+              "      for you. Edit the file to customize the package." % filename
+        print msg
+
+    # directories
     utilities.mkdir_p(configdir)
     utilities.mkdir_p(qscriptdir)
     utilities.mkdir_p(templatesdir)
