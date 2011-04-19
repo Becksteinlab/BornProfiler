@@ -57,13 +57,10 @@ Finalize your installation by running ::
 
   apbs-bornprofile-init.py
 
-This should tell you that it set up a configuration file and a number
-of directories.
+This should tell you that it set up a configuration file
+``~/.bornprofiler.cfg`` and a number of directories.
 
-
-When a BornProfiler script is run for the very first time, the package
-will create your master configuration file
-``~/.bornprofiler.cfg``. The defaults look like this::
+The default ``~/.bornprofiler.cfg`` looks like this::
 
    [DEFAULT]
    configdir = ~/.bornprofiler
@@ -74,8 +71,8 @@ will create your master configuration file
    apbs = apbs
    drawmembrane = draw_membrane2a
 
-This file can be edited in a text editor. For instance, one can add
-the full path to the apbs and draw_membrane2a executable binaries.
+The file can be edited in a text editor. For instance, one can add the
+full path to the ``apbs`` and ``draw_membrane2a`` executable binaries.
 
 Any other variables used in run configuration input files can also be
 added here and will be used as defaults.

@@ -4,6 +4,30 @@
 
 Notes on how to use the BornProfiler package.
 
+The basic philosophy of the package is
+
+    1. provide input
+        * a pqr file of the protein
+        * a list of coordinates at which to calculate the Born energy of an ion 
+
+    2. generate a range of files that can be used to run apbs
+
+    3. run the generated files manually, or better, through the queuing system of a cluster
+
+    4. extract data from finished runs and provide as graphs and/or
+       data files for further processing  
+
+The user runs scripts that are named ``apbs-bornprofile-TASK.py``. The
+input is provided by a run input file, which is also referred to as a
+*run input configuration file*. It typically bears the suffix *.cfg*. All
+information about a calculation is stored in such a cfg file with the
+idea that this gives a good summary of the calculation, which is
+important for repeating it or writing it up.
+
+The input is documented in the example run input file
+``examples/example_runinput.cfg``.
+
+
 Simple dielectric regions
 =========================
 
