@@ -17,7 +17,7 @@ so-called *Born profile*).
 """
 
 #: Package version; this is the only place where it is set.
-VERSION = 0,8,0
+VERSION = 0,9,0
 
 def get_version():
     """Return current package version as a string."""

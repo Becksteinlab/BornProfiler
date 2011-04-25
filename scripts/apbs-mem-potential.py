@@ -54,19 +54,19 @@ if __name__ == "__main__":
                       "and only produce all required input files. apbs is still run in order "
                       "to obtain the dielectric, charge, and kappa maps needed for draw_membrane.")
     parser.set_defaults(suffix="S", run=True)
-    
+
     opts,args = parser.parse_args()
-    
+
     try:
         filename = args[0]
     except:
         logger.fatal("Provide the parameter filename. See --help.")
         sys.exit(1)
-        
+
     if opts.write_template:
         bornprofiler.write_parameters(filename)
         sys.exit(0)
-        
+
     params = bornprofiler.io.RunParameters(args[0])
     kw = params.get_apbsmem_kwargs()
 
@@ -74,8 +74,12 @@ if __name__ == "__main__":
         pqr = args[1]
         del kw['pqr']
     except IndexError:
-        pqr = kw.pop('pqr')    
-    
+        pqr = kw.pop('pqr')
+
+    # sanity checks (APBS and draw_membrane2a will be neeeded)
+    bornprofiler.config.check_APBS()
+    bornprofiler.config.check_drawmembrane()
+
     A = bornprofiler.membrane.APBSmem(pqr, opts.suffix, **kw)
     A.generate()
     if opts.run:
