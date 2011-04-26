@@ -15,18 +15,7 @@ so-called *Born profile*).
 .. _APBS:: http://www.poissonboltzmann.org
 
 """
-
-#: Package version; this is the only place where it is set.
-VERSION = 0,9,0
-
-def get_version():
-    """Return current package version as a string."""
-    return ".".join(map(str,VERSION))
-
-def get_version_tuple():
-    """Return current package version as a tuple (*MAJOR*, *MINOR*, *PATCHLEVEL*)."""
-    return tuple(VERSION)
-
+from version import get_version, get_version_tuple
 
 import config, utilities
 
