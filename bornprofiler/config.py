@@ -1,6 +1,6 @@
-# APBS BornProfiler -- dealing with configuration files
-# Copyright (c) 2010 Oliver Beckstein
 # -*- coding: utf-8 -*-
+# APBS BornProfiler -- dealing with configuration files
+# Copyright (c) 2010-2011 Oliver Beckstein
 """
 Configuration file handling and setup
 =====================================
@@ -60,7 +60,7 @@ logger = logging.getLogger("bornprofiler.config")
 
 APBS_MINIMUM_VERSION = 1,3   # want to be able to read gzipped files
 DRAWMEMBRANE_REQUIRED_NAME = "draw_membrane2a.c"
-DRAWMEMBRANE_MINIMUM_VERSION = 4,25,11  # date in MM/DD/YY (!)
+DRAWMEMBRANE_MINIMUM_VERSION = 4,26,11  # date in MM/DD/YY (!)
 
 # User-accessible configuration
 # -----------------------------
@@ -300,16 +300,6 @@ def _get_template(t):
             logger.fatal(errmsg)
             raise ValueError(errmsg)
    return os.path.realpath(t)
-
-def read_template(filename):
-  """Return *filename* as one string.
-
-  *filename* can be one of the template files.
-  """
-  fn = get_template(filename)
-  logger.debug("Reading file %(filename)r from %(fn)r.", vars())
-  return "".join(file(fn).readlines())
-
 
 import subprocess
 import re

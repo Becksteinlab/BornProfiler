@@ -32,13 +32,16 @@ from itertools import izip
 import logging
 logger = logging.getLogger("bornprofiler.membrane")
 
+from io import read_template
+
 import config
-from config import configuration, read_template
+from config import configuration
 # executables; must be found on PATH by the shell or full path in config file
 # drawmembrane MUST be draw_membrane2a
 DRAWMEMBRANE = configuration["drawmembrane"]
 APBS = configuration["apbs"]
 
+#: cache for template files
 TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
              'born_dummy': read_template('mdummy.in'),
@@ -62,8 +65,8 @@ class BaseMem(object):
            - mdie: membrane dielectric
            - Rtop : exclusion cylinder top
            - Rbot : exclusion cylinder bottom
-           - dx_R : shift exclusion center by dx_R in X
-           - dy_R : shift exclusion center by dy_R in Y
+           - x0_R : X exclusion center 
+           - y0_R : Y exclusion center 
            - cdie : channel solvent dielectric (by default same as sdie)
            - headgroup_l : thickness of headgroup region (A)
            - headgroup_die : headgroup dielectric
@@ -112,8 +115,8 @@ class BaseMem(object):
         self.headgroup_l = kwargs.pop('headgroup_l', 0.0)  # geo3
         self.Rtop = kwargs.pop('Rtop', 0)  # geo1
         self.Rbot = kwargs.pop('Rbot', 0)  # geo2
-        self.dx_R = kwargs.pop('dx_R', 0)  # new in draw_membrane2a.c 04/25/11
-        self.dy_R = kwargs.pop('dy_R', 0)  # new in draw_membrane2a.c 04/25/11
+        self.x0_R = kwargs.pop('x0_R', 0)  # new in draw_membrane2a.c 04/26/11
+        self.y0_R = kwargs.pop('y0_R', 0)  # new in draw_membrane2a.c 04/26/11
         self.cdie = kwargs.pop('cdie', self.sdie)
         self.temperature = kwargs.pop('temperature', 298.15)
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
@@ -173,7 +176,7 @@ class BaseMem(object):
                       "-s", v["sdie"], "-p", v['pdie'],                    # environment
                       "-V", v['Vmem'], "-I", v['conc'],
                       "-R", v['Rtop'], "-r", v['Rbot'], "-c", v['cdie'],   # channel exclusion
-                      "-X", v['dx_R'], "-Y", v['dy_R'],
+                      "-X", v['x0_R'], "-Y", v['y0_R'],
                       ])
         if self.dxformat == "gz":
             cmdline.append('-Z')   # special version draw_membrane2a that can deal with gz
@@ -237,11 +240,7 @@ class APBSmem(BaseMem):
 
     .. Note:: see code for kwargs
     """
-
-    # XXX: probably broken at the moment, check
-    # - dx vs dx.gz format
-    # - make template monolithic
-    # - use separate window dirs ... ie make it more like BornAPBSmem
+    # used by apbs-mem-potential.py
 
     def __init__(self, *args, **kwargs):
         """Set up calculation.
@@ -276,7 +275,7 @@ class APBSmem(BaseMem):
                      "DIME_XYZ,GLEN_XYZ",
                      'drawmembrane2':
                      "zmem,lmem,pdie,sdie,mdie,Vmem,conc,"
-                     "Rtop,Rbot,dx_R,dy_R,cdie,"
+                     "Rtop,Rbot,x0_R,y0_R,cdie,"
                      "headgroup_l,headgroup_die,suffix",
                      }
         # generate names
@@ -376,7 +375,7 @@ class BornAPBSmem(BaseMem):
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
                      'drawmembrane2':
                      "zmem,lmem,pdie,sdie,mdie,Vmem,conc,"
-                     "Rtop,Rbot,dx_R,dy_R,cdie,"
+                     "Rtop,Rbot,x0_R,y0_R,cdie,"
                      "headgroup_l,headgroup_die,suffix",
                      }
         self.vars['born_setup_script'] = \

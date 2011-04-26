@@ -18,7 +18,14 @@ import logging
 logger = logging.getLogger("bornprofiler.io")
 
 def path(s):
+    """Return *s* with user expansion."""
     return os.path.expanduser(s)
+
+def float_or_None(s):
+    """Return *s* as float or None when x == "None"."""
+    if s == "None":
+        return None
+    return float(s)
 
 class RunParameters(object):
     """All parameters for a BornProfiler or APBSmem run are stored in a INI-style file.
@@ -35,8 +42,8 @@ class RunParameters(object):
         - mdie:  membrane dielectric
         - Rtop : exclusion cylinder top
         - Rbot : exclusion cylinder bottom
-        - dx_R : shift of exclusion zone centre in X
-        - dy_R : shift of exclusion zone centre in Y
+        - x0_R : exclusion zone centre in X, ``None`` selects the default
+        - y0_R : exclusion zone centre in Y, ``None`` selects the default
         - cdie : dielectric in the channel (e.g. SDIE)
         - headgroup_l : thicknes of headgroup region
         - headgroup_die : dielectric for headgroup region
@@ -76,7 +83,7 @@ class RunParameters(object):
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path), ('runtype', str)],
              'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
-                             ('dx_R', float), ('dy_R', float),
+                             ('x0_R', float_or_None), ('y0_R', float_or_None),
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
@@ -87,7 +94,7 @@ class RunParameters(object):
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path),],
              'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
-                             ('dx_R', float), ('dy_R', float),
+                             ('x0_R', float_or_None), ('y0_R', float_or_None),
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'potential':   [('dime', eval), ('glen', eval),],
@@ -130,8 +137,8 @@ class RunParameters(object):
         parser.add_section('membrane')
         parser.set('membrane', 'Rtop', '0')
         parser.set('membrane', 'Rbot', '0')
-        parser.set('membrane', 'dx_R', '0')
-        parser.set('membrane', 'dy_R', '0')
+        parser.set('membrane', 'x0_R', 'None')
+        parser.set('membrane', 'y0_R', 'None')
         parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
         parser.set('membrane', 'headgroup_die', '20')
         parser.set('membrane', 'headgroup_l', '0')
@@ -267,3 +274,15 @@ def readPointsPDB(filename):
             x,y,z = float(line[30:38]), float(line[38:46]), float(line[46:54])
             points.append((x,y,z))
     return numpy.array(points)
+
+def read_template(filename):
+  """Return *filename* as one string.
+
+  *filename* can be one of the template files.
+  """
+  # XXX: add a cache?? Would have to be careful with user supplied files.
+  fn = config.get_template(filename)
+  logger.debug("Reading file %(filename)r from %(fn)r.", vars())
+  return "".join(file(fn).readlines())
+
+

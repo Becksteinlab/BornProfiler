@@ -7,13 +7,16 @@ import os, errno
 import numpy
 
 import io
-from config import configuration, read_template
+from io import read_template
+from config import configuration
 from utilities import in_dir, asiterable
 
 import logging
 logger = logging.getLogger('bornprofiler.core') 
 
-# TODO: get rid of this TEMPLATE dict and hard-code directly in WriteIn()?
+# This TEMPLATE dict is only used in WriteIn() but it acts like a global cache
+# (which is good when writing a few thousand windows).
+# (or add a cache to read_template??)
 TEMPLATES = {'placeion': read_template('placeion.in'), }
 
 TABLE_IONS = read_template('bornions.dat')
@@ -121,6 +124,30 @@ class BPbase(object):
     self.points = io.readPoints(self.pointsName)
     self.numPoints = self.points.shape[0]
 
+  def readPQR(self):
+    """Read PQR file and determines protein centre of geometry"""
+    # XXX: a PQR should be a class, this ad-hoc parsing is ugly!
+
+    self.pqrLines = []
+    with open(self.pqrName, "r") as pqrFile:
+      for line in pqrFile:
+        if (line[0:4] == "ATOM"):
+          self.pqrLines.append(line)
+          
+    _coords = []
+    for line in self.pqrLines:
+      fields = line.split()      # This depends on correct spacing in the PQR file.
+      try:
+        _coords.append(map(float, fields[5:8]))
+      except:
+        logger.fatal("Problem with PQR file format of file %(pqrName)r", vars(self))
+        logger.fatal("Offending line: %s", line)
+        raise
+    coords = numpy.array(_coords)
+    self.protein_centre = coords.mean(axis=0)
+    logger.info("Read %(pqrName)r as protein with centroid = %(protein_centre)r", vars(self))
+    return coords
+
   def writePQRs(self, windows=None):
     """Generate input pqr files for all windows and store them in separate directories."""
     # NOTE: This is the only place where window numbers reference the sample points
@@ -202,7 +229,8 @@ class Placeion(BPbase):
       # glen not needed, auto-set from pqr and padding
     else:
       import warnings
-      warnings.warn("Using deprecated Placeion(pqr,points) call", DeprecationWarning)
+      warnings.warn("Using deprecated Placeion(pqr,points) call (will be removed in 1.0)", 
+                    DeprecationWarning)
       self.pqrName = os.path.realpath(args[0])
       self.pointsName = os.path.realpath(args[1])
       self.jobName = kwargs.pop('jobName', "bornprofile")
@@ -219,6 +247,7 @@ class Placeion(BPbase):
     self.cglen = numpy.array([0, 0, 0])  # automatically set by readPQR() + padding!
     self.use_cubic_boundaries = True     # False uses old placeion.py algorithm: manually adjust fglen!!
     self.pqrLines = []
+    self.protein_centre = None
 
     logger.info("Placeion: pqr=%(pqrName)r", vars(self))
     logger.info("Placeion: points=%(pointsName)r", vars(self))
@@ -234,32 +263,26 @@ class Placeion(BPbase):
     return self.writeJob()
 
   def readPQR(self):
-    """Read PQR file and determine the bounding box."""
-    with open(self.pqrName, "r") as pqrFile:
-      for line in pqrFile:
-        if (line[0:4] == "ATOM"):
-          self.pqrLines.append(line)
- 
-    # finding the cglen (coarse grid lengths) automatically
-    _coords = []
-    for line in self.pqrLines:
-      if (line[0:4] == "ATOM"):
-        fields = line.split()      # This depends on correct spacing in the PQR file.
-        _coords.append(map(float, fields[5:8]))
-    coords = numpy.array(_coords)
+    """Read PQR file and determine bounding box and centre of geometry."""
+    coords = super(Placeion, self).readPQR()   # :-p
+
     if self.use_cubic_boundaries:
       # use largest cubic box (note: fglen is cubic in templates/placeion.in)
       # but can be set in run parameters bornprofile.fglen.
       paddings = numpy.max([self.padding_xy, self.padding_z])
       L = (coords.max() - coords.min()) + paddings
       self.cglen = numpy.array([L,L,L])
+      logger.debug("Setting cubic box boundaries cglen = %(cglen)r", vars(self))
     else:
       # original placeion.py algorithm
       # (note: for this to work better, the fglen in templates/placeion.in should
       # match the ratio of box lengths)
       paddings = numpy.array([self.padding_xy, self.padding_xy, self.padding_z])
       self.cglen = (coords.max(axis=0) - coords.min(axis=0)) + paddings
-         
+      logger.debug("Using old algorithm to determine cglen = %(cglen)r: make sure that fglen "
+                   "matches the ratios of box lengths.", vars(self))
+    return coords
+
   def writeIn(self, windows=None):
     windows = self._process_window_numbers(windows)
     for num in windows:
@@ -383,12 +406,14 @@ class MPlaceion(BPbase):
       # filter stuff... probably should do this in a cleaner manner (e.g. different
       # sections in the parameter file?)
       kw.pop('fglen', None)
+      # see also process_bornprofile_kwargs() below for more ugly hacks...
 
       import membrane
       self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
     else:
       import warnings
-      warnings.warn("Using deprecated MPlaceion(pqr,points) call", DeprecationWarning)
+      warnings.warn("Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)", 
+                    DeprecationWarning)
       self.pqrName = os.path.realpath(args[0])
       self.pointsName = os.path.realpath(args[1])
 
@@ -417,18 +442,37 @@ class MPlaceion(BPbase):
     # sanity check
     assert len(self.schedule) != len(self.SetupClass.suffices), \
         "schedule does not correspond to naming scheme --- make sure that memclass is set up properly"
+    self.pqrLines = []
+    self.protein_centre = None
 
     # do some initial processing...
-    self.readPQR()
+    self.readPQR()                     # hack: also sets self.protein_centre
     self.readPoints()
+    self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
 
-  def readPQR(self):
-    self.pqrLines = []
-    with open(self.pqrName, "r") as pqrFile:
-      for line in pqrFile:
-        if (line[0:4] == "ATOM"):
-          self.pqrLines.append(line)
+  def process_bornprofile_kwargs(self):
+    """Hook to manipulate :attr:`bornprofile_kwargs`.
 
+    # set exclusion zone centre to the protein centroid (unless *x0_R* and/or
+      *y0_R* are set in the run input cfg file)
+    """
+    # :attr:`bornprofile_kwargs` are passed in :meth:`get_MemBornSetup`
+    # directly into downstream classes such as :class:`membrane.APBSmem` and
+    # :class:`membrane.BornAPBSmem` where they are used (or not) according to
+    # requirements
+    try:
+      kw = self.bornprofile_kwargs
+    except AttributeError:
+      # XXX deprecated use of the class (not using cfg file) -- remove in 1.0
+      import version
+      assert version.get_version_tuple() < (1,0,0)
+      return
+
+    # exclusion zone centre
+    if kw['x0_R'] is None:
+      kw['x0_R'] = self.protein_centre[0]
+    if kw['y0_R'] is None:
+      kw['y0_R'] = self.protein_centre[1]
 
   def writeJob(self, windows=None):
     """Write the job script.
@@ -471,7 +515,6 @@ class MPlaceion(BPbase):
           })
     return len(windows)
 
-
   def generateMem(self, windows=None, run=False):
     """Generate special diel/kappa/charge files and mem_placeion.in for each window.
 
@@ -508,7 +551,13 @@ class MPlaceion(BPbase):
         membornsetup.generate(run=run)
 
   def get_MemBornSetup(self, num):
-    """Return the setup class for window *num* (cached)."""
+    """Return the setup class for window *num* (cached).
+
+    The method is responsible for passing all parameters to downstream classes
+    that are used to generate individual windows. It instantiates an
+    appropriately set up class for each window and caches each class. Classes
+    are indexed by *num* (which is the unique window identifier).
+    """
     try:
       return self.__cache_MemBornSetup[num]
     except KeyError:
