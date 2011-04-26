@@ -33,6 +33,10 @@ class RunParameters(object):
     This class accesses these parameters and can create a template with the
     default values.
 
+    The class *guarantees* that all parameters exist; if needed they are
+    populated with default values. Hence it is always possible to access a
+    parameter without having to check if it is there.
+
    :Parameters:
         - zmem : membrane centre (A)
         - lmem : membrane thickness (A)
@@ -44,13 +48,18 @@ class RunParameters(object):
         - Rbot : exclusion cylinder bottom
         - x0_R : exclusion zone centre in X, ``None`` selects the default
         - y0_R : exclusion zone centre in Y, ``None`` selects the default
+        - dx_R : shift centre of the exclusion zone in X
+        - dy_R : shift centre of the exclusion zone in Y
         - cdie : dielectric in the channel (e.g. SDIE)
         - headgroup_l : thicknes of headgroup region
         - headgroup_die : dielectric for headgroup region
         - temperature : temperature
         - conc : ionic strength in mol/l
+        - ... and more
 
-        ... and others: see default file!
+    .. SeeAlso:; The example run input configurations file
+       :doc:`examples/example_runinput.cfg` is the full specification and
+       contains annotated values for *all* parameters.
     """
     # For each task (cf the apbs-* scripts!) we define the variables that we
     # want to pull from the run input config file in the parameter_selections
@@ -84,6 +93,7 @@ class RunParameters(object):
                              ('sdie', float), ('pqr', path), ('runtype', str)],
              'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
                              ('x0_R', float_or_None), ('y0_R', float_or_None),
+                             ('dx_R', float), ('dy_R', float),
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
@@ -95,6 +105,7 @@ class RunParameters(object):
                              ('sdie', float), ('pqr', path),],
              'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
                              ('x0_R', float_or_None), ('y0_R', float_or_None),
+                             ('dx_R', float), ('dy_R', float),
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'potential':   [('dime', eval), ('glen', eval),],
@@ -139,6 +150,8 @@ class RunParameters(object):
         parser.set('membrane', 'Rbot', '0')
         parser.set('membrane', 'x0_R', 'None')
         parser.set('membrane', 'y0_R', 'None')
+        parser.set('membrane', 'dx_R', '0')
+        parser.set('membrane', 'dy_R', '0')
         parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
         parser.set('membrane', 'headgroup_die', '20')
         parser.set('membrane', 'headgroup_l', '0')
@@ -286,3 +299,34 @@ def read_template(filename):
   return "".join(file(fn).readlines())
 
 
+class PQRReader(object):
+    """Naive implementation of a PQR reader."""
+    def __init__(self, filename, **kwargs):
+        self.pqrName = filename
+        self.pqrLines = []  # verbatim copy of all ATOM lines, some functions just use that
+        with open(self.pqrName, "r") as pqrFile:
+            for line in pqrFile:
+                if (line[0:4] == "ATOM"):
+                    self.pqrLines.append(line)
+        _coords = []
+        for line in self.pqrLines:
+            fields = line.split()      # This depends on correct spacing in the PQR file.
+            try:
+                _coords.append(map(float, fields[5:8]))
+            except:
+                logger.fatal("Problem with PQR file format of file %(pqrName)r", vars(self))
+                logger.fatal("Offending line: %s", line)
+                raise
+
+        self.coords = numpy.array(_coords)
+        self.centroid = self.coords.mean(axis=0)
+
+        logger.info("PQRReader: Read %(pqrName)r with centroid = %(centroid)r", vars(self))
+
+    @property
+    def coordinates(self):
+        return self.coords
+
+    @property
+    def centerOfGeometry(self):
+        return self.centroid

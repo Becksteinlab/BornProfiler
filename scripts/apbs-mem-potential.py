@@ -33,7 +33,9 @@ Paths to draw_membrane2 and apbs are set in the configuration file
 """
 
 import os.path
-import bornprofiler, bornprofiler.membrane
+import bornprofiler
+import bornprofiler.membrane
+import bornprofiler.io
 import logging
 logger = logging.getLogger('bornprofiler')
 
@@ -75,6 +77,24 @@ if __name__ == "__main__":
         del kw['pqr']
     except IndexError:
         pqr = kw.pop('pqr')
+
+    # hack: shift centre of exclusion zone (duplicates code in
+    # core.MPlaceion.process_bornprofile_kwargs but I don't really know how to
+    # put this at a lower level because the input for draw_membrane2a really is
+    # only the centre of the exclusion zone in absolute coordinates)
+    # exclusion zone centre
+    protein_centre = bornprofiler.io.PQRReader(pqr).centroid
+    if kw['x0_R'] is None:
+        kw['x0_R'] = protein_centre[0]
+    if kw['y0_R'] is None:
+        kw['y0_R'] = protein_centre[1]
+    # shift the centre
+    kw['x0_R'] += kw['dx_R']
+    kw['y0_R'] += kw['dy_R']
+    # clean kw
+    kw.pop('dx_R')
+    kw.pop('dy_R')
+        
 
     # sanity checks (APBS and draw_membrane2a will be neeeded)
     bornprofiler.config.check_APBS()

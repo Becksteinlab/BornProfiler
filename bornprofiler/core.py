@@ -126,27 +126,10 @@ class BPbase(object):
 
   def readPQR(self):
     """Read PQR file and determines protein centre of geometry"""
-    # XXX: a PQR should be a class, this ad-hoc parsing is ugly!
-
-    self.pqrLines = []
-    with open(self.pqrName, "r") as pqrFile:
-      for line in pqrFile:
-        if (line[0:4] == "ATOM"):
-          self.pqrLines.append(line)
-          
-    _coords = []
-    for line in self.pqrLines:
-      fields = line.split()      # This depends on correct spacing in the PQR file.
-      try:
-        _coords.append(map(float, fields[5:8]))
-      except:
-        logger.fatal("Problem with PQR file format of file %(pqrName)r", vars(self))
-        logger.fatal("Offending line: %s", line)
-        raise
-    coords = numpy.array(_coords)
-    self.protein_centre = coords.mean(axis=0)
-    logger.info("Read %(pqrName)r as protein with centroid = %(protein_centre)r", vars(self))
-    return coords
+    pqr = io.PQRReader(self.pqrName)
+    self.pqrLines = pqr.pqrLines
+    self.protein_centre = pqr.centroid
+    return pqr.coords
 
   def writePQRs(self, windows=None):
     """Generate input pqr files for all windows and store them in separate directories."""
@@ -345,6 +328,10 @@ class MPlaceion(BPbase):
   schedule = {'dime': [(129, 129, 129),(129, 129, 129),(129, 129, 129)],
               'glen': [(250,250,250),(100,100,100),(50,50,50)],
               }
+  #: These keywords are read from the runinput file but should not be passed on
+  #: through the bornprofile_keywords mechanism. See
+  #:meth:`process_bornprofile_keywords`.
+  remove_bornprofile_keywords = ('fglen', 'dx_R', 'dy_R')
 
   def __init__(self, *args, **kwargs):
     """Setup Born profile with membrane.
@@ -402,11 +389,9 @@ class MPlaceion(BPbase):
       self.temperature = kw.pop('temperature', 300.0)
       self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
       self.script = read_template(kw.pop('script', 'q_local.sh'))
-
-      # filter stuff... probably should do this in a cleaner manner (e.g. different
-      # sections in the parameter file?)
-      kw.pop('fglen', None)
-      # see also process_bornprofile_kwargs() below for more ugly hacks...
+      # any variables that should NOT be passed to the constructor of the
+      # SetupClass must be popped from self.bornprofile_kwargs; this is now
+      # done (together with other hacks) inprocess_bornprofile_kwargs()
 
       import membrane
       self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
@@ -455,6 +440,8 @@ class MPlaceion(BPbase):
 
     # set exclusion zone centre to the protein centroid (unless *x0_R* and/or
       *y0_R* are set in the run input cfg file)
+    # shift exclusion zone centre by *dx_R* and *dy_R*
+    # filter :attr:`remove_bornprofile_keywords`
     """
     # :attr:`bornprofile_kwargs` are passed in :meth:`get_MemBornSetup`
     # directly into downstream classes such as :class:`membrane.APBSmem` and
@@ -473,6 +460,16 @@ class MPlaceion(BPbase):
       kw['x0_R'] = self.protein_centre[0]
     if kw['y0_R'] is None:
       kw['y0_R'] = self.protein_centre[1]
+
+    # shift the centre
+    kw['x0_R'] += kw['dx_R']
+    kw['y0_R'] += kw['dy_R']
+
+    # filter stuff... probably should do this in a cleaner manner (e.g. different
+    # sections in the parameter file?) -- if anything gets passed then we will die with a 
+    # TypeError: object.__init__() takes no parameters in BaseMem
+    for k in self.remove_bornprofile_keywords:
+      kw.pop(k, None)
 
   def writeJob(self, windows=None):
     """Write the job script.
