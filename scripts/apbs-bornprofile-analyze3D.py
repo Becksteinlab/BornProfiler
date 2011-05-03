@@ -86,10 +86,13 @@ if __name__ == "__main__":
   A = AnalyzeElec3D(*args, **kwargs)
   A.write()
 
-  if opts.delta and opts.dxfilename:
-    if opts.dxfilename == "auto":
-      opts.dxfilename = None
-    A.export(filename=opts.dxfilename, format="dx", delta=opts.delta)
+  if opts.dxfilename:
+    if opts.delta:
+      if opts.dxfilename == "auto":
+        opts.dxfilename = None
+      A.export(filename=opts.dxfilename, format="dx", delta=opts.delta)
+    else:
+      logger.warn("The --dx option was set but no --delta SPACING provided. No dx file will be written.")
   if opts.pdbfilename:
     if opts.pdbfilename == "auto":
       opts.pdbfilename = None

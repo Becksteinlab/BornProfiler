@@ -62,10 +62,13 @@ class Analyzer(BPbase):
             self.readPoints()
             if self.points.shape[0] != len(self.datafiles):
                 msg = "Number of sampled points (%d) does not match the number "\
-                    "of data files (%d). They MUST correspond 1-to-1." % \
+                    "of data files (%d). Some windows are MISSING and will be skipped." % \
                     (self.points.shape[0], len(self.datafiles))
-                logger.fatal(msg)
-                raise ValueError(msg)
+                logger.warn(msg)
+                missing = self.find_missing_windows()
+                for num,x,y,z,path in missing:
+                    logger.warn("missing: %4d   (%8.3f,%8.3f,%8.3f)  taskid=%d", 
+                                num, x, y, z, self.get_taskid(num))
             self.accumulate()
         else:
             self.read()
@@ -133,6 +136,21 @@ class Analyzer(BPbase):
                  num, len(self.points)-1, outPath),
         print
         self.data = numpy.array(data).T
+
+    def find_missing_windows(self):
+        """Return a list of job numbers that have no data corresponding to a point."""
+        missing = []
+        for num, point in enumerate(self.points):
+            outName = self.outfilename(num)
+            # find file name in list of input files
+            outPath = None
+            for path in self.datafiles:   # could make self.datafiles a hash for faster search
+                if path.endswith(outName):
+                    outPath = path
+                    break                 # good, found it
+            if outPath is None:
+                missing.append((num, point[0], point[1], point[2], outName))
+        return numpy.rec.fromrecords(missing, names="num,x,y,z,path")
 
     def export(self, filename=None, format="dx", **kwargs):
         """Export data to different file format.

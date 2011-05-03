@@ -95,6 +95,10 @@ class BPbase(object):
   def get_windowdirname(self, num):
     return "w%04d" % num
 
+  def get_taskid(self, num):
+    """Return 1-based Sun Gridengine taskid for an array job"""
+    return num + 1
+
   def _process_window_numbers(self, windows=None):
     """Window numbers are 0-based."""
     if windows is None:
@@ -301,7 +305,8 @@ class Placeion(BPbase):
         }
       scriptname = self.jobscriptname(num)
       scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
-      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptpath))  # job array ids are 1-based!
+      # job array taskids are 1-based
+      bash_jobarray.append('job[%d]="%s"' % (self.get_taskid(num), scriptpath))
       with open(scriptpath, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
       os.chmod(scriptpath, 0755)
@@ -496,7 +501,8 @@ class MPlaceion(BPbase):
         }      
       scriptname = self.jobscriptname(num)
       scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
-      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptpath))    # job array ids are 1-based!
+      # job array taskids are 1-based
+      bash_jobarray.append('job[%d]="%s"' % (self.get_taskid(num), scriptpath))
       # write scriptfile into the window directory
       with open(scriptpath, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
