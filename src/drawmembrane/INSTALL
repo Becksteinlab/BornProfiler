@@ -21,10 +21,18 @@ BornProfiler configuration file, ``~/.bornprofiler.cfg``.
 cmake
 =====
 
-A funky way to do the same thing is to use ``cmake``::
+A funky way to do the same thing is to use ``cmake`` http://www.cmake.org/::
 
   mkdir build && cd build
-  cmake -D CMAKE_INSTALL_PREFIX=$HOME/bin -D CMAKE_BUILD_TYPE=Release ../src/drawmembrane
+  cmake -D CMAKE_INSTALL_PREFIX=$HOME ../src/drawmembrane
   make 
   make install
+
+You can also set variables interactively:
+
+  mkdir build && cd build
+  ccmake ../src/drawmembrane
+
+Press 'c' for 'configure', edit values, press 'c' then 'g' (or see
+documentation for ccmake.)
 
