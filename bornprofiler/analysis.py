@@ -15,6 +15,7 @@ logger = logging.getLogger('bornprofiler.analysis')
 
 def get_files(runfile, basedir=os.path.curdir):
     """Read *runfile* and return dict with input files and names."""
+    # convenience function --- one could also just read the cfg file
     from bornprofiler.io import RunParameters
     try:
         p = RunParameters(runfile)
@@ -23,14 +24,16 @@ def get_files(runfile, basedir=os.path.curdir):
                                 'w[0-9][0-9][0-9][0-9]', 'job*.out')
         jobName = p.get_bornprofile_kwargs('name')
         ionName = p.get_bornprofile_kwargs('ion')
+        pqr = p.get_bornprofile_kwargs('pqr')
     except:
         logger.fatal("Cannot obtain information about the sample points and "
                      "directory from the run parameter file %r.", runfile)
         raise
     return {'samplepoints': samplepoints,
-            'datafiles': glob.glob(fileglob),
+            'datafiles': glob.glob(fileglob),  # gets all individual windows!
             'jobName': jobName,
             'ionName': ionName,
+            'pqr': pqr,
             }
 
 class Analyzer(BPbase):
