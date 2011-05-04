@@ -49,6 +49,7 @@ from __future__ import with_statement
 
 import os.path, errno
 from ConfigParser import SafeConfigParser
+import datetime
 
 from pkg_resources import resource_filename, resource_listdir
 
@@ -350,8 +351,13 @@ def check_drawmembrane(name=None):
             (m.group('name'), DRAWMEMBRANE_REQUIRED_NAME)
         logger.critical(errmsg)
         raise EnvironmentError(errno.EIO, drawmembrane, errmsg)
+    # check that existing version (MM/DD/YY) is the required or more recent oine
     month,day,year = map(int, m.group('date').split('/'))
-    if not ((month,day,year) >= DRAWMEMBRANE_MINIMUM_VERSION):
+    delta = datetime.datetime(year,month,day) - \
+        datetime.datetime(DRAWMEMBRANE_MINIMUM_VERSION[2],  # YY
+                          DRAWMEMBRANE_MINIMUM_VERSION[0],  # MM
+                          DRAWMEMBRANE_MINIMUM_VERSION[1])  # DD
+    if delta.days < 0:
         errmsg = "version %d/%d/%d is too old, need at least %d/%d/%d" % \
             ((month,day,year)+DRAWMEMBRANE_MINIMUM_VERSION)
         logger.critical(errmsg)
