@@ -6,7 +6,7 @@
 __all__ = ['VERSION', 'get_version', 'get_version_tuple']
 
 #: Package version; this is the only place where it is set.
-VERSION = 0,9,1
+VERSION = 0,9,2
 
 def get_version():
     """Return current package version as a string."""
