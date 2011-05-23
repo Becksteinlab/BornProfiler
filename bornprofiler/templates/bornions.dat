@@ -47,11 +47,22 @@ OH  OH-   OH-  1.498 -1
 SH  SH-   SH-  1.969 -1
 S   S-2   S2-  1.969 -2
 
-# Oxonium ion (H3O+) Born radius: Born equation for solvation free
-# energy of -105 kcal/mol leads to a = 1.6 A:
-#   A. Burykin and A. Warshel. Membranes assembled from narrow carbon
-#   nanotubes block proton transport and can form effective
-#   nano-filtration devices. Journal of Computational and Theoretical
-#   Nanoscience, 3(2):237-242, 2006.
-H3O H3O+  H3O+ 1.6   +1
+# Born radii derived from the solvation free energies in
+#
+#   J.R. Pliego and J.M. Riveros. New values for the absolute
+#   solvation free energy of univalent ions in aqueous
+#   solution. Chemical Physics Letters, 332(5-6): 597--602,
+#   2000. doi:10.1016/S0009-2614(00)01305-1.
+#
+# a = -166 q^2/DeltaG*_solv * (1 - 1/80)
+#
+# Note we are using the Ben-Naim standard state (1M gas -> 1M
+# solution) as this matches the PB calculation.
+#
+# USE AT YOUR OWN RISK! 
+# (H+ IS ONLY PROVIDED AS A TEST CASE AND PROBABLY BEARS NO REAL MEANING.)
+#
+H3O H3O+  H3O+ 1.4848 +1
+OH2 OH2-  OH2- 1.5612 -1
+H   H+    H+   0.6209 +1
 

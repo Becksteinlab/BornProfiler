@@ -31,12 +31,19 @@ modelled as a dielectric slab of epsilon=2.
    dielectric constant. 
  * Define all input parameters in a compact parameter file so that
    there is always a record of the exact calculation setup available. 
- * Born radii for all ions from the Rashin & Honig paper [Rashin1985]_ are included;
-   just select the ion in the input file. 
+ * Born radii for all ions from the Rashin & Honig paper [Rashin1985]_
+   are included; just select the ion in the input file.
+ * Born radii for H3O+, OH- (and H+... for testing) have been derived
+   from the solvation free energies in [Pliego2000]_ directly via the
+   Born equation. USE AT YOUR OWN RISK!!
  * Customize run scripts and queuing system submission scripts by
    providing your own templates.  
 
 .. [Rashin1985] A.Rashin & B.Honig, J Phys Chem B 89 (1985), 5588
+.. [Pliego2000] J.R. Pliego and J.M. Riveros. Chemical Physics
+                Letters, 332(5-6): 597--602, 2000. 
+		doi:10.1016/S0009-2614(00)01305-1.  
+
 
 
 History and Contributions
