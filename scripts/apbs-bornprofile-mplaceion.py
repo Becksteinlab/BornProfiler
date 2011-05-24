@@ -12,6 +12,10 @@ parameter file. A new parameter-file can be generated with the --template
 option; in this case only the file is written and no further actions are
 performed.
 
+This script creates directories for ion positions, required input files to
+APBS, and scripts that can be run locally or through a queuing system to
+perform all calculations.
+
 All parameters for the calculation must be set in the parameter file. In this
 way, one parameter file completely describes the calculation. In particular,
 each calculation should have a different job name (section [job] name =
@@ -21,11 +25,11 @@ JobName). For example, the ion is set in the section ::
   ion = <name>
 
 where `<name>` is one of the ions for which the package knows the Born
-radius (see below).
-
-This script creates directories for ion positions, required input files to
-APBS, and scripts that can be run locally or through a queuing system to
-perform all calculations.
+radius (see below). The input file also specifies the input PQR file
+and the list of sample points at which the ion is placed
+(``[bornprofile] points``). The sample points file should be formatted
+as one white-space separated xyz coordinate per line, or a PDB file or
+a HOLE sph file.
 
 The "Born radii" for ions were taken from Table III in
 

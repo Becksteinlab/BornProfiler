@@ -35,7 +35,7 @@ favourite editor.
 
 The ion positions in the file samplepoints (``[bornprofile] points``
 in the run parameter file) should be formatted as one white-space
-separated xyz coordinate per line.
+separated xyz coordinate per line, or a PDB file or a HOLE sph file.
 
 The "Born radii" for ions were taken from Table III in
 
