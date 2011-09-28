@@ -41,13 +41,11 @@ setup(name="APBS-BornProfiler",
                  "scripts/apbs-mem-potential.py",
                  ],
       install_requires=[ 
-        # commented out because I get fed up with easy_install's broken(?) dependency tracking...
-        #'numpy>=1.0.3', 
+        'numpy>=1.0.3', 
         ], 
       extras_require = {
-        'analysis': ['gridData>=0.3',
+        'analysis': ['GridDataFormats>=0.2.2',
                      ],
         },
-      dependency_links = ["http://sbcb.bioch.ox.ac.uk/oliver/download/Python/"],
       zip_safe=True,
 )
