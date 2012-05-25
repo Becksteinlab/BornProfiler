@@ -15,6 +15,8 @@ so-called *Born profile*).
 .. _APBS:: http://www.poissonboltzmann.org
 
 """
+from version import get_version, get_version_tuple
+
 import config, utilities
 
 import logging

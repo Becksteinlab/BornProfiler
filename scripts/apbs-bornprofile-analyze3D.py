@@ -7,9 +7,6 @@
 :Copyright: (c) 2010 Oliver Beckstein
 """
 
-import logging
-logger = logging.getLogger('bornprofiler') 
-
 usage = """%prog [options] samplepoints-file *.out
        %prog [options] parameter-file
 
@@ -23,8 +20,14 @@ values at the sample points.
    up the APBS calculations.
 """
 
+import shutil
+import os
+
 import bornprofiler
 from bornprofiler.analysis import AnalyzeElec3D
+
+import logging
+logger = logging.getLogger('bornprofiler') 
  
 if __name__ == "__main__":
   import sys
@@ -51,6 +54,8 @@ if __name__ == "__main__":
                     metavar="FILE",
                     help="Export points to a PDB file with the energy in the B-factor. "
                     "If set to 'auto' then a filename is chosen.")
+  parser.add_option("--copy-pqr", "-q", dest="copy_pqr", action="store_true",
+                    help="copy the input pqr file to this directory for later visualisation")
   parser.add_option("--ion", dest="ionName",
                     metavar="STRING",
                     help="Set the ion name for --pdb if not running from config file [%default]")
@@ -61,7 +66,7 @@ if __name__ == "__main__":
                     "the run parameter file [%default]")
   parser.add_option("--read", dest="create", action="store_false",
                     help="If set, read positions and enrgies from a previously created dat file.")
-  parser.set_defaults(basedir=os.path.curdir, ionName="ION", create=True)
+  parser.set_defaults(basedir=os.path.curdir, ionName="ION", create=True, copy_pqr=False)
 
   opts,args = parser.parse_args()
 
@@ -78,6 +83,8 @@ if __name__ == "__main__":
     # maybe the shell did not expand globs or we run in ipython?
     samplepoints,fileglob = args
     args = [samplepoints] + glob.glob(fileglob)
+    if opts.copy_pqr:
+      logger.warn("--copy-pqr: No pqr information when running without cfg file. Ignored.")
 
   if opts.jobName is None:
     opts.jobName = "bornprofile"
@@ -86,13 +93,21 @@ if __name__ == "__main__":
   A = AnalyzeElec3D(*args, **kwargs)
   A.write()
 
-  if opts.delta and opts.dxfilename:
-    if opts.dxfilename == "auto":
-      opts.dxfilename = None
-    A.export(filename=opts.dxfilename, format="dx", delta=opts.delta)
+  if opts.dxfilename:
+    if opts.delta:
+      if opts.dxfilename == "auto":
+        opts.dxfilename = None
+      A.export(filename=opts.dxfilename, format="dx", delta=opts.delta)
+    else:
+      logger.warn("The --dx option was set but no --delta SPACING provided. No dx file will be written.")
+
   if opts.pdbfilename:
     if opts.pdbfilename == "auto":
       opts.pdbfilename = None
     A.export(filename=opts.pdbfilename, format="pdb", ion=opts.ionName)    
+
+  if opts.copy_pqr:
+    shutil.copy(f['pqr'], os.curdir)
+    logger.info("cp %r %s", f['pqr'], os.curdir)
 
   bornprofiler.stop_logging()

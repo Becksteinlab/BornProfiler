@@ -32,13 +32,16 @@ from itertools import izip
 import logging
 logger = logging.getLogger("bornprofiler.membrane")
 
+from io import read_template
+
 import config
-from config import configuration, read_template
+from config import configuration
 # executables; must be found on PATH by the shell or full path in config file
 # drawmembrane MUST be draw_membrane2a
 DRAWMEMBRANE = configuration["drawmembrane"]
 APBS = configuration["apbs"]
 
+#: cache for template files
 TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
              'born_dummy': read_template('mdummy.in'),
@@ -62,14 +65,16 @@ class BaseMem(object):
            - mdie: membrane dielectric
            - Rtop : exclusion cylinder top
            - Rbot : exclusion cylinder bottom
+           - x0_R : X exclusion center 
+           - y0_R : Y exclusion center 
            - cdie : channel solvent dielectric (by default same as sdie)
            - headgroup_l : thickness of headgroup region (A)
            - headgroup_die : headgroup dielectric
            - temperature : temperature
-           - conc : ionic strength in mol/l  
-           - basedir: full path to the directory from which files are read and written; 
-             by default this is realpath('.')                     
-                        
+           - conc : ionic strength in mol/l
+           - basedir: full path to the directory from which files are read and written;
+             by default this is realpath('.')
+
         """
         self.versions = {}
         # check draw_membrane: raises a stink if not the right one
@@ -84,9 +89,9 @@ class BaseMem(object):
             self.dxsuffix = "dx.gz"  # APBS automatically adds .dx.gz when writing
             if self.versions['APBS'] == (1,3) \
                     and not config.cfg.getboolean('executables', 'apbs_always_read_dxgz'):
-                # note that 1.3 'READ gz' is broken (at least on Mac OS X) so we hack around 
+                # note that 1.3 'READ gz' is broken (at least on Mac OS X) so we hack around
                 # this by gunzipping in the queuing script and replacing the gz format in readstatements
-                # with the dx one :-p            
+                # with the dx one :-p
                 # svn 1623+ are fixed and work so one can set the hack in the config file:
                 # [executables]
                 # apbs_always_read_dxgz = True
@@ -94,9 +99,11 @@ class BaseMem(object):
         else:
             self.dxformat = "dx"
             self.dxsuffix = "dx"
-        self.apbs_version = ".".join(map(str, self.versions['APBS']))        
+        self.apbs_version = ".".join(map(str, self.versions['APBS']))
 
         # all the variables needed for draw_membrane2a
+        # (TODO: having to add ALL these variables as attributes sucks; this
+        # should be done automagically... makes it hard adding new parameters)
         self.zmem = kwargs.pop('zmem', 0.0)
         self.lmem = kwargs.pop('lmem', 40.0)
         self.Vmem = kwargs.pop('Vmem', 0.0)  # potential (untested)
@@ -108,6 +115,8 @@ class BaseMem(object):
         self.headgroup_l = kwargs.pop('headgroup_l', 0.0)  # geo3
         self.Rtop = kwargs.pop('Rtop', 0)  # geo1
         self.Rbot = kwargs.pop('Rbot', 0)  # geo2
+        self.x0_R = kwargs.pop('x0_R', 0)  # new in draw_membrane2a.c 04/26/11
+        self.y0_R = kwargs.pop('y0_R', 0)  # new in draw_membrane2a.c 04/26/11
         self.cdie = kwargs.pop('cdie', self.sdie)
         self.temperature = kwargs.pop('temperature', 298.15)
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
@@ -162,11 +171,12 @@ class BaseMem(object):
         infix = kwargs.pop('infix', self.suffix)
         v.update(kwargs)  # override with kwargs
         cmdline = [self.drawmembrane] + \
-            map(str, ["-z", v['zmem'], "-d", v['lmem'], "-m", v["mdie"],   # membrane
-                      "-a", v["headgroup_l"], "-i", v["headgroup_die"],    # headgrops
+            map(str, ["-z", v['zmem'], "-d", v['lmem'], "-m", v['mdie'],   # membrane
+                      "-a", v['headgroup_l'], "-i", v['headgroup_die'],    # headgrops
                       "-s", v["sdie"], "-p", v['pdie'],                    # environment
-                      "-V", v['Vmem'], "-I", v['conc'], 
+                      "-V", v['Vmem'], "-I", v['conc'],
                       "-R", v['Rtop'], "-r", v['Rbot'], "-c", v['cdie'],   # channel exclusion
+                      "-X", v['x0_R'], "-Y", v['y0_R'],
                       ])
         if self.dxformat == "gz":
             cmdline.append('-Z')   # special version draw_membrane2a that can deal with gz
@@ -201,27 +211,27 @@ class BaseMem(object):
             logger.warn("No dx files for %(name)s.", vars())
             return 0
         cmdline = [name] + options + dxfiles
-        logger.info("Beginning to %s %s all %d dx files... patience.", 
+        logger.info("Beginning to %s %s all %d dx files... patience.",
                     name, " ".join(options), len(dxfiles))
         logger.debug("COMMAND: %r", cmdline)
         rc = call(cmdline)
         if rc == 0:
             logger.info("Completed %s operation.", name)
         else:
-            logger.error("%s error: returncode %d", name, rc)            
+            logger.error("%s error: returncode %d", name, rc)
         return rc
-    
+
     def gzip_dx(self):
         """Run external gzip on all dx files.
 
         Saves about 98% of space.
         """
         return self._gzip_dx()
-        
+
     def ungzip_dx(self):
         """Run external ungzip on all dx files."""
         return self._gzip_dx('gunzip')
-        
+
 
 class APBSmem(BaseMem):
     """Represent the apbsmem tools.
@@ -230,11 +240,7 @@ class APBSmem(BaseMem):
 
     .. Note:: see code for kwargs
     """
-
-    # XXX: probably broken at the moment, check
-    # - dx vs dx.gz format
-    # - make template monolithic
-    # - use separate window dirs ... ie make it more like BornAPBSmem
+    # used by apbs-mem-potential.py
 
     def __init__(self, *args, **kwargs):
         """Set up calculation.
@@ -260,15 +266,16 @@ class APBSmem(BaseMem):
         # (see templates/dummy.in)
 
         #: "static" variables required for a  calculation
-        self.vars = {'dummy': 
+        self.vars = {'dummy':
                      "pqr,suffix,"
                      "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ,GLEN_XYZ",
-                     'solvation': 
+                     'solvation':
                      "pqr,suffix,pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ,GLEN_XYZ",
-                     'drawmembrane2': 
-                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot,cdie,"
+                     'drawmembrane2':
+                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,"
+                     "Rtop,Rbot,x0_R,y0_R,cdie,"
                      "headgroup_l,headgroup_die,suffix",
                      }
         # generate names
@@ -297,14 +304,14 @@ class APBSmem(BaseMem):
             self.gzip_dx()
 
 class BornAPBSmem(BaseMem):
-    """Class to prepare a single window in a manual focusing run."""    
+    """Class to prepare a single window in a manual focusing run."""
 
     #: Suffices of file names are hard coded in templates and should not
     #: be changed; see ``templates/mdummy.in`` and ``templates/mplaceion.in``.
     #: The order of the suffices corresponds to the sequence in the schedule.
     suffices = ('L','M','S')
     default_runtype = "with_protein"
-    
+
     def __init__(self, *args, **kwargs):
         """Set up calculation.
 
@@ -356,18 +363,19 @@ class BornAPBSmem(BaseMem):
 
         #: "static" variables required for generating a file from a template;
         #: The variable names can be found in self.__dict__
-        self.vars = {'born_dummy': 
+        self.vars = {'born_dummy':
                      "protein_pqr,ion_pqr,complex_pqr,"
                      "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
-                     self.runtype: 
+                     self.runtype:
                      "protein_pqr,ion_pqr,complex_pqr,"
                      "pdie,sdie,conc,temperature,comment,dxformat,dxsuffix,"
                      "DIME_XYZ_L,DIME_XYZ_M,DIME_XYZ_S,"
                      "GLEN_XYZ_L,GLEN_XYZ_M,GLEN_XYZ_S",
-                     'drawmembrane2': 
-                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,Rtop,Rbot,cdie,"
+                     'drawmembrane2':
+                     "zmem,lmem,pdie,sdie,mdie,Vmem,conc,"
+                     "Rtop,Rbot,x0_R,y0_R,cdie,"
                      "headgroup_l,headgroup_die,suffix",
                      }
         self.vars['born_setup_script'] = \
@@ -392,12 +400,12 @@ class BornAPBSmem(BaseMem):
 
         *run* = ``True``
           1. create exclusion maps (runs :program:`apbs` through :meth:`run_apbs`)
-          2. create membrane maps (:program:`draw_membrane2a` through 
+          2. create membrane maps (:program:`draw_membrane2a` through
              :meth:`run_drawmembrane2`)
           3. create apbs run input file
 
         *run* = ``False``
-          1. write a bash script that calls :program:`apbs` and :program:`draw_membrane2` 
+          1. write a bash script that calls :program:`apbs` and :program:`draw_membrane2`
              and which can be integrated into a window run script for parallelization.
           2. create apbs run input file
         """

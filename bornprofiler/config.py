@@ -1,6 +1,6 @@
-# APBS BornProfiler -- dealing with configuration files
-# Copyright (c) 2010 Oliver Beckstein
 # -*- coding: utf-8 -*-
+# APBS BornProfiler -- dealing with configuration files
+# Copyright (c) 2010-2011 Oliver Beckstein
 """
 Configuration file handling and setup
 =====================================
@@ -49,6 +49,7 @@ from __future__ import with_statement
 
 import os.path, errno
 from ConfigParser import SafeConfigParser
+import datetime
 
 from pkg_resources import resource_filename, resource_listdir
 
@@ -60,13 +61,14 @@ logger = logging.getLogger("bornprofiler.config")
 
 APBS_MINIMUM_VERSION = 1,3   # want to be able to read gzipped files
 DRAWMEMBRANE_REQUIRED_NAME = "draw_membrane2a.c"
-DRAWMEMBRANE_MINIMUM_VERSION = 12,1,10  # date in MM/DD/YY (!)
+DRAWMEMBRANE_MINIMUM_VERSION = 4,26,11  # date in MM/DD/YY (!)
 
 # User-accessible configuration
 # -----------------------------
 #
-# TODO: move into config file!!
-# These are the default values; eventually they should be re-read from config
+# These are the default values. Only the name of the
+# ~/bornprofiler.cfg file is really fixed and cannot easily be changed
+# by the user.
 
 defaults = {}
 
@@ -84,7 +86,7 @@ defaults['templatesdir'] = os.path.join(defaults['configdir'], 'templates')
 
 
 # Processing of the configuration file
-# ------------------------------------ 
+# ------------------------------------
 
 #: Default name for the configuration file.
 CONFIGNAME = os.path.expanduser(os.path.join("~",".bornprofiler.cfg"))
@@ -100,13 +102,22 @@ class BPConfigParser(SafeConfigParser):
 cfg = BPConfigParser()
 
 def get_configuration(filename=CONFIGNAME):
-    """Reads and parses the configuration file."""
+    """Reads and parses the configuration file.
+
+    Default values are loaded and then replaced with the values from
+    ``~/.bornprofiler.cfg`` if that file exists. The global configuration
+    instance :data:`bornprofiler.config.cfg` is updated.
+
+    Normally, the configuration is only loaded when the :mod:`bornprofiler`
+    package is imported but a re-reading of the configuration can be forced
+    anytime by calling :func:`get_configuration`.
+    """
 
     # defaults
     cfg.set('DEFAULT', 'configdir', defaults['configdir'])
-    cfg.set('DEFAULT', 'qscriptdir', 
+    cfg.set('DEFAULT', 'qscriptdir',
             os.path.join("%(configdir)s", os.path.basename(defaults['qscriptdir'])))
-    cfg.set('DEFAULT', 'templatesdir', 
+    cfg.set('DEFAULT', 'templatesdir',
             os.path.join("%(configdir)s", os.path.basename(defaults['templatesdir'])))
     cfg.add_section('membrane')
     cfg.add_section('executables')
@@ -114,13 +125,8 @@ def get_configuration(filename=CONFIGNAME):
     cfg.set('executables', 'apbs', 'apbs')
     cfg.set('executables', 'apbs_always_read_dxgz', 'False')  # hack when using svn 1623+
 
-    if not os.path.exists(filename):
-        with open(filename, 'w') as configfile:
-            cfg.write(configfile)  # write the default file so that user can edit
-        print(("NOTE: BornProfiler created the configuration file \n\t%r\n"+
-               "      for you. Edit the file to customize the package.") % filename)
-    else:
-        # overwrite defaults
+    if os.path.exists(filename):
+        # defaults are overriden by existing cfg file
         cfg.readfp(open(filename))
 
     return {'apbs': cfg.getpath('executables', 'apbs'),
@@ -128,7 +134,7 @@ def get_configuration(filename=CONFIGNAME):
             'configfilename': filename,
             }
 
-#: Dict containing important configuration variables, populated by 
+#: Dict containing important configuration variables, populated by
 #: :func:`get_configuration` (mainly a shortcut; use :data:`cfg` in most cases)
 configuration = get_configuration()    # also initializes cfg...
 
@@ -137,14 +143,27 @@ qscriptdir = cfg.getpath('DEFAULT', 'qscriptdir')
 templatesdir = cfg.getpath('DEFAULT', 'templatesdir')
 
 
-def setup():
-    """Create the directories in which the user can store template and config files.
-    
+def setup(filename=CONFIGNAME):
+    """Prepare a default BornProfiler global environment.
+
+    1) Create the global config file.
+    2) Create the directories in which the user can store template and config files.
+
     This function can be run repeatedly without harm.
     """
     # setup() must be separate and NOT run automatically when config
     # is loaded so that easy_install installations work
     # (otherwise we get a sandbox violation)
+    # populate cfg with defaults (or existing data)
+    get_configuration()
+    if not os.path.exists(filename):
+        with open(filename, 'w') as configfile:
+            cfg.write(configfile)  # write the default file so that user can edit
+        msg = "NOTE: BornProfiler created the configuration file \n\t%r\n" + \
+              "      for you. Edit the file to customize the package." % filename
+        print msg
+
+    # directories
     utilities.mkdir_p(configdir)
     utilities.mkdir_p(qscriptdir)
     utilities.mkdir_p(templatesdir)
@@ -160,16 +179,16 @@ def check_setup():
          print "        >>> import bornprofiler"
          print "        >>> bornprofiler.config.setup()"
          print "      or by running from the shell"
-         print "        apbs-bornprofile-init.py" 
+         print "        apbs-bornprofile-init.py"
     return len(missing) == 0
 check_setup()
 
 
 #: Search path for user queuing scripts and templates. The internal package-supplied
-#: templates are always searched last via :func:`bornprofiler.config.get_templates`. 
-#: Modify :data:`bornprofiler.config.path` directly in order to customize the template 
+#: templates are always searched last via :func:`bornprofiler.config.get_templates`.
+#: Modify :data:`bornprofiler.config.path` directly in order to customize the template
 #: and qscript searching. By default it has the value ``['.', qscriptdir,
-#: templatesdir]``. 
+#: templatesdir]``.
 #: (Note that it is not a good idea to have template files and qscripts with the
 #: same name as they are both searched on the same path.)
 path = [os.path.curdir, qscriptdir, templatesdir]
@@ -244,7 +263,7 @@ def get_templates(t):
    The first match (in this order) is returned for each input argument.
 
    :Arguments: *t* : template file or key (string or list of strings)
-   :Returns:   list of os.path.realpath(*t*) 
+   :Returns:   list of os.path.realpath(*t*)
    :Raises:    :exc:`ValueError` if no file can be located.
 
    """
@@ -254,7 +273,7 @@ def _get_template(t):
    """Return a single template *t*."""
    if os.path.exists(t):           # 1) Is it an accessible file?
         pass
-   else:                         
+   else:
         _t = t
         _t_found = False
         for d in path:              # 2) search config.path
@@ -283,24 +302,14 @@ def _get_template(t):
             raise ValueError(errmsg)
    return os.path.realpath(t)
 
-def read_template(filename):
-  """Return *filename* as one string.
-
-  *filename* can be one of the template files.
-  """
-  fn = get_template(filename)
-  logger.debug("Reading file %(filename)r from %(fn)r.", vars())
-  return "".join(file(fn).readlines())
-
-
 import subprocess
 import re
 
 def check_APBS(name=None):
     """Return ABPS version if apbs can be run and has the minimum required version.
-    
+
     :Raises: error if it cannot be found (OSError ENOENT) or wrong version (EnvironmentError).
-    """    
+    """
     APBS = name or cfg.get('executables', 'apbs')
     try:
         p = subprocess.Popen([APBS, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -311,12 +320,15 @@ def check_APBS(name=None):
     # do not check p.returncode because --verbose sets it to 13 (?) but no idea if this is a feature
     m = re.match('.*APBS\s*(?P<major>\d+)\.(?P<minor>\d+)', err)
     if m is None:
-        raise EnvironmentError(errno.EIO, APBS,
-                               "Cannot obtain APBS version string from %r." % err)        
+        errmsg = "Cannot obtain APBS version string from %r." % err
+        logger.critical(errmsg)
+        raise EnvironmentError(errno.EIO, APBS, errmsg)
     major,minor = int(m.group('major')), int(m.group('minor'))
     if not ((major,minor) >= APBS_MINIMUM_VERSION):
-        raise EnvironmentError(errno.EIO, APBS, "APBS version %d.%d is too old, need at least %d.%d." % 
-                               ((major,minor)+APBS_MINIMUM_VERSION))        
+        errmsg = "APBS version %d.%d is too old, need at least %d.%d." % \
+            ((major,minor)+APBS_MINIMUM_VERSION)
+        logger.critical(errmsg)
+        raise EnvironmentError(errno.EIO, APBS, errmsg)
     return major,minor
 
 def check_drawmembrane(name=None):
@@ -330,15 +342,25 @@ def check_drawmembrane(name=None):
         raise
     m = re.search(r"\*\s*(?P<name>[^\s]+)\s+(?P<date>[/\d]+)", out)
     if m is None:
-        raise EnvironmentError(errno.EIO, drawmembrane, "Cannot obtain version string from %r." % out)        
+        errmsg = "Cannot obtain version string from %r." % out
+        logger.critical(errmsg)
+        raise EnvironmentError(errno.EIO, drawmembrane, errmsg)
     if not m.group('name') == DRAWMEMBRANE_REQUIRED_NAME:
-        raise EnvironmentError(errno.EIO, drawmembrane, "drawmembrane version %r does not work here, "
-                               "need exactly %r (compile it from the src/drawmembrane directory)." % 
-                               (m.group('name'), DRAWMEMBRANE_REQUIRED_NAME))
+        errmsg = "drawmembrane version %r does not work here, " \
+            "need exactly %r (compile it from the src/drawmembrane directory)." % \
+            (m.group('name'), DRAWMEMBRANE_REQUIRED_NAME)
+        logger.critical(errmsg)
+        raise EnvironmentError(errno.EIO, drawmembrane, errmsg)
+    # check that existing version (MM/DD/YY) is the required or more recent oine
     month,day,year = map(int, m.group('date').split('/'))
-    if not ((month,day,year) >= DRAWMEMBRANE_MINIMUM_VERSION):
-        raise EnvironmentError(errno.EIO, drawmembrane, 
-                               "version %d/%d/%d is too old, need at least %d/%d/%d" % 
-                               ((month,day,year)+DRAWMEMBRANE_MINIMUM_VERSION))    
-    return m.group('name'), (month,day,year) 
+    delta = datetime.datetime(year,month,day) - \
+        datetime.datetime(DRAWMEMBRANE_MINIMUM_VERSION[2],  # YY
+                          DRAWMEMBRANE_MINIMUM_VERSION[0],  # MM
+                          DRAWMEMBRANE_MINIMUM_VERSION[1])  # DD
+    if delta.days < 0:
+        errmsg = "version %d/%d/%d is too old, need at least %d/%d/%d" % \
+            ((month,day,year)+DRAWMEMBRANE_MINIMUM_VERSION)
+        logger.critical(errmsg)
+        raise EnvironmentError(errno.EIO, drawmembrane, errmsg)
+    return m.group('name'), (month,day,year)
 

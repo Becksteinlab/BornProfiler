@@ -1,6 +1,6 @@
 # BornProfiler -- analysis classes, typically used in scripts
 # Copyright (c) 2008 Kaihsu Tai
-# Copyright (c) 2011 Oliver Beckstein
+# Copyright (c) 2011, 2012 Oliver Beckstein
 from __future__ import with_statement
 
 import os.path
@@ -9,28 +9,31 @@ import glob
 import numpy
 import bornprofiler
 from bornprofiler.core import BPbase
- 
+
 import logging
-logger = logging.getLogger('bornprofiler.analysis') 
+logger = logging.getLogger('bornprofiler.analysis')
 
 def get_files(runfile, basedir=os.path.curdir):
     """Read *runfile* and return dict with input files and names."""
+    # convenience function --- one could also just read the cfg file
     from bornprofiler.io import RunParameters
     try:
         p = RunParameters(runfile)
         samplepoints = p.get_bornprofile_kwargs('points')
-        fileglob = os.path.join(basedir, p.get_bornprofile_kwargs('name'), 
+        fileglob = os.path.join(basedir, p.get_bornprofile_kwargs('name'),
                                 'w[0-9][0-9][0-9][0-9]', 'job*.out')
         jobName = p.get_bornprofile_kwargs('name')
         ionName = p.get_bornprofile_kwargs('ion')
+        pqr = p.get_bornprofile_kwargs('pqr')
     except:
         logger.fatal("Cannot obtain information about the sample points and "
                      "directory from the run parameter file %r.", runfile)
         raise
     return {'samplepoints': samplepoints,
-            'datafiles': glob.glob(fileglob),
+            'datafiles': glob.glob(fileglob),  # gets all individual windows!
             'jobName': jobName,
             'ionName': ionName,
+            'pqr': pqr,
             }
 
 class Analyzer(BPbase):
@@ -62,10 +65,13 @@ class Analyzer(BPbase):
             self.readPoints()
             if self.points.shape[0] != len(self.datafiles):
                 msg = "Number of sampled points (%d) does not match the number "\
-                    "of data files (%d). They MUST correspond 1-to-1." % \
+                    "of data files (%d). Some windows are MISSING and will be skipped." % \
                     (self.points.shape[0], len(self.datafiles))
-                logger.fatal(msg)
-                raise ValueError(msg)
+                logger.warn(msg)
+                missing = self.find_missing_windows()
+                for num,x,y,z,path in missing:
+                    logger.warn("missing: %4d   (%8.3f,%8.3f,%8.3f)  taskid=%d",
+                                num, x, y, z, self.get_taskid(num))
             self.accumulate()
         else:
             self.read()
@@ -100,7 +106,7 @@ class Analyzer(BPbase):
             outFile.write("# x/A y/A z/A  W/(kJ/mol)\n")
             for x,y,z,E in self.data.T:
                 outFile.write("%(x)8.3f %(y)8.3f %(z)8.3f %(E)8.3e\n" % vars())
-        logger.info("Wrote Born PMF to %(outName)r.", vars()) 
+        logger.info("Wrote Born PMF to %(outName)r.", vars())
 
     def accumulate(self):
         """Read the energy from each datafile and store with the coordinates.
@@ -119,7 +125,7 @@ class Analyzer(BPbase):
                     outPath = path
                     break
             if outPath is None:
-                logger.warn("Sample point %d %r: Could not find file %s." % 
+                logger.warn("Sample point %d %r: Could not find file %s." %
                             (num, point, outName))
                 continue
             with open(outPath) as outFile:
@@ -129,23 +135,38 @@ class Analyzer(BPbase):
                         data.append(numpy.concatenate((point, [float(line.split()[6])])))
                         break
             print "[%5.1f%%] Read point %6d/%6d  %r \r" % \
-                (100. * float(num+1)/len(self.points), 
+                (100. * float(num+1)/len(self.points),
                  num, len(self.points)-1, outPath),
         print
         self.data = numpy.array(data).T
+
+    def find_missing_windows(self):
+        """Return a list of job numbers that have no data corresponding to a point."""
+        missing = []
+        for num, point in enumerate(self.points):
+            outName = self.outfilename(num)
+            # find file name in list of input files
+            outPath = None
+            for path in self.datafiles:   # could make self.datafiles a hash for faster search
+                if path.endswith(outName):
+                    outPath = path
+                    break                 # good, found it
+            if outPath is None:
+                missing.append((num, point[0], point[1], point[2], outName))
+        return numpy.rec.fromrecords(missing, names="num,x,y,z,path")
 
     def export(self, filename=None, format="dx", **kwargs):
         """Export data to different file format.
 
         The format is deduced from the filename suffix or
         *format*. *kwargs* are set according to the exporter.
-        
+
         dx
-           histogram on a grid; must provide kwarg *delta* for the 
+           histogram on a grid; must provide kwarg *delta* for the
            grid spacing.
         pdb
-           write PDB file with an ion for each sample point and the 
-           energy as the B-factor. The kwarg *ion* can be used to 
+           write PDB file with an ion for each sample point and the
+           energy as the B-factor. The kwarg *ion* can be used to
            set the name/resName in the file (ION is the default).
         """
         if filename is None:
@@ -153,7 +174,7 @@ class Analyzer(BPbase):
         else:
             format = os.path.splitext(filename)[1][1:]
         if not format in self.exporters:
-            raise ValueError("%r format is unsupported, only %r work" % (format, self.exporters.keys()))    
+            raise ValueError("%r format is unsupported, only %r work" % (format, self.exporters.keys()))
         return self.exporters[format]['exporter'](filename, **kwargs)
 
     def _export_pdb(self, filename, **kwargs):
@@ -163,7 +184,7 @@ class Analyzer(BPbase):
           *ion*
              name of the ion (name/resSeq in pdb)
         """
-    
+
         # http://www.wwpdb.org/documentation/format32/sect9.html
         fmt = {'ATOM':   "ATOM  %(serial)5d %(name)-4s%(altLoc)1s%(resName)-3s %(chainID)1s%(resSeq)4d%(iCode)1s   %(x)8.3f%(y)8.3f%(z)8.3f%(occupancy)6.2f%(tempFactor)6.2f\n",
                'REMARK': "REMARK     %s\n",
@@ -193,7 +214,7 @@ class Analyzer(BPbase):
 
 class AnalyzeElec(Analyzer):
     "analyze APBS energy profiling results"
- 
+
     def plot(self, filename=None, plotter='matplotlib', **kwargs):
         """Plot Born profile.
 
@@ -221,7 +242,7 @@ class AnalyzeElec(Analyzer):
         savefig(plotName)
         logger.info("Plotted graph W(z) %(plotName)r.", vars())
         return plotName
- 
+
     def __repr__(self):
         return "<%s jobName=%r points=%r, %d data files>" % \
             (self.__class__.__name__, self.jobName, self.pointsName, len(self.datafiles))
@@ -240,13 +261,13 @@ class AnalyzeElec3D(Analyzer):
     """
     def __init__(self, *args, **kwargs):
         super(AnalyzeElec3D, self).__init__(*args, **kwargs)
-        self.exporters['dx']=  {'ext': '.dx', 
+        self.exporters['dx']=  {'ext': '.dx',
                                 'exporter': self._export_dx}
 
     def ranges(self, padding=0):
         """Returns the range of values in each dimension.
 
-        :Returns: Array *r* of shape (2,3): r[0] contains the smallest and 
+        :Returns: Array *r* of shape (2,3): r[0] contains the smallest and
                   r[1] the largest values.
         """
         def minmax(dim):
@@ -255,7 +276,7 @@ class AnalyzeElec3D(Analyzer):
         ranges[0] -= padding
         ranges[1] += padding
         return ranges
-    
+
     def histogramdd(self, delta, fillfac=5):
         """Histogram PMF on a regular grid.
 
@@ -272,14 +293,14 @@ class AnalyzeElec3D(Analyzer):
         """
         ranges = self.ranges(padding=delta/2.)
         bins = ((ranges[1] - ranges[0])/float(delta)).astype(int)
-        h,e = numpy.histogramdd(self.data[:3].T, range=ranges.T, bins=bins, 
+        h,e = numpy.histogramdd(self.data[:3].T, range=ranges.T, bins=bins,
                                 weights=self.data[3])
-        N,e = numpy.histogramdd(self.data[:3].T, range=ranges.T, bins=bins)    
+        N,e = numpy.histogramdd(self.data[:3].T, range=ranges.T, bins=bins)
         h[N>0] /= N[N>0]  # average PMF
         h[N==0] = fillfac*h.max()
         return h,e
 
-    def Grid(self, delta, resample_factor=None, interpolation_spline_order=3):
+    def Grid(self, delta, **kwargs):
         """Package the PMF as a :class:`gridData.Grid` object.
 
         *delta* should be the original spacing of the points in angstroem.
@@ -289,13 +310,15 @@ class AnalyzeElec3D(Analyzer):
         histogram (See :meth:`gridData.Grid.resample_factor`).
 
         *interpolation_order* sets the interpolation order for the
-        resampling procedure. 
+        resampling procedure.
 
         .. Warning:: Interpolating can lead to artifacts in the 3D PMF. If
                      in doubt, **do not resample**.
         """
         from gridData import Grid
-        g = Grid(*self.histogramdd(delta), interpolation_spline_order=interpolation_spline_order)
+        resample_factor = kwargs.pop('resample_factor', None)
+        kwargs.setdefault('interpolation_spline_order', 3)
+        g = Grid(*self.histogramdd(delta), **kwargs)
         if not resample_factor:
             return g
         return g.resample_factor(resample_factor)

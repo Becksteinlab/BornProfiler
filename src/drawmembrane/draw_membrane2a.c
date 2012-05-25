@@ -1,4 +1,4 @@
-/* draw_membrane2a.c                    12/01/10 * 
+/* draw_membrane2a.c                    04/26/11 * 
  * draw_membrane2.c                     09/02/08 *
  *-----------------------------------------------* 
  * By Michael Grabe                              *
@@ -30,6 +30,7 @@
              but allows setting of sdie, mdie and pdie)
  2010-12-01  OB: added cdie cylinder dielectric
              headgroups (from draw_membrane4.c) and pretty-print geometry overview
+ 2010-04-26  OB: option to move the centre of the exclusion cone
  */
 
 #include <stdio.h>
@@ -48,6 +49,7 @@
 #define TRUE  1
 #define FALSE 0
 #define NUMCOLS 3   /* number of columns in dx files, ABPS specific */
+#define NO_COORDINATE -9999999.0 /* nonsense value to detect 'not set' */
 
 typedef unsigned int bool;
 typedef struct {
@@ -61,6 +63,9 @@ typedef struct {
   float idie; /* headgroup dielectric (defaults to mdie) */
   float R_m0; /* exclusion radii */
   float R_m1;
+  float x0_R; /* centre of the exclusion zone */
+  float y0_R;
+  float z0_R;
   float x0_p; /* x and y of protein */
   float y0_p;
   float z0_p;
@@ -342,7 +347,7 @@ float draw_diel(const t_membrane *M, float *diel, const float x, const float y, 
      changes *diel in place (and also returns the value)
   */
   float R, R_temp;
-  R = sqrt(SQR(x - M->x0_p) + SQR(y - M->y0_p));	
+  R = sqrt(SQR(x - M->x0_R) + SQR(y - M->y0_R));	
   R_temp = (M->R_m1*(z - M->z_m0) - M->R_m0*(z - M->z_m1))/(M->z_m1 - M->z_m0);  	
 
   if (z >= M->z_m0 && z <= M->z_m1 && *diel > M->pdie+PDIE_FUDGE_DELTA) {
@@ -368,7 +373,10 @@ void print_help() {
 	 "addition of the membrane.\n"
 	 "If a headgroup region (-a l_h -i IDIE) is selected, then the hydrophobic core\n"
 	 "of the membrane (eps=MDIE) is modelled with a thickness of l_m - 2*l_h.\n"
-	 "\n"
+	 "A cone-shaped or cylindrical exclusion zone can be specified (options -r, -R, \n"
+	 "-X, -Y and -c) to ensure that pores and cavities are calculated with a\n"
+	 "bulk-like dielectric (by default, it uses the same value as -s).\n"
+	 "\n"	 
 	 "ARGUMENTS:\n"
 	 "\n"
 	 "  infix  - all maps are constructed as <name><infix>.dx[.gz] where <name> is\n"
@@ -383,6 +391,8 @@ void print_help() {
 	 "  -I I        molar conc. of one salt-species [0.1]\n"
 	 "  -R R_m1     excl. radius at top of  membrane [0]\n" 
 	 "  -r R_m0     excl. radius at  bottom of membrane [0]\n"
+	 "  -X x0_R     centre of excl.zone in protein coordinates [centre of map]\n"
+	 "  -Y y0_R     centre of excl.zone in protein coordinates [centre of map]\n"
 	 "  -p PDIE     protein dielectric constant (must be SAME as in APBS!) [10]\n"
 	 "  -s SDIE     solvent dielectric (only used as default for CDIE) [80]\n"   
 	 "  -c CDIE     channel dielectric for (z_m0,R_m0)->(z_m0+l_m,R_m1) [SDIE]\n"   
@@ -395,7 +405,7 @@ void print_help() {
 	 "\n");
 }
 
-void print_membrane(const t_membrane *M) {
+void print_membrane(const t_membrane *M) {  
   if (M->idie != M->mdie && M->z_m0 != M->z_h0) {
     /* we model headgroups */
     printf("Membrane geometry (with headgroups):\n"
@@ -428,28 +438,37 @@ void print_exclusionzone(const t_membrane *M) {
   if (M->cdie != M->mdie && (M->R_m1 != 0 || M->R_m0 != 0)) {
     printf("Channel exclusion zone:\n\n");
     if (M->R_m1 > M->R_m0) {
-      printf("   ******     R_top = %.1f A   z_m1 = %.1f\n"
-	     "    ****      cdie  = %.1f\n"
-	     "     **       R_bot = %.1f A   z_m0 = %.1f\n",
-	     M->R_m1, M->z_m1, M->cdie, M->R_m0, M->z_m0);
+      printf("   ******     R_top = %4.1f A   z_m1 = %.1f\n"
+	     "    ****      cdie  = %4.1f     x0_R=%.3f y0_R=%.3f\n"
+	     "     **       R_bot = %4.1f A   z_m0 = %.1f\n",
+	     M->R_m1, M->z_m1, M->cdie, M->x0_R, M->y0_R, M->R_m0, M->z_m0);
     }
     else if (M->R_m1 < M->R_m0) {
-      printf("     **       R_top = %.1f A   z_m1 = %.1f\n"
-	     "    ****      cdie  = %.1f\n"
-	     "   ******     R_bot = %.1f A   z_m0 = %.1f\n",
-	       M->R_m1, M->z_m1, M->cdie, M->R_m0, M->z_m0);
+      printf("     **       R_top = %4.1f A   z_m1 = %.1f\n"
+	     "    ****      cdie  = %4.1f     x0_R=%.3f y0_R=%.3f\n"
+	     "   ******     R_bot = %4.1f A   z_m0 = %.1f\n",
+	       M->R_m1, M->z_m1, M->cdie, M->x0_R, M->y0_R, M->R_m0, M->z_m0);
     }
     else {
-      printf("     ***      R_top = %.1f A   z_m1 = %.1f\n"
-	     "     ***      cdie  = %.1f\n"
-	     "     ***      R_bot = %.1f A   z_m0 = %.1f\n",
-	     M->R_m1, M->z_m1, M->cdie, M->R_m0, M->z_m0);
+      printf("     ***      R_top = %4.1f A   z_m1 = %.1f\n"
+	     "     ***      cdie  = %4.1f     x0_R=%.3f y0_R=%.3f\n"
+	     "     ***      R_bot = %4.1f A   z_m0 = %.1f\n",
+	     M->R_m1, M->z_m1, M->cdie, M->x0_R, M->y0_R, M->R_m0, M->z_m0);
     }
     printf("\n");
   }
   else {
     printf("No channel exclusion zone defined.\n");
   }
+}
+
+void print_geometry(const t_membrane *M, float Lx, float Ly, float Lz) {
+  printf("Geometry: box centre (in protein coordinates): \n"
+	 "          x0_p = %.3f A  y0_p = %.3f A  z0_p = %.3f A\n",
+	 M->x0_p, M->y0_p, M->z0_p);
+  printf("Geometry: box size:\n"
+	 "          Lx = %.3f A  Ly = %.3f A  Lz = %.3f A\n",
+	 Lx, Ly, Lz);
 }
 
 /* access argv after getopt
@@ -487,7 +506,7 @@ int main(int argc, char *argv[])
   float x0, y0, z0;
   float V=0, I=0.1, sdie, cdie, pdie, mdie, idie;
   float l_m=40, a0=0;
-  float z_m0=0, R_m0=0, R_m1=0;
+  float z_m0=0, R_m0=0, R_m1=0, x0_R=NO_COORDINATE, y0_R=NO_COORDINATE;
   float R, R_temp;
   char *infix;
   char *file_name_x, *file_name_y, *file_name_z;
@@ -500,11 +519,11 @@ int main(int argc, char *argv[])
  
 
   printf("----------------------------------------------------------------\n");
-  printf("* draw_membrane2a.c                                   12/01/10 *\n");  /* magic version line */
+  printf("* draw_membrane2a.c                                   04/26/11 *\n");  /* magic version line */
   printf("----------------------------------------------------------------\n");
   printf("draw_membrane2  -- (c) 2008 Michael Grabe [09/02/08]\n");
   printf("draw_membrane4  -- (c) 2010 Michael Grabe [07/29/10]\n");
-  printf("draw_membrane2a -- (c) 2010 Oliver Beckstein (options&gzipped files) [12/01/10]\n");
+  printf("draw_membrane2a -- (c) 2010,2011 Oliver Beckstein [04/26/11]\n");
   printf("Published under the Open Source MIT License (see http://sourceforge.net/projects/apbsmem/).\n");
   printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
   printf("----------------------------------------------------------------\n");
@@ -523,7 +542,7 @@ int main(int argc, char *argv[])
   R_m0 = 0;      /* lower exclusion radius */
 
   opterr = 0;
-  while ((c = getopt(argc, argv, "hZz:d:s:c:m:p:i:a:V:I:r:R:")) != -1) {
+  while ((c = getopt(argc, argv, "hZz:d:s:c:m:p:i:a:V:I:r:R:X:Y:")) != -1) {
     switch(c) {
     case 'h':
       print_help();
@@ -561,6 +580,12 @@ int main(int argc, char *argv[])
     case 'r':
       R_m0 = atof(optarg);
       break;
+    case 'X':
+      x0_R = atof(optarg);
+      break;
+    case 'Y':
+      y0_R = atof(optarg);
+      break;
     case 'R':
       R_m1 = atof(optarg);
       break;     
@@ -571,7 +596,7 @@ int main(int argc, char *argv[])
       if (optopt == 'z' || optopt == 'd' || optopt == 's' || optopt == 'c' ||
 	  optopt == 'i' || optopt == 'a' ||
 	  optopt == 'm' || optopt == 'p' || optopt == 'V' || optopt == 'I' || 
-	  optopt == 'r' || optopt == 'R')
+	  optopt == 'r' || optopt == 'R' || optopt == 'X' || optopt == 'Y')
 	fprintf(stderr, "Option -%c requires an argument.\n", optopt);
       else 
 	fprintf(stderr, "Unknown option `-%c'.\n", optopt);  // should check isprint(optopt)...
@@ -606,11 +631,21 @@ int main(int argc, char *argv[])
   if (idie != mdie || a0 > 0)
     printf("Modelling headgroup region of thickness %.1f with epsilon=%.1f\n", a0, idie);
 
-  printf("Running with these arguments:\n");
-  printf(">>> draw_membrane2a %s -s %.1f -c %.1f -m %.1f -p %.1f -i %.1f -a %.1f "
-	 "-V %.3f -I %.3f -z %.3f -d %.3f -r %.1f -R %.1f  %s\n",
-	 compression ? "-Z" : "", sdie, cdie, mdie, pdie, idie, a0, V, I,
-	 z_m0, l_m, R_m0, R_m1, infix);
+  {
+    char opt_x0_R[MAXLEN] = "";
+    char opt_y0_R[MAXLEN] = "";
+    printf("Running with these arguments:\n");
+    if (x0_R != NO_COORDINATE) {
+      snprintf(opt_x0_R, MAXLEN, "-X %.3f", x0_R);
+    };
+    if (y0_R != NO_COORDINATE) {
+      snprintf(opt_y0_R, MAXLEN, "-Y %.3f", y0_R);
+    };
+    printf(">>> draw_membrane2a %s -s %.1f -c %.1f -m %.1f -p %.1f -i %.1f -a %.1f "
+	   "-V %.3f -I %.3f -z %.3f -d %.3f -r %.1f -R %.1f %s %s %s\n",
+	   compression ? "-Z" : "", sdie, cdie, mdie, pdie, idie, a0, V, I,
+	   z_m0, l_m, R_m0, R_m1, opt_x0_R, opt_y0_R, infix);
+  }
 
   /* Find the x-shifted dielectric map 
      Construct the name as <basename><infix><suffix>
@@ -695,14 +730,28 @@ int main(int argc, char *argv[])
   /*****************************************************/
 
   /****************************************************/
-  /* Construct the protein cooridinate center based   */
+  /* Construct the protein coordinate center based    */
   /* on the x-dielectric map.                         */
   /* This will be used to determine where to add      */
   /* membrane.                                        */ 
   /****************************************************/
+  /* The coordinate system is taken from the protein. (x0_p,y0_p,z0_p)
+     is the centre of the box, in protein coordinates (NOT the centre
+     of the protein!)
+  */
   x0_p = x0_x+l_c_x/2-dx/2;  /* this is the shift term that moves half-step off grid */ 
   y0_p = y0_x+l_c_y/2;
   z0_p = z0_x+l_c_z/2;
+
+  /* centre of the exclusion zone */
+  if (x0_R == NO_COORDINATE) {
+    x0_R = x0_p;
+    printf("NOTE: centre x0_R of exclusion zone set to centre x0_p of dielectric map (use -X)!\n");
+  }
+  if (y0_R == NO_COORDINATE) {
+    y0_R = y0_p;
+    printf("NOTE: centre y0_R of exclusion zone set to centre y0_p of dielectric map (use -Y)!\n");
+  }
 
   /* TODO: use t_membrane throughout, currently only used for draw() */
   Membrane.z_m0 = z_m0;         /* bottom of membrane */
@@ -715,12 +764,16 @@ int main(int argc, char *argv[])
   Membrane.idie = idie;
   Membrane.R_m0 = R_m0;
   Membrane.R_m1 = R_m1;
-  Membrane.x0_p = x0_p;
+  Membrane.x0_R = x0_R;
+  Membrane.y0_R = y0_R;
+  Membrane.z0_R = z0_p;
+  Membrane.x0_p = x0_p;          /* centre of the protein */
   Membrane.y0_p = y0_p;
   Membrane.z0_p = z0_p;
 
+  print_geometry(&Membrane, l_c_x, l_c_y, l_c_z);
   print_membrane(&Membrane);
-  print_exclusionzone(&Membrane);
+  print_exclusionzone(&Membrane);  
 
   /*****************************************************/
   /* read in the y-shifted dielectric data             */
@@ -879,7 +932,8 @@ int main(int argc, char *argv[])
 	  map[cnt] = 0;
 	}
 
-	R = sqrt(SQR(x[k]-Membrane.x0_p) + SQR(y[j]-Membrane.y0_p));                      
+	/* channel exclusion zone for ion accessibility */
+	R = sqrt(SQR(x[k]-Membrane.x0_R) + SQR(y[j]-Membrane.y0_R));                      
 	R_temp = (R_m1*(z[i]-Membrane.z_m0) - R_m0*(z[i]-Membrane.z_m1))/(Membrane.z_m1 - Membrane.z_m0);
 
 	if (z[i] <= Membrane.z_m1 && z[i] >= Membrane.z_m0 && R > R_temp) {

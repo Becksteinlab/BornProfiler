@@ -19,10 +19,10 @@ from __future__ import with_statement
 
 import os
 import logging
-logger = logging.getLogger('bornprofiler') 
+logger = logging.getLogger('bornprofiler')
 
 usage = """%prog [options] run-parameters
-        %prog [options] pqr-file samplepoints-file        
+        %prog [options] pqr-file samplepoints-file
 
 This script sets up input files for Born energy calculations for APBS.
 
@@ -35,7 +35,7 @@ favourite editor.
 
 The ion positions in the file samplepoints (``[bornprofile] points``
 in the run parameter file) should be formatted as one white-space
-separated xyz coordinate per line.
+separated xyz coordinate per line, or a PDB file or a HOLE sph file.
 
 The "Born radii" for ions were taken from Table III in
 
@@ -44,11 +44,19 @@ The "Born radii" for ions were taken from Table III in
 
 This paper suggests using the corrected covalent radius (Born radius)
 and not the Pauling radius.
+
+Born radii for H3O+, OH- (and H+... for testing) have been derived
+from the solvation free energies in
+
+  J.R. Pliego and J.M. Riveros. Chemical Physics Letters, 332(5-6): 597--602,
+  2000.  http://dx.doi.org/10.1016/S0009-2614(00)01305-1.
+
+directly via the Born equation. USE AT YOUR OWN RISK!!
 """
 
 import bornprofiler
 from bornprofiler.core import IONS, Placeion
-   
+
 if __name__ == "__main__":
   import sys
   from optparse import OptionParser
@@ -77,7 +85,7 @@ if __name__ == "__main__":
                     metavar="NAME",
                     help="name of a stored script template or (advanced usage!) a "
                     "filename that contains appropriate place holders [%default]")
-  parser.set_defaults(ionicStrength=0.15, jobName="bornprofile", 
+  parser.set_defaults(ionicStrength=0.15, jobName="bornprofile",
                       ionName="Na", dime=[97,97,193], script="q_local.sh")
 
   opts,args = parser.parse_args()

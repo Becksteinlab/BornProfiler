@@ -18,13 +18,24 @@ import logging
 logger = logging.getLogger("bornprofiler.io")
 
 def path(s):
+    """Return *s* with user expansion."""
     return os.path.expanduser(s)
+
+def float_or_None(s):
+    """Return *s* as float or None when x == "None"."""
+    if s == "None":
+        return None
+    return float(s)
 
 class RunParameters(object):
     """All parameters for a BornProfiler or APBSmem run are stored in a INI-style file.
 
     This class accesses these parameters and can create a template with the
     default values.
+
+    The class *guarantees* that all parameters exist; if needed they are
+    populated with default values. Hence it is always possible to access a
+    parameter without having to check if it is there.
 
    :Parameters:
         - zmem : membrane centre (A)
@@ -35,16 +46,39 @@ class RunParameters(object):
         - mdie:  membrane dielectric
         - Rtop : exclusion cylinder top
         - Rbot : exclusion cylinder bottom
+        - x0_R : exclusion zone centre in X, ``None`` selects the default
+        - y0_R : exclusion zone centre in Y, ``None`` selects the default
+        - dx_R : shift centre of the exclusion zone in X
+        - dy_R : shift centre of the exclusion zone in Y
         - cdie : dielectric in the channel (e.g. SDIE)
         - headgroup_l : thicknes of headgroup region
         - headgroup_die : dielectric for headgroup region
         - temperature : temperature
-        - conc : ionic strength in mol/l  
+        - conc : ionic strength in mol/l
+        - ... and more
 
-        ... and others: see default file!
+    .. SeeAlso:; The example run input configurations file
+       :doc:`examples/example_runinput.cfg` is the full specification and
+       contains annotated values for *all* parameters.
     """
+    # For each task (cf the apbs-* scripts!) we define the variables that we
+    # want to pull from the run input config file in the parameter_selections
+    # dict. Keys are tasks, values are dicts that correspond to sections in the
+    # cfg file, together with parameter names *and* types (for the conversion
+    # to python types).
 
-    # this should all be in a template file, together with the defaults...
+    # When new parameter are added to the cfg file then they need to be added
+    # in various places:
+    #
+    # 1. examples/example_runinput.cfg (documentation/specification! :-p )
+    # 2. RunParameters.parameter_selections (possibly multiple times!)
+    # 3. RunParameters._populate_default()
+    # 4. membrane.BaseMem: set as attribute
+    # 5. membrane.APBSmem.vars: name of the attribute if needed for a task
+    # 6. membrane.BornAPBSmem.vars: name of the attribute if needed for a task
+
+    # The following should all be in a template file, together with the
+    # defaults and types...
 
     # Note: The parameter keys are converted to lowercase when accessing
     # the runparameter file but need to be properly cased in the kwargs
@@ -58,6 +92,8 @@ class RunParameters(object):
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path), ('runtype', str)],
              'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
+                             ('x0_R', float_or_None), ('y0_R', float_or_None),
+                             ('dx_R', float), ('dy_R', float),
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
@@ -68,6 +104,8 @@ class RunParameters(object):
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path),],
              'membrane':    [('Rtop', float), ('Rbot', float), ('cdie', float),
+                             ('x0_R', float_or_None), ('y0_R', float_or_None),
+                             ('dx_R', float), ('dy_R', float),
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'potential':   [('dime', eval), ('glen', eval),],
@@ -89,16 +127,17 @@ class RunParameters(object):
 
         if not os.path.exists(filename):
             self.write(filename)
+            logger.info("Created new run input configuration %(filename)r", vars())
         else:
             # and then override with values from local file
-            self.parser.readfp(open(filename))    
+            self.parser.readfp(open(filename))
 
-        logger.info("Read run configuration from %(filename)r", vars())
+        logger.info("Read run input configuration from %(filename)r", vars())
 
     def _populate_default(self, parser=None):
         # NOTE: - the parser turns all keys into *lowercase*
         #       - values must be strings
-        #       - hack: python types are defined via external dicts 
+        #       - hack: python types are defined via external dicts
         #         (see self.bornprofile_parameters and
         #         get_bornprofile_kwargs())
         if parser is None:
@@ -109,6 +148,10 @@ class RunParameters(object):
         parser.add_section('membrane')
         parser.set('membrane', 'Rtop', '0')
         parser.set('membrane', 'Rbot', '0')
+        parser.set('membrane', 'x0_R', 'None')
+        parser.set('membrane', 'y0_R', 'None')
+        parser.set('membrane', 'dx_R', '0')
+        parser.set('membrane', 'dy_R', '0')
         parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
         parser.set('membrane', 'headgroup_die', '20')
         parser.set('membrane', 'headgroup_l', '0')
@@ -133,13 +176,14 @@ class RunParameters(object):
         parser.set('potential', 'dime', '(97,97,97)')
         parser.set('potential', 'glen', '(200,200,200)')
         parser.add_section('executables')
-        parser.set('executables', 'drawmembrane', 'draw_membrane2a')
-        parser.set('executables', 'apbs', 'apbs')
+        #should come from global file
+        #parser.set('executables', 'drawmembrane', 'draw_membrane2a')
+        #parser.set('executables', 'apbs', 'apbs')
         parser.add_section('job')
         parser.set('job', 'name', 'mbornprofile')
         parser.set('job', 'script', 'q_local.sh')
         parser.set('job', 'arrayscript', 'q_array.sge')
-        
+
     def _get_kwargs(self, *args, **kwargs):
         """Prepare kwargs for a specified task."""
         task = args[0]
@@ -243,3 +287,46 @@ def readPointsPDB(filename):
             x,y,z = float(line[30:38]), float(line[38:46]), float(line[46:54])
             points.append((x,y,z))
     return numpy.array(points)
+
+def read_template(filename):
+  """Return *filename* as one string.
+
+  *filename* can be one of the template files.
+  """
+  # XXX: add a cache?? Would have to be careful with user supplied files.
+  fn = config.get_template(filename)
+  logger.debug("Reading file %(filename)r from %(fn)r.", vars())
+  return "".join(file(fn).readlines())
+
+
+class PQRReader(object):
+    """Naive implementation of a PQR reader."""
+    def __init__(self, filename, **kwargs):
+        self.pqrName = filename
+        self.pqrLines = []  # verbatim copy of all ATOM lines, some functions just use that
+        with open(self.pqrName, "r") as pqrFile:
+            for line in pqrFile:
+                if (line[0:4] == "ATOM"):
+                    self.pqrLines.append(line)
+        _coords = []
+        for line in self.pqrLines:
+            fields = line.split()      # This depends on correct spacing in the PQR file.
+            try:
+                _coords.append(map(float, fields[5:8]))
+            except:
+                logger.fatal("Problem with PQR file format of file %(pqrName)r", vars(self))
+                logger.fatal("Offending line: %s", line)
+                raise
+
+        self.coords = numpy.array(_coords)
+        self.centroid = self.coords.mean(axis=0)
+
+        logger.info("PQRReader: Read %(pqrName)r with centroid = %(centroid)r", vars(self))
+
+    @property
+    def coordinates(self):
+        return self.coords
+
+    @property
+    def centerOfGeometry(self):
+        return self.centroid

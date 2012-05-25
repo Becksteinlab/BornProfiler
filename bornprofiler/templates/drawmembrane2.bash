@@ -4,7 +4,7 @@
 # distribution in 'src/drawmembrane/draw_membrane2a.c')
 # Written by bornprofiler.membrane instead of MPlaceion.run_drawmembrane()
 # :Author: Oliver Beckstein <oliver.beckstein@bioch.ox.ac.uk>
-# :Year: 2010
+# :Year: 2010-2011
 # :Licence: This file is placed in the Public Domain.
 
 # can be set in the environment
@@ -53,7 +53,7 @@ function run_drawmembrane () {
     fi
     ${DRAW_MEMBRANE2A} $compress_option -z %(zmem)f -d %(lmem)f \
 	-p %(pdie)f -s %(sdie)f -m %(mdie)f  \
-	-R %(Rtop)f -r %(Rbot)f -c %(cdie)s  \
+	-R %(Rtop)f -r %(Rbot)f -X %(x0_R)f -Y %(y0_R)f -c %(cdie)s  \
 	-a %(headgroup_l)f -i %(headgroup_die)f \
 	-V %(Vmem)f -I %(conc)f   $infix \
 	|| die "${DRAW_MEMBRANE2A} $infix failed."

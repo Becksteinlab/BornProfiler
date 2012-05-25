@@ -7,13 +7,16 @@ import os, errno
 import numpy
 
 import io
-from config import configuration, read_template
+from io import read_template
+from config import configuration
 from utilities import in_dir, asiterable
 
 import logging
 logger = logging.getLogger('bornprofiler.core') 
 
-# TODO: get rid of this TEMPLATE dict and hard-code directly in WriteIn()?
+# This TEMPLATE dict is only used in WriteIn() but it acts like a global cache
+# (which is good when writing a few thousand windows).
+# (or add a cache to read_template??)
 TEMPLATES = {'placeion': read_template('placeion.in'), }
 
 TABLE_IONS = read_template('bornions.dat')
@@ -92,6 +95,10 @@ class BPbase(object):
   def get_windowdirname(self, num):
     return "w%04d" % num
 
+  def get_taskid(self, num):
+    """Return 1-based Sun Gridengine taskid for an array job"""
+    return num + 1
+
   def _process_window_numbers(self, windows=None):
     """Window numbers are 0-based."""
     if windows is None:
@@ -120,6 +127,13 @@ class BPbase(object):
     """
     self.points = io.readPoints(self.pointsName)
     self.numPoints = self.points.shape[0]
+
+  def readPQR(self):
+    """Read PQR file and determines protein centre of geometry"""
+    pqr = io.PQRReader(self.pqrName)
+    self.pqrLines = pqr.pqrLines
+    self.protein_centre = pqr.centroid
+    return pqr.coords
 
   def writePQRs(self, windows=None):
     """Generate input pqr files for all windows and store them in separate directories."""
@@ -202,7 +216,8 @@ class Placeion(BPbase):
       # glen not needed, auto-set from pqr and padding
     else:
       import warnings
-      warnings.warn("Using deprecated Placeion(pqr,points) call", DeprecationWarning)
+      warnings.warn("Using deprecated Placeion(pqr,points) call (will be removed in 1.0)", 
+                    DeprecationWarning)
       self.pqrName = os.path.realpath(args[0])
       self.pointsName = os.path.realpath(args[1])
       self.jobName = kwargs.pop('jobName', "bornprofile")
@@ -219,6 +234,7 @@ class Placeion(BPbase):
     self.cglen = numpy.array([0, 0, 0])  # automatically set by readPQR() + padding!
     self.use_cubic_boundaries = True     # False uses old placeion.py algorithm: manually adjust fglen!!
     self.pqrLines = []
+    self.protein_centre = None
 
     logger.info("Placeion: pqr=%(pqrName)r", vars(self))
     logger.info("Placeion: points=%(pointsName)r", vars(self))
@@ -234,32 +250,26 @@ class Placeion(BPbase):
     return self.writeJob()
 
   def readPQR(self):
-    """Read PQR file and determine the bounding box."""
-    with open(self.pqrName, "r") as pqrFile:
-      for line in pqrFile:
-        if (line[0:4] == "ATOM"):
-          self.pqrLines.append(line)
- 
-    # finding the cglen (coarse grid lengths) automatically
-    _coords = []
-    for line in self.pqrLines:
-      if (line[0:4] == "ATOM"):
-        fields = line.split()      # This depends on correct spacing in the PQR file.
-        _coords.append(map(float, fields[5:8]))
-    coords = numpy.array(_coords)
+    """Read PQR file and determine bounding box and centre of geometry."""
+    coords = super(Placeion, self).readPQR()   # :-p
+
     if self.use_cubic_boundaries:
       # use largest cubic box (note: fglen is cubic in templates/placeion.in)
       # but can be set in run parameters bornprofile.fglen.
       paddings = numpy.max([self.padding_xy, self.padding_z])
       L = (coords.max() - coords.min()) + paddings
       self.cglen = numpy.array([L,L,L])
+      logger.debug("Setting cubic box boundaries cglen = %(cglen)r", vars(self))
     else:
       # original placeion.py algorithm
       # (note: for this to work better, the fglen in templates/placeion.in should
       # match the ratio of box lengths)
       paddings = numpy.array([self.padding_xy, self.padding_xy, self.padding_z])
       self.cglen = (coords.max(axis=0) - coords.min(axis=0)) + paddings
-         
+      logger.debug("Using old algorithm to determine cglen = %(cglen)r: make sure that fglen "
+                   "matches the ratios of box lengths.", vars(self))
+    return coords
+
   def writeIn(self, windows=None):
     windows = self._process_window_numbers(windows)
     for num in windows:
@@ -295,7 +305,8 @@ class Placeion(BPbase):
         }
       scriptname = self.jobscriptname(num)
       scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
-      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptpath))  # job array ids are 1-based!
+      # job array taskids are 1-based
+      bash_jobarray.append('job[%d]="%s"' % (self.get_taskid(num), scriptpath))
       with open(scriptpath, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
       os.chmod(scriptpath, 0755)
@@ -322,6 +333,10 @@ class MPlaceion(BPbase):
   schedule = {'dime': [(129, 129, 129),(129, 129, 129),(129, 129, 129)],
               'glen': [(250,250,250),(100,100,100),(50,50,50)],
               }
+  #: These keywords are read from the runinput file but should not be passed on
+  #: through the bornprofile_keywords mechanism. See
+  #:meth:`process_bornprofile_keywords`.
+  remove_bornprofile_keywords = ('fglen', 'dx_R', 'dy_R')
 
   def __init__(self, *args, **kwargs):
     """Setup Born profile with membrane.
@@ -379,16 +394,16 @@ class MPlaceion(BPbase):
       self.temperature = kw.pop('temperature', 300.0)
       self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
       self.script = read_template(kw.pop('script', 'q_local.sh'))
-
-      # filter stuff... probably should do this in a cleaner manner (e.g. different
-      # sections in the parameter file?)
-      kw.pop('fglen', None)
+      # any variables that should NOT be passed to the constructor of the
+      # SetupClass must be popped from self.bornprofile_kwargs; this is now
+      # done (together with other hacks) inprocess_bornprofile_kwargs()
 
       import membrane
       self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
     else:
       import warnings
-      warnings.warn("Using deprecated MPlaceion(pqr,points) call", DeprecationWarning)
+      warnings.warn("Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)", 
+                    DeprecationWarning)
       self.pqrName = os.path.realpath(args[0])
       self.pointsName = os.path.realpath(args[1])
 
@@ -417,18 +432,49 @@ class MPlaceion(BPbase):
     # sanity check
     assert len(self.schedule) != len(self.SetupClass.suffices), \
         "schedule does not correspond to naming scheme --- make sure that memclass is set up properly"
+    self.pqrLines = []
+    self.protein_centre = None
 
     # do some initial processing...
-    self.readPQR()
+    self.readPQR()                     # hack: also sets self.protein_centre
     self.readPoints()
+    self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
 
-  def readPQR(self):
-    self.pqrLines = []
-    with open(self.pqrName, "r") as pqrFile:
-      for line in pqrFile:
-        if (line[0:4] == "ATOM"):
-          self.pqrLines.append(line)
+  def process_bornprofile_kwargs(self):
+    """Hook to manipulate :attr:`bornprofile_kwargs`.
 
+    # set exclusion zone centre to the protein centroid (unless *x0_R* and/or
+      *y0_R* are set in the run input cfg file)
+    # shift exclusion zone centre by *dx_R* and *dy_R*
+    # filter :attr:`remove_bornprofile_keywords`
+    """
+    # :attr:`bornprofile_kwargs` are passed in :meth:`get_MemBornSetup`
+    # directly into downstream classes such as :class:`membrane.APBSmem` and
+    # :class:`membrane.BornAPBSmem` where they are used (or not) according to
+    # requirements
+    try:
+      kw = self.bornprofile_kwargs
+    except AttributeError:
+      # XXX deprecated use of the class (not using cfg file) -- remove in 1.0
+      import version
+      assert version.get_version_tuple() < (1,0,0)
+      return
+
+    # exclusion zone centre
+    if kw['x0_R'] is None:
+      kw['x0_R'] = self.protein_centre[0]
+    if kw['y0_R'] is None:
+      kw['y0_R'] = self.protein_centre[1]
+
+    # shift the centre
+    kw['x0_R'] += kw['dx_R']
+    kw['y0_R'] += kw['dy_R']
+
+    # filter stuff... probably should do this in a cleaner manner (e.g. different
+    # sections in the parameter file?) -- if anything gets passed then we will die with a 
+    # TypeError: object.__init__() takes no parameters in BaseMem
+    for k in self.remove_bornprofile_keywords:
+      kw.pop(k, None)
 
   def writeJob(self, windows=None):
     """Write the job script.
@@ -455,7 +501,8 @@ class MPlaceion(BPbase):
         }      
       scriptname = self.jobscriptname(num)
       scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
-      bash_jobarray.append('job[%d]="%s"' % (num+1, scriptpath))    # job array ids are 1-based!
+      # job array taskids are 1-based
+      bash_jobarray.append('job[%d]="%s"' % (self.get_taskid(num), scriptpath))
       # write scriptfile into the window directory
       with open(scriptpath, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
@@ -470,7 +517,6 @@ class MPlaceion(BPbase):
           'jobArray': "\n".join(bash_jobarray),
           })
     return len(windows)
-
 
   def generateMem(self, windows=None, run=False):
     """Generate special diel/kappa/charge files and mem_placeion.in for each window.
@@ -508,7 +554,13 @@ class MPlaceion(BPbase):
         membornsetup.generate(run=run)
 
   def get_MemBornSetup(self, num):
-    """Return the setup class for window *num* (cached)."""
+    """Return the setup class for window *num* (cached).
+
+    The method is responsible for passing all parameters to downstream classes
+    that are used to generate individual windows. It instantiates an
+    appropriately set up class for each window and caches each class. Classes
+    are indexed by *num* (which is the unique window identifier).
+    """
     try:
       return self.__cache_MemBornSetup[num]
     except KeyError:

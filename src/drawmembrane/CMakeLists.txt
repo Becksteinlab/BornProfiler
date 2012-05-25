@@ -11,22 +11,47 @@ project (draw_membrane)
 
 # make sure that the default is a RELEASE
 if (NOT CMAKE_BUILD_TYPE)
-  set (CMAKE_BUILD_TYPE RELEASE CACHE STRING
+  set (CMAKE_BUILD_TYPE "Release" CACHE STRING
       "Choose the type of build, options are: None Debug Release."
-      )
+      FORCE)
 endif (NOT CMAKE_BUILD_TYPE)
 
 # default installation in user's HOME directory
-# (although ccmake still insists on /usr/local)
-set (CMAKE_INSTALL_PREFIX $ENV{HOME} CACHE STRING
-      "Choose the installation directory.")
+if (NOT HAVE_CMAKE_INSTALL_PREFIX)
+   set(CMAKE_INSTALL_PREFIX $ENV{HOME} CACHE PATH
+       "Choose the installation directory." FORCE)
+   set(HAVE_CMAKE_INSTALL_PREFIX 1 CACHE INTERNAL
+       "hack so that users can set PREFIX but start with our default" FORCE)			      
+endif (NOT HAVE_CMAKE_INSTALL_PREFIX)
+
+# find zlib in the system
+include(${CMAKE_ROOT}/Modules/FindZLIB.cmake)
+
+if (NOT ZLIB_FOUND)
+   if (CMAKE_VERBOSE_MAKEFILE)
+      message("**********************************************")
+      message("  Necessary zlib library not found")
+      message("  Install zlib through your package manager")
+      message("  and look for zlib-devel or similar")
+      message("**********************************************")
+   endif (CMAKE_VERBOSE_MAKEFILE)
+endif (NOT ZLIB_FOUND)
+
+include_directories(${ZLIB_INCLUDE_DIRS})
+list(APPEND LIBS ${ZLIB_LIBRARIES})
+
+# new draw_membrane2a needs both libz and the maths lib
+# (math should come at the end)
+find_library(M_LIB m)
+list(APPEND LIBS ${M_LIB})
+mark_as_advanced(M_LIB)
 
 # build executables
-add_executable (draw_membrane2a draw_membrane2a.c)
+add_executable(draw_membrane2a draw_membrane2a.c)
 
 # linking
 # (need libm and libz for new 2a)
-target_link_libraries (draw_membrane2a m z)
+target_link_libraries (draw_membrane2a ${LIBS})
 
 # install executables
 install (TARGETS draw_membrane2a  RUNTIME DESTINATION bin)
