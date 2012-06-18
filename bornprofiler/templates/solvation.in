@@ -1,5 +1,5 @@
-# APBSmem: run simple 1st solvation
-# (modified by OB)
+# APBS input file
+# calculate the potential for a system embedded in a membrane
 
 read
     mol pqr "%(pqr)s"
@@ -9,17 +9,17 @@ read
     charge %(dxformat)s charge%(suffix)sm.%(dxsuffix)s
 end
 
-elec name solv0
+elec name bulksolvent
     mg-manual
     dime %(DIME_XYZ)s
     glen %(GLEN_XYZ)s
     lpbe
     pdie %(pdie)f
     sdie %(sdie)f
-    bcfl zero
+    bcfl sdh
     ion charge  1  conc %(conc)f  radius 0.95  # sodium
     ion charge -1  conc %(conc)f  radius 1.81  # chloride
-    gcent 0 0 0
+    gcent mol 1
     mol 1
     chgm spl2
     srfm mol
@@ -29,20 +29,20 @@ elec name solv0
     temp %(temperature)f
     calcenergy total
     calcforce no
-    write pot dx pot_solv0%(suffix)s
+    write pot dx pot_bulksolvent%(suffix)s
 end
 
-elec name ref0
+elec name membrane
     mg-manual
     dime %(DIME_XYZ)s
     glen %(GLEN_XYZ)s
     lpbe
     pdie %(pdie)f
     sdie %(sdie)f
-    bcfl zero
+    bcfl sdh
     ion  charge  1   conc %(conc).2f  radius 0.95   # sodium ions
     ion  charge -1   conc %(conc).2f  radius 1.81   # chloride ions
-    gcent 0 0 0
+    gcent mol 1
     mol 1
     chgm spl2
     srfm mol
@@ -55,10 +55,10 @@ elec name ref0
     usemap diel 1
     usemap kappa 1
     usemap charge 1
-    write pot dx pot_ref%(suffix)s
+    write pot dx pot_membrane%(suffix)s
 end
 
-print elecEnergy ref0 - solv0
+print elecEnergy membrane - bulksolvent
 end
 
 quit

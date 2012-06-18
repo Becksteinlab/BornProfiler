@@ -185,11 +185,13 @@ def in_dir(directory, create=True):
 def realpath(*args):
     """Join all args and return the real path, rooted at /.
 
-    Returns ``None`` if any of the args is none.
+    Expands '~', '~user', and environment variables such as $HOME.
+
+    Returns ``None`` if any of the args is ``None``.
     """
     if None in args:
         return None
-    return os.path.realpath(os.path.join(*args))
+    return os.path.realpath(os.path.expanduser(os.path.expandvars(os.path.join(*args))))
 
 def find_first(filename, suffices=None):
     """Find first *filename* with a suffix from *suffices*.

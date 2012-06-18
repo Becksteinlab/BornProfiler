@@ -1,7 +1,8 @@
-/* draw_membrane2.c                     09/02/08 *
- * draw_membrane2a.c                    11/22/10 * 
+/* draw_membrane2a.c                    04/26/11 * 
+ * draw_membrane2.c                     09/02/08 *
  *-----------------------------------------------* 
  * By Michael Grabe                              *
+ * (gzipped files & options by Oliver Beckstein) *
  * This program takes the dielectric, kappa, and * 
  * charge  maps from APBS and accounts for the   *
  * membrane. the thickness and the bottom of the *
@@ -17,7 +18,8 @@
  * extra command line argument was added that    *
  * will cause a fault if run without it from     *
  * older scripts pre 2005.                       *
- * OB's changes completely break input as we are now using standard option
+
+ * WARNING: OB's changes completely break input as we are now using standard option
  * processing. 
 
  2010-11-11  Oliver Beckstein
@@ -26,6 +28,9 @@
              added reading/writing of gz-compressed files
  2010-11-22  OB: switched to opt processing (completely breaks interface
              but allows setting of sdie, mdie and pdie)
+ 2010-12-01  OB: added cdie cylinder dielectric
+             headgroups (from draw_membrane4.c) and pretty-print geometry overview
+ 2010-04-26  OB: option to move the centre of the exclusion cone
  */
 
 #include <stdio.h>
@@ -37,14 +42,65 @@
 #include <zlib.h>
 #include <assert.h>
 
-typedef uint bool;
+
+#define SQR(x) ((x)*(x))
 
 #define MAXLEN 100
 #define TRUE  1
 #define FALSE 0
 #define NUMCOLS 3   /* number of columns in dx files, ABPS specific */
+#define NO_COORDINATE -9999999.0 /* nonsense value to detect 'not set' */
+
+typedef unsigned int bool;
+typedef struct {
+  float z_m0; /* bottom of membrane */
+  float z_m1; /* top of membrane */
+  float z_h0; /* upper boundary of lower headgroups, z_m0 + l_h */
+  float z_h1; /* lower boundary of upper headgroups, z_m1 - l_h */
+  float pdie; /* protein dielectric (must be SAME as in APBS!) */
+  float mdie; /* membrane dielectric */
+  float cdie; /* channel dielectric (defaults to solvent dielectric) */
+  float idie; /* headgroup dielectric (defaults to mdie) */
+  float R_m0; /* exclusion radii */
+  float R_m1;
+  float x0_R; /* centre of the exclusion zone */
+  float y0_R;
+  float z0_R;
+  float x0_p; /* x and y of protein */
+  float y0_p;
+  float z0_p;
+} t_membrane;
+
+char *newname(const char *prefix, const char *infix, const char *suffix, const bool gzipped);
+int gzscanf(gzFile *stream, const char *fmt, ...);
+void *xopen(const bool compression, char *filename, char *mode);
+int xclose(const bool compression, void *stream);
+int read_header(gzFile *in, int *dim_x, int *dim_y, int *dim_z,
+		float *x0, float *y0, float *z0,
+		float *dx, float *dy, float *dz,
+		int *num_data);
+int read_data(gzFile *in, int num_data, float *x);
+int write_header(const bool compression, void *out, char *name, float z_m0, float l_m,
+		 int dim_x, int dim_y, int dim_z,
+		 float x0, float y0, float z0,
+		 float dx, float dy, float dz);
+int write_data(const bool compression, void *out, int num_data, void *data);
+int write_attr_positions(const bool compression, void *stream);
+float draw_diel(const t_membrane *M, float *d, const float x, const float y, const float z);
+void print_help();
+void print_membrane(const t_membrane *M);
+void print_exclusionzone(const t_membrane *M);
+int get_argv_int(char **argv, const int index);
+int get_argv_float(char **argv, const int index);
+char *get_argv_str(char **argv, const int index);
+
+/**************************************************************/
 
 char *newname(const char *prefix, const char *infix, const char *suffix, const bool gzipped) {
+  /* generate a new name for map with membrane inserted
+     NOTE: The string is allocated here but must be free'ed in the
+           calling code!
+   */
   int l,m,n,p;
   char *s;
   static char default_suffix[] = ".dx";
@@ -65,9 +121,9 @@ char *newname(const char *prefix, const char *infix, const char *suffix, const b
   n = strlen(suffix);
   p = strlen(compression_suffix);
   
-  s = (char*)calloc(l+m+n+p+1, sizeof(char)); /* must be free in calling code! */
+  s = calloc(l+m+n+p+1, sizeof(char)); /* must be free'ed in calling code! */
   if (NULL == s) {
-    printf("newname: Failed to allocate string.");
+    fprintf(stderr, "newname: Failed to allocate string.");
     exit(EXIT_FAILURE);
   }
   strncpy(s, prefix, l);
@@ -77,7 +133,6 @@ char *newname(const char *prefix, const char *infix, const char *suffix, const b
   return s;
 }
 
-
 int gzscanf(gzFile *stream, const char *fmt, ...) {
   /* read one line from stream (up to newline) and parse with sscanf */
   va_list args;
@@ -86,13 +141,13 @@ int gzscanf(gzFile *stream, const char *fmt, ...) {
   char buf[MAXLEN]; 
 
   if (NULL == gzgets(stream, buf, MAXLEN)) {
-    printf("gzscanf: Failed to read line from gz file.\n");
+    fprintf(stderr, "gzscanf: Failed to read line from gz file.\n");
     exit(EXIT_FAILURE);
   }
   n = vsscanf(buf, fmt, args);
   va_end(args);
   if (0 == n) {
-    printf("gzscanf: Failed to parse line: %s\n", buf);
+    fprintf(stderr, "gzscanf: Failed to parse line: %s\n", buf);
     exit(EXIT_FAILURE);
   }
   return n;
@@ -102,6 +157,7 @@ int read_header(gzFile *in, int *dim_x, int *dim_y, int *dim_z,
 		float *x0, float *y0, float *z0,
 		float *dx, float *dy, float *dz,
 		int *num_data) {
+  /* read fixed-format (including comment lines !!!)  APBS DX file header */
   char s[MAXLEN];
   float tmp;
   int tmp1;
@@ -122,6 +178,7 @@ int read_header(gzFile *in, int *dim_x, int *dim_y, int *dim_z,
 }
 
 int read_data(gzFile *in, int num_data, float *x) {
+  /* read APBS formatted DX data (MUST be in NUMCOLS==3 columns */
   int n = 0;          /* data read from one line */
   int data_read = 0;  /* to check that we have everything */
   int idata = 0;      /* index of next data entry (sequential number) */
@@ -142,7 +199,7 @@ int read_data(gzFile *in, int num_data, float *x) {
       idata += NUMCOLS;
       data_read += n;
       if (n != NUMCOLS) {
-	printf("ERROR [data line %d]: expected %d but got %d data\n", i+1, NUMCOLS, n);
+	fprintf(stderr, "ERROR [data line %d]: expected %d but got %d data\n", i+1, NUMCOLS, n);
       }
     }
 
@@ -159,12 +216,12 @@ int read_data(gzFile *in, int num_data, float *x) {
   }
   data_read += n;
   if (n != num_last_entries) {
-    printf("ERROR [data line %d]: expected %d but got %d data\n", i+1, num_last_entries, n);
+    fprintf(stderr, "ERROR [data line %d]: expected %d but got %d data\n", i+1, num_last_entries, n);
   }
 
   assert(idata == num_data); /* index now points to one beyond the end of the array */
   if (data_read != num_data) {
-    printf("Expected %d data points but read %d: problem with file.\n", num_data, data_read);
+    fprintf(stderr, "Expected %d data points but read %d: problem with file.\n", num_data, data_read);
     exit(EXIT_FAILURE);
   }
   return data_read;
@@ -200,6 +257,7 @@ int write_header(const bool compression, void *out, char *name, float z_m0, floa
 		 int dim_x, int dim_y, int dim_z,
 		 float x0, float y0, float z0,
 		 float dx, float dy, float dz) {
+  /* write fixed-format APBS-style DX header */
   int status;
   const char fmt[] =   
     "# Data from draw_membrane2a.c\n"
@@ -250,6 +308,7 @@ int write_header(const bool compression, void *out, char *name, float z_m0, floa
   } while(0)
 
 int write_data(const bool compression, void *out, int num_data, void *data) {
+  /* write fixed-format APBS-style DX data */
   float *x = (float *)data;     /* allows us to take int and write as float */
   int i;
 
@@ -260,8 +319,8 @@ int write_data(const bool compression, void *out, int num_data, void *data) {
   return i;
 }
 
-
 int write_attr_positions(const bool compression, void *stream) {
+  /* write fixed-format APBS-style DX attributes section */
   int status;
   const char attr_positions[] = 
     "\n"
@@ -277,8 +336,33 @@ int write_attr_positions(const bool compression, void *stream) {
   return status;
 }
 
-void printhelp() {
-  printf("\nusage: draw_membrane2a [options] infix\n"
+/* detect protein-occupied space by dielectric constant a bit greater than PDIE
+   (could also check for SDIE...)
+ */
+#define PDIE_FUDGE_DELTA 0.05
+
+float draw_diel(const t_membrane *M, float *diel, const float x, const float y, const float z) {
+  /* change dielectric value of grid cells corresponding to the membrane 
+
+     changes *diel in place (and also returns the value)
+  */
+  float R, R_temp;
+  R = sqrt(SQR(x - M->x0_R) + SQR(y - M->y0_R));	
+  R_temp = (M->R_m1*(z - M->z_m0) - M->R_m0*(z - M->z_m1))/(M->z_m1 - M->z_m0);  	
+
+  if (z >= M->z_m0 && z <= M->z_m1 && *diel > M->pdie+PDIE_FUDGE_DELTA) {
+    /* inside membrane region but NOT where the protein is */
+    /* bilayer or headgroup dielectric constant outside channel */
+    *diel = (z >= M->z_h0 && z <= M->z_h1) ? M->mdie : M->idie; 
+    if (R <= R_temp) {
+      *diel = M->cdie;   /* channel dielectric painted over membrane */
+    }
+  }
+  return *diel;
+}
+
+void print_help() {
+  printf("\nusage: draw_membrane2a [OPTIONS] infix\n"
 	 "\n"
 	 "This program takes the dielectric, kappa, and charge maps from APBS and\n"
 	 "accounts for the membrane. The thickness (-d) and the bottom of the\n"
@@ -287,28 +371,104 @@ void printhelp() {
 	 "before running this program.  We also output a charge_change_map that\n"
 	 "tells me which positions in the charge matrix were edited by the\n"
 	 "addition of the membrane.\n"
-	 "\n"
+	 "If a headgroup region (-a l_h -i IDIE) is selected, then the hydrophobic core\n"
+	 "of the membrane (eps=MDIE) is modelled with a thickness of l_m - 2*l_h.\n"
+	 "A cone-shaped or cylindrical exclusion zone can be specified (options -r, -R, \n"
+	 "-X, -Y and -c) to ensure that pores and cavities are calculated with a\n"
+	 "bulk-like dielectric (by default, it uses the same value as -s).\n"
+	 "\n"	 
 	 "ARGUMENTS:\n"
 	 "\n"
 	 "  infix  - all maps are constructed as <name><infix>.dx[.gz] where <name> is\n"
-	 "           hard-coded (dielx,diely,dielz,kappa  charge); see also OUTPUTS.\n"
+	 "           hard-coded (dielx,diely,dielz,kappa,charge); see also OUTPUTS.\n"
 	 "\n"
 	 "OPTIONS:\n"
 	 "  -h          this help\n"
 	 "  -z z_m0     bottom of the membrane [-20]\n"
-	 "  -d l_m      membrane thickness (Angstrom) [40]\n"
-	 "  -V V        cytoplasmic potential (kT/e)  [0]\n"
+	 "  -d l_m      total membrane thickness (Angstrom) [40]\n"
+	 "  -a l_h      headgroup thickness (Angstrom) [0]\n"
+	 "  -V V        cytoplasmic potential (kT/e)  [0] UNTESTED\n"
 	 "  -I I        molar conc. of one salt-species [0.1]\n"
 	 "  -R R_m1     excl. radius at top of  membrane [0]\n" 
 	 "  -r R_m0     excl. radius at  bottom of membrane [0]\n"
-	 "  -p PDIE     protein dielectric constant [10]\n"
-	 "  -s SDIE     solvent dielectric [80]\n"   
+	 "  -X x0_R     centre of excl.zone in protein coordinates [centre of map]\n"
+	 "  -Y y0_R     centre of excl.zone in protein coordinates [centre of map]\n"
+	 "  -p PDIE     protein dielectric constant (must be SAME as in APBS!) [10]\n"
+	 "  -s SDIE     solvent dielectric (only used as default for CDIE) [80]\n"   
+	 "  -c CDIE     channel dielectric for (z_m0,R_m0)->(z_m0+l_m,R_m1) [SDIE]\n"   
 	 "  -m MDIE     membrane dielectric [2]\n"            
+	 "  -i IDIE     headgroup dielectric [MDIR]\n"            
 	 "  -Z          read and write gzipped files\n"                    
 	 "\n"	                                               
 	 "OUTPUTS:\n"
 	 "  maps - names are <name><infix>m.dx[.gz]\n"
 	 "\n");
+}
+
+void print_membrane(const t_membrane *M) {  
+  if (M->idie != M->mdie && M->z_m0 != M->z_h0) {
+    /* we model headgroups */
+    printf("Membrane geometry (with headgroups):\n"
+	   "\n"
+	   "  -------------------- z_m1 = %.1f\n"
+	   "     headgroups        idie = %.1f\n"
+	   "  ==================== z_h1 = %.1f\n"
+	   "     hydrophobic       mdie = %.1f\n"
+	   "        core                      \n"
+	   "  ==================== z_h0 = %.1f\n"
+	   "     headgroups        idie = %.1f\n"
+	   "  -------------------- z_m0 = %.1f\n"
+	   "\n",
+	   M->z_m1, M->idie, M->z_h1, M->mdie, M->z_h0, M->idie, M->z_m0);
+  }
+  else {
+    /* just the slab */
+    printf("Membrane geometry (slab only):\n"
+	   "\n"
+	   "  ==================== z_m1 = %.1f\n"
+	   "     hydrophobic       mdie = %.1f\n"
+	   "        core                      \n"
+	   "  ==================== z_m0 = %.1f\n"
+	   "\n",
+	   M->z_m1, M->mdie, M->z_m0);
+  }
+}
+
+void print_exclusionzone(const t_membrane *M) {
+  if (M->cdie != M->mdie && (M->R_m1 != 0 || M->R_m0 != 0)) {
+    printf("Channel exclusion zone:\n\n");
+    if (M->R_m1 > M->R_m0) {
+      printf("   ******     R_top = %4.1f A   z_m1 = %.1f\n"
+	     "    ****      cdie  = %4.1f     x0_R=%.3f y0_R=%.3f\n"
+	     "     **       R_bot = %4.1f A   z_m0 = %.1f\n",
+	     M->R_m1, M->z_m1, M->cdie, M->x0_R, M->y0_R, M->R_m0, M->z_m0);
+    }
+    else if (M->R_m1 < M->R_m0) {
+      printf("     **       R_top = %4.1f A   z_m1 = %.1f\n"
+	     "    ****      cdie  = %4.1f     x0_R=%.3f y0_R=%.3f\n"
+	     "   ******     R_bot = %4.1f A   z_m0 = %.1f\n",
+	       M->R_m1, M->z_m1, M->cdie, M->x0_R, M->y0_R, M->R_m0, M->z_m0);
+    }
+    else {
+      printf("     ***      R_top = %4.1f A   z_m1 = %.1f\n"
+	     "     ***      cdie  = %4.1f     x0_R=%.3f y0_R=%.3f\n"
+	     "     ***      R_bot = %4.1f A   z_m0 = %.1f\n",
+	     M->R_m1, M->z_m1, M->cdie, M->x0_R, M->y0_R, M->R_m0, M->z_m0);
+    }
+    printf("\n");
+  }
+  else {
+    printf("No channel exclusion zone defined.\n");
+  }
+}
+
+void print_geometry(const t_membrane *M, float Lx, float Ly, float Lz) {
+  printf("Geometry: box centre (in protein coordinates): \n"
+	 "          x0_p = %.3f A  y0_p = %.3f A  z0_p = %.3f A\n",
+	 M->x0_p, M->y0_p, M->z0_p);
+  printf("Geometry: box size:\n"
+	 "          Lx = %.3f A  Ly = %.3f A  Lz = %.3f A\n",
+	 Lx, Ly, Lz);
 }
 
 /* access argv after getopt
@@ -322,587 +482,546 @@ int get_argv_float(char **argv, const int index) {
   return atof(argv[index + optind]);
 }
 
-char * get_argv_str(char **argv, const int index) {
+char *get_argv_str(char **argv, const int index) {
   return argv[index + optind];
 }
 
 
 int main(int argc, char *argv[])
 {
-
-int dim_x,dim_y,dim_z,dim3,i,j,k,cnt;
-int *map;
-gzFile *out, *in; 
-float *d_x, *d_y, *d_z;      
-float *x_x, *x_y, *x_z;
-float *y_x, *y_y, *y_z;
-float *z_x, *z_y, *z_z;
-float *kk, *cc;
-float *x, *y, *z;
-float tmp_x,tmp_y,tmp_z,dx,dy,dz,l_c_x,l_c_y,l_c_z;
-float x0_p, y0_p, z0_p;
-float x0_x, y0_x, z0_x;
-float x0_y, y0_y, z0_y; 
-float x0_z, y0_z, z0_z; 
-float x0, y0, z0;
-float V=0, I=0.1, sdie=80, pdie=10, mdie=2;
-float l_m=40;
-float z_m0=0, z_m1, R_m0=0, R_m1=0;
-float R_x, R_y, R_z, R, R_temp;
-char infix[MAXLEN];
-char *file_name_x, *file_name_y, *file_name_z;
-char *file_name_k, *file_name_c;
-char *f1, *f2, *f3, *f4, *f5, *f6;
-char ext[5]="m.dx";
-bool compression = FALSE;
-int c;
-
-
-printf("----------------------------------------------------------------\n");
-printf("* draw_membrane2a.c                                   11/22/10 *\n");  /* magic version line */
-printf("----------------------------------------------------------------\n");
-printf("draw_membrane2a -- (c) 2008 Michael Grabe [09/02/08]\n");
-printf("                   (c) 2010 Oliver Beckstein (options&gzipped files) [11/22/10]\n");
-printf("Published under the Open Source MIT License (see http://sourceforge.net/projects/apbsmem/).\n");
-printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
-printf("----------------------------------------------------------------\n");
-
-/* explicit defaults for options */
-mdie = 2.0;    /* watch out for this it used to be 10.0 */ 
-sdie = 80.0;
-pdie = 10.0;
-
-z_m0 = -20;    /* lower z of membrane */  
-l_m = 40;      /* thickness of membrane */
-
-R_m1 = 0;      /* upper exclusion radius */
-R_m0 = 0;      /* lower exclusion radius */
-
-
- opterr = 0;
- while ((c = getopt(argc, argv, "hZz:d:s:m:p:V:I:r:R:")) != -1) {
-   switch(c) {
-   case 'h':
-     printhelp();
-     return 1;
-   case 'z':
-     z_m0 = atof(optarg);
-     break;
-   case 'd':
-     l_m = atof(optarg);
-     break;
-   case 's':
-     sdie = atof(optarg);
-     break;
-   case 'm':
-     mdie = atof(optarg);
-     break;
-   case 'p':
-     pdie = atof(optarg);
-     break;
-   case 'V':
-     V = atof(optarg);  /* membrane potential --- convert from mV to kT/e */
-     break;
-   case 'I':
-     I = atof(optarg);  /* ionic strength in mol/l */
-     break;
-   case 'r':
-     R_m0 = atof(optarg);
-     break;
-   case 'R':
-     R_m1 = atof(optarg);
-     break;     
-   case 'Z':
-     compression = TRUE;
-     break;
-   case '?':
-     if (optopt == 'z' || optopt == 'd' || optopt == 's' || optopt == 'm' ||
-	 optopt == 'p' || optopt == 'V' || optopt == 'I' || optopt == 'r' ||
-	 optopt == 'R')
-       fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-     else 
-       fprintf(stderr, "Unknown option `-%c'.\n", optopt);  // should check isprint(optopt)...
-     return 1;
-   default:
-     abort();
-   }
- }
-
-if (argc-optind < 1) {
-  fprintf(stderr, "Only %d argument%s on the commandline, at least 1 "
-	  "required. See `-h' for help.\n", 
-	  argc-optind, argc-optind==1 ? "":"s");
-  return 1;
-}
-
-strcpy(infix, get_argv_str(argv, 0));
-printf("Using hard-coded names with your infix to find files: infix=%s\n", infix);
-
-if (compression) {
-  printf("Reading gzip-compressed dx files.\n");
-} 
-else {
-  printf("Reading un-compressed dx files (default).\n");
-}   
-
-printf("Running with these arguments:\n");
-printf(">>> draw_membrane2a %s -s %.1f -m %.1f -p %.1f -V %.3f -I %.3f "
-       "-z %.3f -d %.3f -r %.1f -R %.1f  %s\n",
-       compression ? "-Z" : "", sdie, mdie, pdie, V, I,
-       z_m0, l_m, R_m0, R_m1, infix);
-
-/* Find the x-shifted dielectric map 
-   Construct the name as <basename><infix><suffix>
-
-   suffix == NULL --> use default = ".dx"
- */
-file_name_x = newname("dielx", infix, NULL, compression);
-
-/* Find the y-shifted dielectric map */
-file_name_y = newname("diely", infix, NULL, compression);
-
-/* Find the z-shifted dielectric map */
-file_name_z = newname("dielz", infix, NULL, compression);
-
-/* Find the kappa map */
-file_name_k = newname("kappa", infix, NULL, compression);
-
-/* Find the charge map */
-file_name_c = newname("charge", infix, NULL, compression);
-
+  int dim_x,dim_y,dim_z,dim3,i,j,k,cnt;
+  int *map;
+  gzFile *out, *in; 
+  float *d_x, *d_y, *d_z;      
+  float *x_x, *x_y, *x_z;
+  float *y_x, *y_y, *y_z;
+  float *z_x, *z_y, *z_z;
+  float *kk, *cc;
+  float *x, *y, *z;
+  float tmp_x,tmp_y,tmp_z,dx,dy,dz,l_c_x,l_c_y,l_c_z;
+  float x0_p, y0_p, z0_p;
+  float x0_x, y0_x, z0_x;
+  float x0_y, y0_y, z0_y; 
+  float x0_z, y0_z, z0_z; 
+  float x0, y0, z0;
+  float V=0, I=0.1, sdie, cdie, pdie, mdie, idie;
+  float l_m=40, a0=0;
+  float z_m0=0, R_m0=0, R_m1=0, x0_R=NO_COORDINATE, y0_R=NO_COORDINATE;
+  float R, R_temp;
+  char *infix;
+  char *file_name_x, *file_name_y, *file_name_z;
+  char *file_name_k, *file_name_c;
+  char *f1, *f2, *f3, *f4, *f5, *f6;
+  char ext[]="m.dx";
+  bool compression = FALSE;
+  int c;
+  t_membrane Membrane;
  
-z_m1=z_m0+l_m;   /* top of the membrane */
-
-/*****************************************************/
-/* read in the x-shifted dielectric data             */
-/*****************************************************/
-
-in = gzopen(file_name_x,"r");
-if (in == NULL) {
-  fprintf(stderr, "ERROR: %s not found in current directory.\n",  file_name_x);
-  fprintf(stderr, "       See -h for usage.\n");
-  return 1;
-}
-printf("Reading %s...\n", file_name_x);
-
-/* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0_x, &y0_x, &z0_x, &dx, &dy, &dz, &dim3);
-
-/* assign the memory to the arrays */
-
-x_x= (float *) calloc(dim_x+1,sizeof(float));
-y_x= (float *) calloc(dim_y+1,sizeof(float));
-z_x= (float *) calloc(dim_z+1,sizeof(float));
-x_y= (float *) calloc(dim_x+1,sizeof(float));
-y_y= (float *) calloc(dim_y+1,sizeof(float));
-z_y= (float *) calloc(dim_z+1,sizeof(float));
-x_z= (float *) calloc(dim_x+1,sizeof(float));
-y_z= (float *) calloc(dim_y+1,sizeof(float));
-z_z= (float *) calloc(dim_z+1,sizeof(float));
-d_x= (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-d_y= (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-d_z= (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-/* Now the Kappa and charge Arrays */
-x= (float *) calloc(dim_x+1,sizeof(float));
-y= (float *) calloc(dim_y+1,sizeof(float));
-z= (float *) calloc(dim_z+1,sizeof(float));
-kk= (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-cc= (float *) calloc(dim_x*dim_y*dim_z+1,sizeof(float));
-map= (int *) calloc(dim_x*dim_y*dim_z+1,sizeof(int));
-
-/* initialize x,y,z, and diel vectors */
-
-l_c_x=dim_x*dx;
-l_c_y=dim_y*dx;
-l_c_z=dim_z*dx;
-
-tmp_x=x0_x;
-tmp_y=y0_x;
-tmp_z=z0_x;
-
-for (i=1; i <= dim_x; ++i)
-{
-x_x[i]=tmp_x;
-tmp_x+=dx;
-}
-
-for (i=1; i <= dim_y; ++i)
-{
-y_x[i]=tmp_y;
-tmp_y+=dy;
-}
-
-for (i=1; i <= dim_z; ++i)
-{
-z_x[i]=tmp_z;
-tmp_z+=dz;
-}
-
-/* Read in the rest of the dielectric data */
-
-read_data(in, dim3, d_x);
-
-gzclose(in);
-/*****************************************************/
-
-/****************************************************/
-/* Construct the protein cooridinate center based   */
-/* on the x-dielectric map.                         */
-/* This will be used to determine where to add      */
-/* membrane.                                        */ 
-/****************************************************/
-
-x0_p=x0_x+l_c_x/2-dx/2;  /* this is the shift term that */ 
-                         /* moves half-step off grid    */ 
-y0_p=y0_x+l_c_y/2;
-z0_p=z0_x+l_c_z/2;
-
-
-/*****************************************************/
-/* read in the y-shifted dielectric data             */
-/*****************************************************/
-
-in = gzopen(file_name_y,"r");
-if (in == NULL) {
-   printf("File name %s not found.\n", file_name_y);
-   return 1;
-}
-printf("Reading %s...\n", file_name_y);
-
-/* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0_y, &y0_y, &z0_y, &dx, &dy, &dz, &dim3);
-
-/* initialize x,y,z, and diel vectors */
 
-tmp_x=x0_y;
-tmp_y=y0_y;
-tmp_z=z0_y;
-
-for (i=1; i <= dim_x; ++i) {
-x_y[i]=tmp_x;
-tmp_x+=dx;
-}
-
-for (i=1; i <= dim_y; ++i)
-{
-y_y[i]=tmp_y;
-tmp_y+=dy;
-}
-
-for (i=1; i <= dim_z; ++i)
-{
-z_y[i]=tmp_z;
-tmp_z+=dz;
-}
-
-/* Read in the rest of the dielectric data */
-
- read_data(in, dim3, d_y);
-
-gzclose(in);
-
-/*****************************************************/
-/* read in the z-shifted dielectric data             */
-/*****************************************************/
-
-in = gzopen(file_name_z,"r");
-if (in == NULL) {
-   printf("File name %s not found.\n", file_name_z);
-   return 1;
-}
-printf("Reading %s...\n", file_name_z);
-
-/* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0_z, &y0_z, &z0_z, &dx, &dy, &dz, &dim3);
-
-/* initialize x,y,z, and diel vectors */
-
-tmp_x=x0_z;
-tmp_y=y0_z;
-tmp_z=z0_z;
-
-
-for (i=1; i <= dim_x; ++i)
-{
-x_z[i]=tmp_x;
-tmp_x+=dx;
-}
-
-for (i=1; i <= dim_y; ++i)
-{
-y_z[i]=tmp_y;
-tmp_y+=dy;
-}
-
-for (i=1; i <= dim_z; ++i)
-{
-z_z[i]=tmp_z;
-tmp_z+=dz;
-}
-
-
-/* Read in the rest of the dielectric data */
-read_data(in, dim3, d_z);
-
-gzclose(in);
-
-/*****************************************************/
-
-/*****************************************************/
-/* read in the kappa data                            */
-/*****************************************************/
-
-in = gzopen(file_name_k,"r");
-if (in == NULL) {
-   printf("File name %s not found.\n", file_name_k);
-   return 1;
-}
-printf("Reading %s...\n", file_name_k);
-
-/* First read the header */
-read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0, &dx, &dy, &dz, &dim3);
-
-/* initialize x,y,z, and kappa vectors */
-
-tmp_x=x0;
-tmp_y=y0;
-tmp_z=z0;
-
-
-for (i=1; i <= dim_x; ++i)
-{
-x[i]=tmp_x;
-tmp_x+=dx;
-}
-
-for (i=1; i <= dim_y; ++i)
-{
-y[i]=tmp_y;
-tmp_y+=dy;
-}
-
-for (i=1; i <= dim_z; ++i)
-{
-z[i]=tmp_z;
-tmp_z+=dz;
-}
-
-/* Read in the rest of the Kappa data */
- read_data(in, dim3, kk);
-
-gzclose(in);
-
-/*****************************************************/
-
-/*****************************************************/
-/* read in the charge data                           */
-/*****************************************************/
-
-in = gzopen(file_name_c,"r");
-if (in == NULL) {
-   printf("File name %s not found.\n", file_name_c);
-   return 1;
-}
-printf("Reading %s...\n", file_name_c);
-
-/* First read the header */
-
-read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0, &dx, &dy, &dz, &dim3);
-
-/* Read in the rest of the charge data */
-read_data(in, dim3, cc);
-
-gzclose(in);
-
-/*****************************************************/
-/* MANIPULATE THE DATA BY ADDING THE MEMBRANE        */      
-/*****************************************************/
-
-
-/******************************************************/
-/* set up the vector                                  */
-/******************************************************/
-
-
-cnt=1;
-
-for (k=1; k <= dim_x; ++k)  /* loop over z */
-{
-        for (j=1; j <= dim_y; ++j)  /* loop over y */
-	{	
-		for (i=1; i <= dim_z; ++i)  /* loop over x */
-	        {	
-                        R_x = sqrt((x_x[k]-x0_p)*(x_x[k]-x0_p) + (y_x[j]-y0_p)*(y_x[j]-y0_p));	
-		        R_temp = (R_m1*(z_x[i]-z_m0) - R_m0*(z_x[i]-z_m1))/(z_m1 - z_m0);  	
-
-                        if (z_x[i] <= z_m1 && z_x[i] >= z_m0 && R_x > R_temp && d_x[cnt] > pdie+0.05) 
-		        {	
-                        d_x[cnt] = mdie;   /* bilayer dielectric constant */
-                        }
-
-                        R_y = sqrt((x_y[k]-x0_p)*(x_y[k]-x0_p) + (y_y[j]-y0_p)*(y_y[j]-y0_p));
-                        R_temp = (R_m1*(z_y[i]-z_m0) - R_m0*(z_y[i]-z_m1))/(z_m1 - z_m0);
- 
-                        if (z_y[i] <= z_m1 && z_y[i] >= z_m0 && R_y > R_temp && d_y[cnt] > pdie+0.05)
-                        {      
-                        d_y[cnt] = mdie;   /* bilayer dielectric constant */
-                        }
-
-                        R_z = sqrt((x_z[k]-x0_p)*(x_z[k]-x0_p) + (y_z[j]-y0_p)*(y_z[j]-y0_p));
-                        R_temp = (R_m1*(z_z[i]-z_m0) - R_m0*(z_z[i]-z_m1))/(z_m1 - z_m0);
-
-                        if (z_z[i] <= z_m1 && z_z[i] >= z_m0 && R_z > R_temp && d_z[cnt] > pdie+0.05)
-                        {      
-                        d_z[cnt] = mdie;   /* bilayer dielectric constant */
-                        }
-
-                        R = sqrt((x[k]-x0_p)*(x[k]-x0_p) + (y[j]-y0_p)*(y[j]-y0_p));
-
-                        if (z[i] <= z_m0 && kk[cnt] != 0.0)
-                        {
-                        /* charge for mem V */
-                        /* see my notes for this expression */
-                        cc[cnt] = 0.0012045*I*V;
-                        /* update the change map */
-                        map[cnt] = 1;
-                        }
-                        else
-                        {
-                        /* position was not changed */
-                        map[cnt] = 0;
-                        }
-                      
-                        R_temp = (R_m1*(z[i]-z_m0) - R_m0*(z[i]-z_m1))/(z_m1 - z_m0);
-
-                        if (z[i] <= z_m1 && z[i] >= z_m0 && R > R_temp)
-                        {
-                        kk[cnt] = 0.0;   /* Zero ion accessibility */
-                        }
-
-                        ++cnt;
-
-  	        }			
+  printf("----------------------------------------------------------------\n");
+  printf("* draw_membrane2a.c                                   04/26/11 *\n");  /* magic version line */
+  printf("----------------------------------------------------------------\n");
+  printf("draw_membrane2  -- (c) 2008 Michael Grabe [09/02/08]\n");
+  printf("draw_membrane4  -- (c) 2010 Michael Grabe [07/29/10]\n");
+  printf("draw_membrane2a -- (c) 2010,2011 Oliver Beckstein [04/26/11]\n");
+  printf("Published under the Open Source MIT License (see http://sourceforge.net/projects/apbsmem/).\n");
+  printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
+  printf("----------------------------------------------------------------\n");
+  
+  /* explicit defaults for options */
+  mdie = 2.0;    /* watch out for this used to be 10.0 */ 
+  idie = -1;     /* set to mdie iff < 0 */
+  sdie = 80.0;
+  cdie = -1;     /* set to sdie iff < 0 */
+  pdie = 10.0;   /* MUST match the value set in APBS !! */
+  
+  z_m0 = -20;    /* lower z of membrane */  
+  l_m = 40;      /* thickness of membrane */
+
+  R_m1 = 0;      /* upper exclusion radius */
+  R_m0 = 0;      /* lower exclusion radius */
+
+  opterr = 0;
+  while ((c = getopt(argc, argv, "hZz:d:s:c:m:p:i:a:V:I:r:R:X:Y:")) != -1) {
+    switch(c) {
+    case 'h':
+      print_help();
+      return EXIT_SUCCESS;
+    case 'z':
+      z_m0 = atof(optarg);
+      break;
+    case 'd':
+      l_m = atof(optarg);
+      break;
+    case 'a':
+      a0 = atof(optarg);
+      break;
+    case 's':
+      sdie = atof(optarg);
+      break;
+    case 'c':
+      cdie = atof(optarg);
+      break;
+    case 'm':
+      mdie = atof(optarg);
+      break;
+    case 'i':
+      idie = atof(optarg);
+      break;
+    case 'p':
+      pdie = atof(optarg);
+      break;
+    case 'V':
+      V = atof(optarg);  /* membrane potential in kT/e--- TODO: use mV as input */
+      break;
+    case 'I':
+      I = atof(optarg);  /* ionic strength in mol/l */
+      break;
+    case 'r':
+      R_m0 = atof(optarg);
+      break;
+    case 'X':
+      x0_R = atof(optarg);
+      break;
+    case 'Y':
+      y0_R = atof(optarg);
+      break;
+    case 'R':
+      R_m1 = atof(optarg);
+      break;     
+    case 'Z':
+      compression = TRUE;
+      break;
+    case '?':
+      if (optopt == 'z' || optopt == 'd' || optopt == 's' || optopt == 'c' ||
+	  optopt == 'i' || optopt == 'a' ||
+	  optopt == 'm' || optopt == 'p' || optopt == 'V' || optopt == 'I' || 
+	  optopt == 'r' || optopt == 'R' || optopt == 'X' || optopt == 'Y')
+	fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+      else 
+	fprintf(stderr, "Unknown option `-%c'.\n", optopt);  // should check isprint(optopt)...
+      return EXIT_FAILURE;
+    default:
+      abort();
+    }
+  }
+
+  if (argc-optind != 1) {
+    fprintf(stderr, "%d argument%s were provided on the commandline "
+	    "but exactly one (the infix) is required. See `-h' for help.\n", 
+	    argc-optind, argc-optind==1 ? "":"s");
+    return EXIT_FAILURE;
+  }
+
+  infix = get_argv_str(argv, 0);  /* use the string allocated for argv! */
+  printf("Using hard-coded names with your infix to find files: infix=%s\n", infix);
+
+  if (compression)
+    printf("Reading gzip-compressed dx files.\n");
+  else
+    printf("Reading un-compressed dx files (default).\n");
+
+  if (cdie < 0)
+    cdie = sdie;
+  if (cdie != sdie && (R_m0 > 0 || R_m1 > 0))
+    printf("Using different dielectric in channel (%.1f) than in bulk (%.1f)\n", cdie, sdie);
+  
+  if (idie < 0)
+    idie = mdie;
+  if (idie != mdie || a0 > 0)
+    printf("Modelling headgroup region of thickness %.1f with epsilon=%.1f\n", a0, idie);
+
+  {
+    char opt_x0_R[MAXLEN] = "";
+    char opt_y0_R[MAXLEN] = "";
+    printf("Running with these arguments:\n");
+    if (x0_R != NO_COORDINATE) {
+      snprintf(opt_x0_R, MAXLEN, "-X %.3f", x0_R);
+    };
+    if (y0_R != NO_COORDINATE) {
+      snprintf(opt_y0_R, MAXLEN, "-Y %.3f", y0_R);
+    };
+    printf(">>> draw_membrane2a %s -s %.1f -c %.1f -m %.1f -p %.1f -i %.1f -a %.1f "
+	   "-V %.3f -I %.3f -z %.3f -d %.3f -r %.1f -R %.1f %s %s %s\n",
+	   compression ? "-Z" : "", sdie, cdie, mdie, pdie, idie, a0, V, I,
+	   z_m0, l_m, R_m0, R_m1, opt_x0_R, opt_y0_R, infix);
+  }
+
+  /* Find the x-shifted dielectric map 
+     Construct the name as <basename><infix><suffix>
+
+     suffix == NULL --> use default = ".dx"
+  */
+  file_name_x = newname("dielx", infix, NULL, compression);
+
+  /* Find the y-shifted dielectric map */
+  file_name_y = newname("diely", infix, NULL, compression);
+
+  /* Find the z-shifted dielectric map */
+  file_name_z = newname("dielz", infix, NULL, compression);
+
+  /* Find the kappa map */
+  file_name_k = newname("kappa", infix, NULL, compression);
+
+  /* Find the charge map */
+  file_name_c = newname("charge", infix, NULL, compression);
+
+  /*****************************************************/
+  /* read in the x-shifted dielectric data             */
+  /*****************************************************/
+
+  in = gzopen(file_name_x,"r");
+  if (in == NULL) {
+    fprintf(stderr, "ERROR: %s not found in current directory.\n",  file_name_x);
+    fprintf(stderr, "       See -h for usage.\n");
+    return EXIT_FAILURE;
+  }
+  printf("Reading %s...\n", file_name_x);
+
+  /* First read the header */
+  read_header(in, &dim_x, &dim_y, &dim_z, &x0_x, &y0_x, &z0_x, &dx, &dy, &dz, &dim3);
+
+  /* assign the memory to the arrays */
+  x_x = calloc(dim_x,sizeof(float));
+  y_x = calloc(dim_y,sizeof(float));
+  z_x = calloc(dim_z,sizeof(float));
+  x_y = calloc(dim_x,sizeof(float));
+  y_y = calloc(dim_y,sizeof(float));
+  z_y = calloc(dim_z,sizeof(float));
+  x_z = calloc(dim_x,sizeof(float));
+  y_z = calloc(dim_y,sizeof(float));
+  z_z = calloc(dim_z,sizeof(float));
+  d_x = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  d_y = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  d_z = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  /* Now the Kappa and charge Arrays */
+  x = calloc(dim_x,sizeof(float));
+  y = calloc(dim_y,sizeof(float));
+  z = calloc(dim_z,sizeof(float));
+  kk = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  cc = calloc(dim_x*dim_y*dim_z,sizeof(float));
+  map = calloc(dim_x*dim_y*dim_z,sizeof(int));
+
+  /* initialize x,y,z, and diel vectors */
+  l_c_x = dim_x*dx;
+  l_c_y = dim_y*dx;
+  l_c_z = dim_z*dx;
+
+  tmp_x = x0_x;
+  tmp_y = y0_x;
+  tmp_z = z0_x;
+
+  for (i=0; i < dim_x; ++i) {
+    x_x[i]=tmp_x;
+    tmp_x+=dx;
+  }
+  for (i=0; i < dim_y; ++i) {
+    y_x[i]=tmp_y;
+    tmp_y+=dy;
+  }
+  for (i=0; i < dim_z; ++i) {
+    z_x[i]=tmp_z;
+    tmp_z+=dz;
+  }
+
+  /* Read in the rest of the dielectric data */
+  read_data(in, dim3, d_x);
+  gzclose(in);
+  /*****************************************************/
+
+  /****************************************************/
+  /* Construct the protein coordinate center based    */
+  /* on the x-dielectric map.                         */
+  /* This will be used to determine where to add      */
+  /* membrane.                                        */ 
+  /****************************************************/
+  /* The coordinate system is taken from the protein. (x0_p,y0_p,z0_p)
+     is the centre of the box, in protein coordinates (NOT the centre
+     of the protein!)
+  */
+  x0_p = x0_x+l_c_x/2-dx/2;  /* this is the shift term that moves half-step off grid */ 
+  y0_p = y0_x+l_c_y/2;
+  z0_p = z0_x+l_c_z/2;
+
+  /* centre of the exclusion zone */
+  if (x0_R == NO_COORDINATE) {
+    x0_R = x0_p;
+    printf("NOTE: centre x0_R of exclusion zone set to centre x0_p of dielectric map (use -X)!\n");
+  }
+  if (y0_R == NO_COORDINATE) {
+    y0_R = y0_p;
+    printf("NOTE: centre y0_R of exclusion zone set to centre y0_p of dielectric map (use -Y)!\n");
+  }
+
+  /* TODO: use t_membrane throughout, currently only used for draw() */
+  Membrane.z_m0 = z_m0;         /* bottom of membrane */
+  Membrane.z_m1 = z_m0 + l_m;   /* top of the membrane */
+  Membrane.z_h0 = z_m0 + a0;    /* top of lower head group region */
+  Membrane.z_h1 = Membrane.z_m1 - a0;    /* bottom of upper head group region */
+  Membrane.pdie = pdie;
+  Membrane.mdie = mdie;
+  Membrane.cdie = cdie;
+  Membrane.idie = idie;
+  Membrane.R_m0 = R_m0;
+  Membrane.R_m1 = R_m1;
+  Membrane.x0_R = x0_R;
+  Membrane.y0_R = y0_R;
+  Membrane.z0_R = z0_p;
+  Membrane.x0_p = x0_p;          /* centre of the protein */
+  Membrane.y0_p = y0_p;
+  Membrane.z0_p = z0_p;
+
+  print_geometry(&Membrane, l_c_x, l_c_y, l_c_z);
+  print_membrane(&Membrane);
+  print_exclusionzone(&Membrane);  
+
+  /*****************************************************/
+  /* read in the y-shifted dielectric data             */
+  /*****************************************************/
+
+  in = gzopen(file_name_y,"r");
+  if (in == NULL) {
+    printf("File name %s not found.\n", file_name_y);
+    return EXIT_FAILURE;
+  }
+  printf("Reading %s...\n", file_name_y);
+
+  /* First read the header */
+  read_header(in, &dim_x, &dim_y, &dim_z, &x0_y, &y0_y, &z0_y, &dx, &dy, &dz, &dim3);
+
+  /* initialize x,y,z, and diel vectors */
+  tmp_x = x0_y;
+  tmp_y = y0_y;
+  tmp_z = z0_y;
+
+  for (i=0; i < dim_x; ++i) {
+    x_y[i]=tmp_x;
+    tmp_x+=dx;
+  }
+  for (i=0; i < dim_y; ++i) {
+    y_y[i]=tmp_y;
+    tmp_y+=dy;
+  }
+  for (i=0; i < dim_z; ++i) {
+    z_y[i]=tmp_z;
+    tmp_z+=dz;
+  }
+  /* Read in the rest of the dielectric data */
+  read_data(in, dim3, d_y);
+  gzclose(in);
+
+  /*****************************************************/
+  /* read in the z-shifted dielectric data             */
+  /*****************************************************/
+
+  in = gzopen(file_name_z,"r");
+  if (in == NULL) {
+    printf("File name %s not found.\n", file_name_z);
+    return EXIT_FAILURE;
+  }
+  printf("Reading %s...\n", file_name_z);
+
+  /* First read the header */
+  read_header(in, &dim_x, &dim_y, &dim_z, &x0_z, &y0_z, &z0_z, &dx, &dy, &dz, &dim3);
+
+  /* initialize x,y,z, and diel vectors */
+  tmp_x = x0_z;
+  tmp_y = y0_z;
+  tmp_z = z0_z;
+
+  for (i=0; i < dim_x; ++i) {
+    x_z[i]=tmp_x;
+    tmp_x+=dx;
+  }
+  for (i=0; i < dim_y; ++i) {
+    y_z[i]=tmp_y;
+    tmp_y+=dy;
+  }
+  for (i=0; i < dim_z; ++i) {
+    z_z[i]=tmp_z;
+    tmp_z+=dz;
+  }
+  /* Read in the rest of the dielectric data */
+  read_data(in, dim3, d_z);
+  gzclose(in);
+
+  /*****************************************************/
+
+  /*****************************************************/
+  /* read in the kappa data                            */
+  /*****************************************************/
+
+  in = gzopen(file_name_k,"r");
+  if (in == NULL) {
+    printf("File name %s not found.\n", file_name_k);
+    return EXIT_FAILURE;
+  }
+  printf("Reading %s...\n", file_name_k);
+
+  /* First read the header */
+  read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0, &dx, &dy, &dz, &dim3);
+
+  /* initialize x,y,z, and kappa vectors */
+  tmp_x = x0;
+  tmp_y = y0;
+  tmp_z = z0;
+
+  for (i=0; i < dim_x; ++i) {
+    x[i]=tmp_x;
+    tmp_x+=dx;
+  }
+  for (i=0; i < dim_y; ++i) {
+    y[i]=tmp_y;
+    tmp_y+=dy;
+  }
+  for (i=0; i < dim_z; ++i) {
+    z[i]=tmp_z;
+    tmp_z+=dz;
+  }
+  /* Read in the rest of the Kappa data */
+  read_data(in, dim3, kk);
+  gzclose(in);
+
+  /*****************************************************/
+
+  /*****************************************************/
+  /* read in the charge data                           */
+  /*****************************************************/
+
+  in = gzopen(file_name_c,"r");
+  if (in == NULL) {
+    printf("File name %s not found.\n", file_name_c);
+    return EXIT_FAILURE;
+  }
+  printf("Reading %s...\n", file_name_c);
+
+  /* First read the header */
+  read_header(in, &dim_x, &dim_y, &dim_z, &x0, &y0, &z0, &dx, &dy, &dz, &dim3);
+  /* Read in the rest of the charge data */
+  read_data(in, dim3, cc);
+  gzclose(in);
+
+
+  /*****************************************************/
+  /* MANIPULATE THE DATA BY ADDING THE MEMBRANE        */      
+  /*****************************************************/
+  printf("Adding the membrane to the maps...\n");
+
+  /******************************************************/
+  /* set up the vector                                  */
+  /******************************************************/
+  /* NOTE: access array by z fastest varying */
+  cnt=0;
+
+  for (k=0; k < dim_x; ++k) {  /* loop over x */
+    for (j=0; j < dim_y; ++j) {  /* loop over y */
+      for (i=0; i < dim_z; ++i) {  /* loop over z */
+	draw_diel(&Membrane, &(d_x[cnt]), x_x[k], y_x[j], z_x[i]);
+	draw_diel(&Membrane, &(d_y[cnt]), x_y[k], y_y[j], z_y[i]);
+	draw_diel(&Membrane, &(d_z[cnt]), x_z[k], y_z[j], z_z[i]);
+
+	if (z[i] <= z_m0 && kk[cnt] != 0.0) {
+	  /* charge for mem V */
+	  /* see my notes for this expression */
+	  cc[cnt] = 0.0012045*I*V;
+	  /* update the change map */
+	  map[cnt] = 1;
+	}
+	else {
+	  /* position was not changed */
+	  map[cnt] = 0;
 	}
 
-}
+	/* channel exclusion zone for ion accessibility */
+	R = sqrt(SQR(x[k]-Membrane.x0_R) + SQR(y[j]-Membrane.y0_R));                      
+	R_temp = (R_m1*(z[i]-Membrane.z_m0) - R_m0*(z[i]-Membrane.z_m1))/(Membrane.z_m1 - Membrane.z_m0);
 
-/********************************************************/
-/* now we must save diel as a text document             */
-/* in the proper 3 column output                        */
-/********************************************************/
+	if (z[i] <= Membrane.z_m1 && z[i] >= Membrane.z_m0 && R > R_temp) {
+	  kk[cnt] = 0.0;   /* Zero ion accessibility */
+	}
+	++cnt;
+      }			
+    }
+  }
 
+  /********************************************************/
+  /* now we must save diel as a text document             */
+  /* in the proper 3 column output                        */
+  /********************************************************/
 
-/********************************************************/
+  /********************X-DATA******************************/
+  /* add the "m" extension to the file */
+  f1 = newname("dielx", infix, ext, compression);
+  out = xopen(compression, f1,"w");
+  write_header(compression, out, "X-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
+	       dim_x, dim_y, dim_z, x0_x, y0_x, z0_x, dx ,dy, dz);
+  write_data(compression, out, dim3, d_x);
+  write_attr_positions(compression, out);
+  xclose(compression, out);
+  printf("Wrote %s.\n", f1);
 
-/* add the "m" extension to the file */
-f1 = newname("dielx", infix, ext, compression);
-out = xopen(compression, f1,"w");
+  /********************Y-DATA******************************/
+  /* give the file an "m" extension */
+  f2 = newname("diely", infix, ext, compression);
+  out = xopen(compression, f2,"w");
+  write_header(compression, out, "Y-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
+	       dim_x, dim_y, dim_z, x0_y, y0_y, z0_y, dx ,dy, dz);
+  write_data(compression, out, dim3, d_y);
+  write_attr_positions(compression, out);
+  xclose(compression, out);
+  printf("Wrote %s.\n", f2);
 
-/* MAKE THE X HEADER FILE */
- write_header(compression, out, "X-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
-	      dim_x, dim_y, dim_z, x0_x, y0_x, z0_x, dx ,dy, dz);
+  /**********************Z-DATA*****************************/
+  /* give the file an "m" extension */
+  f3 = newname("dielz", infix, ext, compression);
+  out = xopen(compression, f3,"w");
+  write_header(compression, out, "Z-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
+	       dim_x, dim_y, dim_z, x0_z, y0_z, z0_z, dx ,dy, dz);
+  write_data(compression, out, dim3, d_z);
+  write_attr_positions(compression, out);
+  xclose(compression, out);
+  printf("Wrote %s.\n", f3);
 
-/* ADD THE X DATA */
- write_data(compression, out, dim3, d_x);
+  /*********************KAPPA******************************/
+  /* give the file an "m" extension */
+  f4 = newname("kappa", infix, ext, compression);
+  out = xopen(compression, f4,"w");
+  write_header(compression, out, "KAPPA MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+  write_data(compression, out, dim3, kk);
+  write_attr_positions(compression, out);
+  xclose(compression, out);
+  printf("Wrote %s.\n", f4);
 
- write_attr_positions(compression, out);
- xclose(compression, out);
-printf("Wrote %s.\n", f1);
+  /********************CHARGE*******************************/
+  /* give the file an "m" extension */
+  f5 = newname("charge", infix, ext, compression);
+  out = xopen(compression, f5,"w");
+  write_header(compression, out, "CHARGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+  write_data(compression, out, dim3, cc);
+  write_attr_positions(compression, out);
+  xclose(compression, out);
+  printf("Wrote %s.\n", f5);
 
-/********************Y-DATA******************************/
+  /********************CHARGE CHANGE MAP*************************/
+  f6 = newname("change_map", infix, ext, compression);
+  out = xopen(compression, f6,"w");
+  write_header(compression, out, "CHARGE CHANGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
+  write_data(compression, out, dim3, map);  // int map is converted to float
+  write_attr_positions(compression, out);
+  xclose(compression, out);
+  printf("Wrote %s.\n", f6);
 
-/* give the file an "m" extension */
-f2 = newname("diely", infix, ext, compression);
-out = xopen(compression, f2,"w");
-     
-/* MAKE THE Y HEADER FILE */
-write_header(compression, out, "Y-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
-	     dim_x, dim_y, dim_z, x0_y, y0_y, z0_y, dx ,dy, dz);
+  /***********************************************************/
+  /* clean up */
+  free(x_x); free(y_x); free(z_x);
+  free(x_y); free(y_y); free(z_y); 
+  free(x_z); free(y_z); free(z_z); 
+  free(d_x); free(d_y); free(d_z);
+  free(x);   free(y);   free(z);
+  free(kk);  free(cc);  free(map);
 
-/* ADD THE Y DATA */
-write_data(compression, out, dim3, d_y);
+  free(f1); free(f2); free(f3); free(f4); free(f5); free(f6); /* calloc'ed by newname() :-p */
 
-write_attr_positions(compression, out);
-xclose(compression, out);
-printf("Wrote %s.\n", f2);
-
-/**********************Z-DATA*****************************/
-
-
-/* give the file an "m" extension */
-f3 = newname("dielz", infix, ext, compression);
-out = xopen(compression, f3,"w");
-
-
-/* MAKE THE Z HEADER FILE */
-write_header(compression, out, "Z-SHIFTED DIELECTRIC MAP", z_m0, l_m, 
-	     dim_x, dim_y, dim_z, x0_z, y0_z, z0_z, dx ,dy, dz);
-
-/* ADD THE Z DATA */
-write_data(compression, out, dim3, d_z);
-
-write_attr_positions(compression, out);
-xclose(compression, out);
-printf("Wrote %s.\n", f3);
-
-/*********************KAPPA******************************/
-
-/* give the file an "m" extension */
-f4 = newname("kappa", infix, ext, compression);
-out = xopen(compression, f4,"w");
-
-/* MAKE THE KAPPA HEADER FILE */
-write_header(compression, out, "KAPPA MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
-
-/* ADD THE KAPPA DATA */
-write_data(compression, out, dim3, kk);
-
-write_attr_positions(compression, out);
-xclose(compression, out);
-printf("Wrote %s.\n", f4);
-
-/********************CHARGE*******************************/
-
-/* give the file an "m" extension */
-f5 = newname("charge", infix, ext, compression);
-out = xopen(compression, f5,"w");
-
-/* MAKE THE CHARGE HEADER FILE */
-write_header(compression, out, "CHARGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
-
-/* ADD THE CHARGE DATA */ 
-write_data(compression, out, dim3, cc);
-
-write_attr_positions(compression, out);
-xclose(compression, out);
-printf("Wrote %s.\n", f5);
-
-/********************CHARGE CHANGE MAP*************************/
-
-f6 = newname("change_map", infix, ext, compression);
-out = xopen(compression, f6,"w");
-
-/* MAKE THE CHARGE HEADER FILE */
-
-write_header(compression, out, "CHARGE CHANGE MAP", z_m0, l_m, dim_x, dim_y, dim_z, x0, y0, z0, dx ,dy, dz);
-
-/* ADD THE CHARGE CHANGE DATA */
- write_data(compression, out, dim3, map);  // int map is converted to float
-
-write_attr_positions(compression, out);
-xclose(compression, out);
-printf("Wrote %s.\n", f6);
-
-/***********************************************************/
-free(x_x); free(y_x); free(z_x);
-free(x_y); free(y_y); free(z_y); 
-free(x_z); free(y_z); free(z_z); 
-free(d_x); free(d_y); free(d_z);
-free(x);   free(y);   free(z);
-free(kk);  free(cc);  free(map);
-
-free(f1); free(f2); free(f3); free(f4); free(f5); free(f6); /* calloc'ed by newname() :-p */
-
-printf("Your files have been written.\n");
-return 0;
+  printf("Your files have been written.\n");
+  return EXIT_SUCCESS;
 }

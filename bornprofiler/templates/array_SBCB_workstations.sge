@@ -1,0 +1,119 @@
+#$ -N BP%(jobName)s
+#$ -S /bin/bash
+#$ -l mem_free=1024M,mem_total=2048M
+#$ -cwd
+#$ -j y
+#$ -r y
+#$ -t 1-%(numJobs)d
+
+# :Queing System: SGE
+# :Host: SBCB Workstations
+# :URL: https://sbcb.bioch.ox.ac.uk/wiki/index.php/Sun_Grid_Engine_6.2_on_local_workstations#Platform_specific_binaries
+
+# *********** WARNING **********
+# THIS SCRIPT WILL ONLY RUN ON THE WORKSTATION QUEUE AT SBCB
+# You can use it as an example for how to set up the calculation
+# on a queuing system with a heterogenous computing environment.
+# *********** WARNING **********
+
+
+# This file is interpolated by Python (i.e. anything with 
+# a single or double percentage sign ('%%') will be expanded. See
+# http://docs.python.org/library/stdtypes.html#string-formatting-operations
+# Tip: Do not add or delete percentage signs unless you know 
+#      exactly what you are doing.
+
+# ===================
+# Prepare binaries
+# ===================
+# Set platform and architecture
+
+# Init modules
+. /sbcb/packages/modules/init
+
+# Set platform and architecture
+MACHINE_TYPE="`uname -s`_`uname -m`"
+
+# Print some useful info
+echo "------------------------------------------------------------"
+echo "Execution host:     ${HOSTNAME}"
+echo "Date:               $(date)"
+echo "User:               ${USER}"
+echo "Machine type:       ${MACHINE_TYPE}"
+echo "SGE temp directory: ${TMPDIR}" 
+echo "Working directory:  ${SGE_O_WORKDIR}" 
+echo "------------------------------------------------------------"
+
+# Load modules
+case "$MACHINE_TYPE" in
+'Linux_i686')
+	echo "Loading 32-bit Linux modules"
+	module load apbs/1.3svn1625/32
+	module load APBSmem/1.05/32
+;;
+'Linux_x86_64')
+	echo "Loading 64-bit Linux modules"
+	module load apbs/1.3svn1625/32
+	module load APBSmem/1.05/32
+;; 
+'Darwin_i386')
+	echo "Loading 32-bit Darwin modules"
+	module load apbs/1.3svn1625/univ
+	module load APBSmem/1.05/univ
+;;
+'Darwin_x86_64')
+	echo "Loading 64-bit Darwin modules"
+	module load apbs/1.3svn1625/univ
+	module load APBSmem/1.05/univ
+;;
+*)
+	echo "ERROR: Unknown platform and architecture."
+	exit 1
+;;
+esac
+
+# random delay of 0..MAXDELAY s to avoid nfs storms
+: ${MAXDELAY:=60}
+delay=$(($RANDOM*${MAXDELAY}/32767))
+echo    "Array job number <job>${JOB_ID}.${SGE_TASK_ID}</job> on <host>${HOSTNAME}</host>:"
+echo -n "Waiting for ${delay} seconds before accessing a nfs disk..."
+sleep ${delay}
+echo "done"
+
+# environment variables are used in the downstream scripts to set executables
+export APBS=`which apbs`
+export DRAW_MEMBRANE2A=`which draw_membrane2a`
+
+# sanity checks
+check_passed=True
+if [ -n "${APBS}" ] && [ -x "${APBS}" ]; then
+   echo "Check passed: Using apbs from ${APBS}"
+else
+   echo "ERROR: could not find 'apbs' executable."
+   check_passed=False
+fi
+if [ -n "${DRAW_MEMBRANE2A}" ] && [ -x "${DRAW_MEMBRANE2A}" ]; then
+   echo "Check passed: Using draw_membrane2a from ${DRAW_MEMBRANE2A}"
+else
+   echo "ERROR: could not find 'draw_membrane2a' executable."
+   check_passed=False
+fi
+case "${check_passed}" in
+     False|false)   exit 2;;
+esac
+
+#------------------------------------------------------------
+# main
+#------------------------------------------------------------
+
+declare -a job
+
+#------------------------------------------------------------
+%(jobArray)s 
+#------------------------------------------------------------
+
+run_d=$(dirname ${job[${SGE_TASK_ID}]})
+script=$(basename ${job[${SGE_TASK_ID}]})
+ 
+cd ${run_d} || { echo "Failed to cd ${run_d}. Abort."; exit 1; }
+. ./${script}

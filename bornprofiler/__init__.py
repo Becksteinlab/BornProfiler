@@ -1,5 +1,6 @@
 # APBS BornProfiler python package
-# Copyright (c) 2005-2010 Oliver Beckstein, Kaihsu Tai
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2011 Oliver Beckstein
 # Published under the GNU Public Licence, version 3
 
 """
@@ -14,6 +15,8 @@ so-called *Born profile*).
 .. _APBS:: http://www.poissonboltzmann.org
 
 """
+from version import get_version, get_version_tuple
+
 import config, utilities
 
 import logging
@@ -39,7 +42,7 @@ def stop_logging():
     logger.info("BornProfiler STOPPED logging")
     log.clear_handlers(logger)  # this _should_ do the job...
 
-import core, custom, io
+import core, io
 
 def write_parameters(filename, **defaults):
     """Write a default parameter file to *filename*.

@@ -1,6 +1,7 @@
+# APBS: write coefficient maps 
 # Coefficient maps for Born profile calculations
 # Build maps for three focusing steps of a Born profile calculation
-# Map names are hard coded. Writing/reading of dxforamt=gz requires
+# Map names are hard coded. Writing/reading of dxformat=gz requires
 # APBS version >= 1.3 and draw_membrane2a
 
 READ

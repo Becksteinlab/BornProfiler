@@ -1,3 +1,6 @@
+# BornProfiler -- dealing with boxes
+# Copyright (c) 2010 Oliver Beckstein
+
 import numpy
 
 def normal(a,b):
@@ -18,7 +21,7 @@ class Plane(object):
     def __repr__(self):
         return "Plane(%(point)r,%(normal)r)" % vars(self)
     
-class Unitcell:
+class Unitcell(object):
     """Base class for simulation cells"""
 
 class Orthorhombic(Unitcell):
