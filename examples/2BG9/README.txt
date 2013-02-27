@@ -20,8 +20,8 @@ Running APBS calculations
 
 You can run the individual "windows" (=ion positions) by executing the
 ``job_NNNN.sh`` script in each sub-directory (``<job:name>/wNNNN``)
-or, if your Sun Gridengine queuing system is set up accordingly, by
-submitting a SGE array job::
+or, if your Gridengine queuing system is set up accordingly, by
+submitting a GE array job::
 
   qsub qsub_<job:name>.sge
 
