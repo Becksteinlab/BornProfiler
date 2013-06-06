@@ -154,13 +154,12 @@ def setup(filename=CONFIGNAME):
     # setup() must be separate and NOT run automatically when config
     # is loaded so that easy_install installations work
     # (otherwise we get a sandbox violation)
-    # populate cfg with defaults (or existing data)
-    get_configuration()
+    # Note that cfg is populated with defaults when this module is imported.
     if not os.path.exists(filename):
         with open(filename, 'w') as configfile:
             cfg.write(configfile)  # write the default file so that user can edit
-        msg = "NOTE: BornProfiler created the configuration file \n\t%r\n" + \
-              "      for you. Edit the file to customize the package." % filename
+        msg = "NOTE: BornProfiler created the configuration file \n\t{0}\n".format(filename) + \
+              "      for you. Edit the file to customize the package."
         print msg
 
     # directories
