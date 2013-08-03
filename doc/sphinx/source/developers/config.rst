@@ -1,0 +1,2 @@
+.. automodule:: bornprofiler.config
+   :members:

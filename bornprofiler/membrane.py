@@ -3,8 +3,8 @@
 # Published under the GNU Public Licence, version 3
 
 """
-APBS calculations: Membrane simulations
-=======================================
+APBS calculations: Membrane simulations --- :mod:`bornprofiler.membrane`
+========================================================================
 
 Requires the :program:`draw_membrane2a` binary.
 
@@ -65,8 +65,8 @@ class BaseMem(object):
            - mdie: membrane dielectric
            - Rtop : exclusion cylinder top
            - Rbot : exclusion cylinder bottom
-           - x0_R : X exclusion center 
-           - y0_R : Y exclusion center 
+           - x0_R : X exclusion center
+           - y0_R : Y exclusion center
            - cdie : channel solvent dielectric (by default same as sdie)
            - headgroup_l : thickness of headgroup region (A)
            - headgroup_die : headgroup dielectric

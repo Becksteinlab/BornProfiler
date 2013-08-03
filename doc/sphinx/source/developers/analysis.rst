@@ -1,0 +1,2 @@
+.. automodule:: bornprofiler.analysis
+   :members:

@@ -1,19 +1,18 @@
-================================
- README for BornProfiler [2010]
-================================
+==========
+ Overview
+==========
 
-Copyright (c) 2008 Kaihsu Tai
-Copyright (c) 2010-2011 Oliver Beckstein
-
-A small Python package to set up "Born" calculations of an ion in a
-membrane protein and calculate the electrostatic free energy with
-APBS_.
+**BornProfiler** is a collection of scripts to set up
+Poisson-Boltzmann electrostatic calculations for the APBS_ package, in
+particular calculations of the electrostatic solvation free energy of
+an ion along a pathway in a membrane protein (the so-called *Born
+profile*).
 
 .. _APBS: http://www.poissonboltzmann.org/apbs
 
 
 Features
-========
+--------
 
 The BornProfiler package helps setting up Poisson-Boltzmann
 calculations of the electrostatic potential of mean force of an ion in
@@ -42,14 +41,15 @@ modelled as a dielectric slab of epsilon=2.
 
 
 History and Contributions
-=========================
+-------------------------
 
-Based on Kaihsu Tai's Python rewrite
-(`Poisson-Boltzmann profile for an ion channel`_) of the original placeion.sh and
-analyze.sh bash scripts by Kaihsu Tai and Oliver Beckstein.
+Based on Kaihsu Tai's Python rewrite (`Poisson-Boltzmann profile for
+an ion channel`_) of the original ``placeion.sh`` and ``analyze.sh``
+bash scripts by Kaihsu Tai and Oliver Beckstein.
 
-Uses material from the APBS Wiki (`PMF of a helix in a membrane`_) and contains a modified version of
-Michael Grabe's ``draw_membrane2`` from APBSmem_.
+Uses material from the APBS Wiki (`PMF of a helix in a membrane`_) and
+contains a modified version of Michael Grabe's ``draw_membrane2`` from
+APBSmem_.
 
 .. _Poisson-Boltzmann profile for an ion channel:
    http://en.wikiversity.org/wiki/Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel

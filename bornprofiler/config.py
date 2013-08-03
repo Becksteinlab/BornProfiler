@@ -2,8 +2,8 @@
 # APBS BornProfiler -- dealing with configuration files
 # Copyright (c) 2010-2011 Oliver Beckstein
 """
-Configuration file handling and setup
-=====================================
+Configuration file handling and setup --- :mod:`bornprofiler.config`
+====================================================================
 
 The user can set important paths in ``~/.bornprofiler.cfg``. The file
 is automatically created with default values if it does not exist.

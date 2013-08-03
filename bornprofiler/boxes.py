@@ -1,5 +1,13 @@
 # BornProfiler -- dealing with boxes
 # Copyright (c) 2010 Oliver Beckstein
+"""
+Simulation boxes --- :mod:`bornprofiler.boxes`
+==============================================
+
+Helper functions and classes to process and analyze various simulation
+boxes. (Not used?)
+
+"""
 
 import numpy
 
@@ -14,13 +22,13 @@ class Plane(object):
     """Oriented plane."""
     def __init__(self, point, normal):
         self.point = numpy.asarray(point)
-        self.normal = numpy.asarray(normal)    
+        self.normal = numpy.asarray(normal)
     def cmp(self, x):
         """Return +1 if point is above plane, -1 below, 0 in plane."""
         return numpy.sign(numpy.dot(self.normal, numpy.asarray(x) - self.point))
     def __repr__(self):
         return "Plane(%(point)r,%(normal)r)" % vars(self)
-    
+
 class Unitcell(object):
     """Base class for simulation cells"""
 
@@ -49,7 +57,7 @@ class Orthorhombic(Unitcell):
 
     def _point_cmp(self,x):
         return numpy.array([f.cmp(x) for f in self.faces])
-        
+
     def point_inside(self, x):
         """Check if point *x* is inside the cube.
 
@@ -58,7 +66,7 @@ class Orthorhombic(Unitcell):
         checking that the point is inside.
 
         It also counts points on faces as "inside".
-        """        
+        """
         return self.point_cmp(x) != 1
 
     def point_cmp(self, x):
@@ -72,7 +80,7 @@ class Orthorhombic(Unitcell):
         elif numpy.all(numpy.logical_or(pos == -1, pos == 0)):
             return 0    # at least one face AND "inside"
         return 1        # outside
- 
+
     def contains(self, other):
         """Return ``True`` if box *other* is contained in this box."""
         return self > other

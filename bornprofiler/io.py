@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Input/Output for the BornProfiler modules
-=========================================
+Input/Output for the BornProfiler modules --- :mod:`bornprofiler.io`
+====================================================================
 
 The module contains functions and classes to handle common
 functionality to read and write files.
