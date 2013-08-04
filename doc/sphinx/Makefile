@@ -6,6 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = build
+PUBLISHDIR    = ..
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
@@ -45,16 +46,25 @@ html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+	-rm -r $(PUBLISHDIR)/html
+	cp -R $(BUILDDIR)/html $(PUBLISHDIR)
+	@echo "Updated HTML docs in $(PUBLISHDIR)/html"
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
+	-rm -r $(PUBLISHDIR)/dirhtml
+	cp -R $(BUILDDIR)/dirhtml $(PUBLISHDIR)
+	@echo "Updated HTML docs in $(PUBLISHDIR)/dirhtml"
 
 singlehtml:
 	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(BUILDDIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(BUILDDIR)/singlehtml."
+	-rm -r $(PUBLISHDIR)/singlehtml
+	cp -R $(BUILDDIR)/singlehtml $(PUBLISHDIR)
+	@echo "Updated HTML docs in $(PUBLISHDIR)/singlehtml"
 
 pickle:
 	$(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) $(BUILDDIR)/pickle
@@ -107,6 +117,10 @@ latexpdf:
 	@echo "Running LaTeX files through pdflatex..."
 	$(MAKE) -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
+	-rm $(PUBLISHDIR)/pdf
+	mkdir $(PUBLISHDIR)/pdf
+	cp $(BUILDDIR)/latex/*.pdf $(PUBLISHDIR)/pdf
+	@echo "Updated PDF docs in $(PUBLISHDIR)/pdf"
 
 text:
 	$(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(BUILDDIR)/text
@@ -117,6 +131,10 @@ man:
 	$(SPHINXBUILD) -b man $(ALLSPHINXOPTS) $(BUILDDIR)/man
 	@echo
 	@echo "Build finished. The manual pages are in $(BUILDDIR)/man."
+	-rm -r $(PUBLISHDIR)/man
+	cp -R $(BUILDDIR)/man $(PUBLISHDIR)
+	@echo "Updated man pages in $(PUBLISHDIR)/man"
+
 
 texinfo:
 	$(SPHINXBUILD) -b texinfo $(ALLSPHINXOPTS) $(BUILDDIR)/texinfo
@@ -130,6 +148,9 @@ info:
 	@echo "Running Texinfo files through makeinfo..."
 	make -C $(BUILDDIR)/texinfo info
 	@echo "makeinfo finished; the Info files are in $(BUILDDIR)/texinfo."
+	-rm -r $(PUBLISHDIR)/texinfo
+	cp -R $(BUILDDIR)/texinfo $(PUBLISHDIR)
+	@echo "Updated HTML docs in $(PUBLISHDIR)/texinfo"
 
 gettext:
 	$(SPHINXBUILD) -b gettext $(I18NSPHINXOPTS) $(BUILDDIR)/locale
