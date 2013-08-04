@@ -1,0 +1,443 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bornprofiler.analysis &mdash; BornProfiler 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="BornProfiler 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bornprofiler.analysis</h1><div class="highlight"><pre>
+<span class="c"># BornProfiler -- analysis classes, typically used in scripts</span>
+<span class="c"># Copyright (c) 2008 Kaihsu Tai</span>
+<span class="c"># Copyright (c) 2011, 2012 Oliver Beckstein</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Analysis of calculations --- :mod:`bornprofiler.analysis`</span>
+<span class="sd">=========================================================</span>
+
+<span class="sd">Functions and classes to process the output from the APBS</span>
+<span class="sd">calculations.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">with_statement</span>
+
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">bornprofiler</span>
+<span class="kn">from</span> <span class="nn">bornprofiler.core</span> <span class="kn">import</span> <span class="n">BPbase</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;bornprofiler.analysis&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="get_files"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.get_files">[docs]</a><span class="k">def</span> <span class="nf">get_files</span><span class="p">(</span><span class="n">runfile</span><span class="p">,</span> <span class="n">basedir</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read *runfile* and return dict with input files and names.&quot;&quot;&quot;</span>
+    <span class="c"># convenience function --- one could also just read the cfg file</span>
+    <span class="kn">from</span> <span class="nn">bornprofiler.io</span> <span class="kn">import</span> <span class="n">RunParameters</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">RunParameters</span><span class="p">(</span><span class="n">runfile</span><span class="p">)</span>
+        <span class="n">samplepoints</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get_bornprofile_kwargs</span><span class="p">(</span><span class="s">&#39;points&#39;</span><span class="p">)</span>
+        <span class="n">fileglob</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">get_bornprofile_kwargs</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">),</span>
+                                <span class="s">&#39;w[0-9][0-9][0-9][0-9]&#39;</span><span class="p">,</span> <span class="s">&#39;job*.out&#39;</span><span class="p">)</span>
+        <span class="n">jobName</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get_bornprofile_kwargs</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)</span>
+        <span class="n">ionName</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get_bornprofile_kwargs</span><span class="p">(</span><span class="s">&#39;ion&#39;</span><span class="p">)</span>
+        <span class="n">pqr</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get_bornprofile_kwargs</span><span class="p">(</span><span class="s">&#39;pqr&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s">&quot;Cannot obtain information about the sample points and &quot;</span>
+                     <span class="s">&quot;directory from the run parameter file </span><span class="si">%r</span><span class="s">.&quot;</span><span class="p">,</span> <span class="n">runfile</span><span class="p">)</span>
+        <span class="k">raise</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s">&#39;samplepoints&#39;</span><span class="p">:</span> <span class="n">samplepoints</span><span class="p">,</span>
+            <span class="s">&#39;datafiles&#39;</span><span class="p">:</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fileglob</span><span class="p">),</span>  <span class="c"># gets all individual windows!</span>
+            <span class="s">&#39;jobName&#39;</span><span class="p">:</span> <span class="n">jobName</span><span class="p">,</span>
+            <span class="s">&#39;ionName&#39;</span><span class="p">:</span> <span class="n">ionName</span><span class="p">,</span>
+            <span class="s">&#39;pqr&#39;</span><span class="p">:</span> <span class="n">pqr</span><span class="p">,</span>
+            <span class="p">}</span>
+</div>
+<div class="viewcode-block" id="Analyzer"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.Analyzer">[docs]</a><span class="k">class</span> <span class="nc">Analyzer</span><span class="p">(</span><span class="n">BPbase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Base class for analysis</span>
+
+<span class="sd">    1. read points</span>
+<span class="sd">    2. read energy for each point</span>
+<span class="sd">    3. write data file(s)</span>
+<span class="sd">    4. optional: plot</span>
+
+<span class="sd">    Developer note: :attr:`exporters` contains the logic for exporting</span>
+<span class="sd">    to various other formats besides plain column/text such as</span>
+<span class="sd">    PDB. For additional exporters, add the entries in the local</span>
+<span class="sd">    __init__ *after* calling ``super(name,</span>
+<span class="sd">    self).__init__(*args,**kwargs)``.</span>
+
+<span class="sd">    The Born energy W at each point (x,y,z) is stored in :attr:`data`,</span>
+<span class="sd">    a (4,N) numpy array::</span>
+
+<span class="sd">        X,Y,Z,W = data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datafiles</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;jobName&#39;</span><span class="p">,</span> <span class="s">&#39;bornprofile&#39;</span><span class="p">)</span>
+
+        <span class="n">create</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&quot;create&quot;</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">create</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">readPoints</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafiles</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;Number of sampled points (</span><span class="si">%d</span><span class="s">) does not match the number &quot;</span>\
+                    <span class="s">&quot;of data files (</span><span class="si">%d</span><span class="s">). Some windows are MISSING and will be skipped.&quot;</span> <span class="o">%</span> \
+                    <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafiles</span><span class="p">))</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="n">missing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_missing_windows</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">num</span><span class="p">,</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">path</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;missing: </span><span class="si">%4d</span><span class="s">   (</span><span class="si">%8.3f</span><span class="s">,</span><span class="si">%8.3f</span><span class="s">,</span><span class="si">%8.3f</span><span class="s">)  taskid=</span><span class="si">%d</span><span class="s">&quot;</span><span class="p">,</span>
+                                <span class="n">num</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_taskid</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">accumulate</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+        <span class="c"># other classes can add their exporters in __init__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exporters</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;pdb&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s">&#39;ext&#39;</span><span class="p">:</span> <span class="s">&#39;.pdb&#39;</span><span class="p">,</span>
+                                  <span class="s">&#39;exporter&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export_pdb</span><span class="p">},</span>
+                          <span class="p">}</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Analyzer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Analyzer.read"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.Analyzer.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Read datafile *filename* (format: x,y,z,W or z,W).</span>
+
+<span class="sd">        The data are stored in :attr:`data`, a (4,N) array. If only z</span>
+<span class="sd">        coordinates are provided then the x and y columns(data[0] and</span>
+<span class="sd">        data[1]) are set to 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">(</span><span class="s">&quot;welec&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;Reading old-style data file (z,W) </span><span class="si">%(filename)r</span><span class="s">.&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Read Born PMF from </span><span class="si">%(filename)r</span><span class="s">.&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+</div>
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">outName</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">(</span><span class="s">&quot;welec&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outName</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outFile</span><span class="p">:</span>
+            <span class="n">outFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# x/A y/A z/A  W/(kJ/mol)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">E</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">:</span>
+                <span class="n">outFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%(x)8.3f</span><span class="s"> </span><span class="si">%(y)8.3f</span><span class="s"> </span><span class="si">%(z)8.3f</span><span class="s"> </span><span class="si">%(E)8.3e</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">vars</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Wrote Born PMF to </span><span class="si">%(outName)r</span><span class="s">.&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+
+<div class="viewcode-block" id="Analyzer.accumulate"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.Analyzer.accumulate">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Read the energy from each datafile and store with the coordinates.</span>
+
+<span class="sd">        Populates :attr:`AnalyzeElec.data`, a (4,N) array where N is the</span>
+<span class="sd">        number of windows.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">):</span>
+            <span class="n">outName</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfilename</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+            <span class="c"># find file name in list of input files</span>
+            <span class="n">outPath</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">datafiles</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">outName</span><span class="p">):</span>
+                    <span class="n">outPath</span> <span class="o">=</span> <span class="n">path</span>
+                    <span class="k">break</span>
+            <span class="k">if</span> <span class="n">outPath</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;Sample point </span><span class="si">%d</span><span class="s"> </span><span class="si">%r</span><span class="s">: Could not find file </span><span class="si">%s</span><span class="s">.&quot;</span> <span class="o">%</span>
+                            <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">outName</span><span class="p">))</span>
+                <span class="k">continue</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outPath</span><span class="p">)</span> <span class="k">as</span> <span class="n">outFile</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">outFile</span><span class="p">:</span>
+                    <span class="c"># maybe use regex o make this more robust...</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">18</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;  Local net energy&quot;</span><span class="p">):</span>
+                        <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">point</span><span class="p">,</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">6</span><span class="p">])])))</span>
+                        <span class="k">break</span>
+            <span class="k">print</span> <span class="s">&quot;[</span><span class="si">%5.1f%%</span><span class="s">] Read point </span><span class="si">%6d</span><span class="s">/</span><span class="si">%6d</span><span class="s">  </span><span class="si">%r</span><span class="s"> </span><span class="se">\r</span><span class="s">&quot;</span> <span class="o">%</span> \
+                <span class="p">(</span><span class="mf">100.</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">num</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">),</span>
+                 <span class="n">num</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">outPath</span><span class="p">),</span>
+        <span class="k">print</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+</div>
+<div class="viewcode-block" id="Analyzer.find_missing_windows"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.Analyzer.find_missing_windows">[docs]</a>    <span class="k">def</span> <span class="nf">find_missing_windows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a list of job numbers that have no data corresponding to a point.&quot;&quot;&quot;</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">):</span>
+            <span class="n">outName</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfilename</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+            <span class="c"># find file name in list of input files</span>
+            <span class="n">outPath</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">datafiles</span><span class="p">:</span>   <span class="c"># could make self.datafiles a hash for faster search</span>
+                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">outName</span><span class="p">):</span>
+                    <span class="n">outPath</span> <span class="o">=</span> <span class="n">path</span>
+                    <span class="k">break</span>                 <span class="c"># good, found it</span>
+            <span class="k">if</span> <span class="n">outPath</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">missing</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">num</span><span class="p">,</span> <span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">point</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">outName</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">rec</span><span class="o">.</span><span class="n">fromrecords</span><span class="p">(</span><span class="n">missing</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="s">&quot;num,x,y,z,path&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Analyzer.export"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.Analyzer.export">[docs]</a>    <span class="k">def</span> <span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s">&quot;dx&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Export data to different file format.</span>
+
+<span class="sd">        The format is deduced from the filename suffix or</span>
+<span class="sd">        *format*. *kwargs* are set according to the exporter.</span>
+
+<span class="sd">        dx</span>
+<span class="sd">           histogram on a grid; must provide kwarg *delta* for the</span>
+<span class="sd">           grid spacing.</span>
+<span class="sd">        pdb</span>
+<span class="sd">           write PDB file with an ion for each sample point and the</span>
+<span class="sd">           energy as the B-factor. The kwarg *ion* can be used to</span>
+<span class="sd">           set the name/resName in the file (ION is the default).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">(</span><span class="s">&quot;welec&quot;</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="s">&quot;.&quot;</span><span class="o">+</span><span class="n">format</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">format</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">format</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">exporters</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%r</span><span class="s"> format is unsupported, only </span><span class="si">%r</span><span class="s"> work&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">format</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exporters</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">exporters</span><span class="p">[</span><span class="n">format</span><span class="p">][</span><span class="s">&#39;exporter&#39;</span><span class="p">](</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_export_pdb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Write datapoints to pdb file with energy in the B-factor field.</span>
+
+<span class="sd">        :Keywords:</span>
+<span class="sd">          *ion*</span>
+<span class="sd">             name of the ion (name/resSeq in pdb)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c"># http://www.wwpdb.org/documentation/format32/sect9.html</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;ATOM&#39;</span><span class="p">:</span>   <span class="s">&quot;ATOM  </span><span class="si">%(serial)5d</span><span class="s"> </span><span class="si">%(name)-4s%(altLoc)1s%(resName)-3s</span><span class="s"> </span><span class="si">%(chainID)1s%(resSeq)4d%(iCode)1s</span><span class="s">   </span><span class="si">%(x)8.3f%(y)8.3f%(z)8.3f%(occupancy)6.2f%(tempFactor)6.2f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+               <span class="s">&#39;REMARK&#39;</span><span class="p">:</span> <span class="s">&quot;REMARK     </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+               <span class="s">&#39;TITLE&#39;</span><span class="p">:</span>  <span class="s">&quot;TITLE    </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+               <span class="s">&#39;CRYST1&#39;</span><span class="p">:</span> <span class="s">&quot;CRYST1</span><span class="si">%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f</span><span class="s"> </span><span class="si">%-11s%4d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span>
+               <span class="p">}</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">resName</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;ion&#39;</span><span class="p">,</span> <span class="s">&#39;ION&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="s">&#39;ION&#39;</span>  <span class="c"># None --&gt; ION</span>
+        <span class="n">chainID</span> <span class="o">=</span> <span class="s">&quot;Z&quot;</span>
+        <span class="n">iCode</span> <span class="o">=</span> <span class="n">altLoc</span> <span class="o">=</span> <span class="s">&quot; &quot;</span>
+        <span class="n">occupancy</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pdb</span><span class="p">:</span>
+            <span class="n">pdb</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span><span class="p">[</span><span class="s">&#39;TITLE&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="s">&quot;Poisson-Boltzmann electrostatic free energy&quot;</span><span class="p">)</span>
+            <span class="n">pdb</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span><span class="p">[</span><span class="s">&#39;REMARK&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="s">&quot;W(x,y,z) in kJ/mol&quot;</span><span class="p">)</span>
+            <span class="n">pdb</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span><span class="p">[</span><span class="s">&#39;REMARK&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="s">&quot;Written by apbs-bornprofile-analyze3D.py&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">serial</span><span class="p">,(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">W</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
+                <span class="n">serial</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">resSeq</span> <span class="o">=</span> <span class="n">serial</span>
+                <span class="n">tempFactor</span> <span class="o">=</span> <span class="n">W</span>
+                <span class="n">pdb</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span><span class="p">[</span><span class="s">&#39;ATOM&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="nb">vars</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Wrote ion positions for </span><span class="si">%(name)s</span><span class="s"> to pdb file </span><span class="si">%(filename)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&lt;</span><span class="si">%s</span><span class="s"> jobName=</span><span class="si">%r</span><span class="s"> points=</span><span class="si">%r</span><span class="s">, </span><span class="si">%d</span><span class="s"> data files&gt;&quot;</span> <span class="o">%</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafiles</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="AnalyzeElec"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.AnalyzeElec">[docs]</a><span class="k">class</span> <span class="nc">AnalyzeElec</span><span class="p">(</span><span class="n">Analyzer</span><span class="p">):</span>
+    <span class="s">&quot;analyze APBS energy profiling results&quot;</span>
+
+<div class="viewcode-block" id="AnalyzeElec.plot"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.AnalyzeElec.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">plotter</span><span class="o">=</span><span class="s">&#39;matplotlib&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Plot Born profile.</span>
+
+<span class="sd">        plot([filename[,plotter[,kwargs ...]]])</span>
+
+<span class="sd">        :Keywords:</span>
+<span class="sd">          *filename*</span>
+<span class="sd">             name of image file to save the plot in; with *plotter* = &#39;Gnuplot&#39;</span>
+<span class="sd">             only eps files are supported (I think...)</span>
+<span class="sd">          *kwargs*</span>
+<span class="sd">             other keyword arguments that are passed on to :func:`pylab.plot`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">pylab</span> <span class="kn">import</span> <span class="n">plot</span><span class="p">,</span> <span class="n">xlabel</span><span class="p">,</span> <span class="n">ylabel</span><span class="p">,</span> <span class="n">savefig</span>
+
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">plotName</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">(</span><span class="s">&quot;welec&quot;</span><span class="p">,</span><span class="s">&quot;.pdf&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plotName</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;color&#39;</span><span class="p">,</span> <span class="s">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;linewidth&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">z</span><span class="p">,</span><span class="n">W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c"># should work for (4,N) and (2,N) data</span>
+        <span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">W</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">xlabel</span><span class="p">(</span><span class="s">r&#39;$z$ in nm&#39;</span><span class="p">)</span>
+        <span class="n">ylabel</span><span class="p">(</span><span class="s">r&#39;$W$ in kJ$\cdot$mol$^{-1}$&#39;</span><span class="p">)</span>
+        <span class="n">savefig</span><span class="p">(</span><span class="n">plotName</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Plotted graph W(z) </span><span class="si">%(plotName)r</span><span class="s">.&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">plotName</span>
+</div>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&lt;</span><span class="si">%s</span><span class="s"> jobName=</span><span class="si">%r</span><span class="s"> points=</span><span class="si">%r</span><span class="s">, </span><span class="si">%d</span><span class="s"> data files&gt;&quot;</span> <span class="o">%</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafiles</span><span class="p">))</span>
+</div>
+<span class="k">class</span> <span class="nc">MultiPlot1D</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="AnalyzeElec3D"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.AnalyzeElec3D">[docs]</a><span class="k">class</span> <span class="nc">AnalyzeElec3D</span><span class="p">(</span><span class="n">Analyzer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;analyze APBS energy profiling results</span>
+
+<span class="sd">    With create=True (default), reads position data from samplepoints</span>
+<span class="sd">    file and energies from APBS output files.</span>
+
+<span class="sd">    With create=False, reads positions and energies from a previous</span>
+<span class="sd">    output file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AnalyzeElec3D</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exporters</span><span class="p">[</span><span class="s">&#39;dx&#39;</span><span class="p">]</span><span class="o">=</span>  <span class="p">{</span><span class="s">&#39;ext&#39;</span><span class="p">:</span> <span class="s">&#39;.dx&#39;</span><span class="p">,</span>
+                                <span class="s">&#39;exporter&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export_dx</span><span class="p">}</span>
+
+<div class="viewcode-block" id="AnalyzeElec3D.ranges"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.AnalyzeElec3D.ranges">[docs]</a>    <span class="k">def</span> <span class="nf">ranges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the range of values in each dimension.</span>
+
+<span class="sd">        :Returns: Array *r* of shape (2,3): r[0] contains the smallest and</span>
+<span class="sd">                  r[1] the largest values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">minmax</span><span class="p">(</span><span class="n">dim</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">dim</span><span class="p">,:]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">dim</span><span class="p">,:]</span><span class="o">.</span><span class="n">max</span><span class="p">()])</span>
+        <span class="n">ranges</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">minmax</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span> <span class="k">for</span> <span class="n">dim</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)])</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="n">padding</span>
+        <span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">padding</span>
+        <span class="k">return</span> <span class="n">ranges</span>
+</div>
+<div class="viewcode-block" id="AnalyzeElec3D.histogramdd"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.AnalyzeElec3D.histogramdd">[docs]</a>    <span class="k">def</span> <span class="nf">histogramdd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">fillfac</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Histogram PMF on a regular grid.</span>
+
+<span class="sd">        The spacing *delta* must be the same or larger than used in Hollow; to be</span>
+<span class="sd">        on the safe side, just use the value of *grid_spacing* (e.g. 2.0 for 2 A).</span>
+<span class="sd">        The histogram grid is chosen large enough to encompass all data points.</span>
+
+<span class="sd">        If *delta* is bigger than *grid_spacing* or points are not on a</span>
+<span class="sd">        regular grid the values are averaged over each bin.</span>
+
+<span class="sd">        Points without data are filled with fillfac * max(histogram).</span>
+
+<span class="sd">        :Returns: histogram, edges (same as :func:`numpy.histogramdd`)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ranges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ranges</span><span class="p">(</span><span class="n">padding</span><span class="o">=</span><span class="n">delta</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+        <span class="n">bins</span> <span class="o">=</span> <span class="p">((</span><span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">delta</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">,</span><span class="n">e</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">histogramdd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="nb">range</span><span class="o">=</span><span class="n">ranges</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                                <span class="n">weights</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">N</span><span class="p">,</span><span class="n">e</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">histogramdd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="nb">range</span><span class="o">=</span><span class="n">ranges</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">[</span><span class="n">N</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="n">N</span><span class="p">[</span><span class="n">N</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">]</span>  <span class="c"># average PMF</span>
+        <span class="n">h</span><span class="p">[</span><span class="n">N</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">fillfac</span><span class="o">*</span><span class="n">h</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">h</span><span class="p">,</span><span class="n">e</span>
+</div>
+<div class="viewcode-block" id="AnalyzeElec3D.Grid"><a class="viewcode-back" href="../../developers/analysis.html#bornprofiler.analysis.AnalyzeElec3D.Grid">[docs]</a>    <span class="k">def</span> <span class="nf">Grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Package the PMF as a :class:`gridData.Grid` object.</span>
+
+<span class="sd">        *delta* should be the original spacing of the points in angstroem.</span>
+
+<span class="sd">        With a *resample_factor*, the data are interpolated on a new grid</span>
+<span class="sd">        with *resample_factor* times as many bins as in the original</span>
+<span class="sd">        histogram (See :meth:`gridData.Grid.resample_factor`).</span>
+
+<span class="sd">        *interpolation_order* sets the interpolation order for the</span>
+<span class="sd">        resampling procedure.</span>
+
+<span class="sd">        .. Warning:: Interpolating can lead to artifacts in the 3D PMF. If</span>
+<span class="sd">                     in doubt, **do not resample**.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">gridData</span> <span class="kn">import</span> <span class="n">Grid</span>
+        <span class="n">resample_factor</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;resample_factor&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s">&#39;interpolation_spline_order&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">Grid</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">histogramdd</span><span class="p">(</span><span class="n">delta</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resample_factor</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">g</span>
+        <span class="k">return</span> <span class="n">g</span><span class="o">.</span><span class="n">resample_factor</span><span class="p">(</span><span class="n">resample_factor</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_export_dx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">delta</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Write data to dx file *filename*.</span>
+
+<span class="sd">        export(delta[,filename[,kwargs]])</span>
+
+<span class="sd">        Requires grid spacing delta of original data points. *filename* is</span>
+<span class="sd">        automatically chosen if not supplied. Other *kwargs* are passed on</span>
+<span class="sd">        to :meth:`AnalElec.Grid`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Grid</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s">&quot;dx&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Wrote Born PMF to dx file  </span><span class="si">%(filename)r</span><span class="s"> with spacing </span><span class="si">%(delta)g</span><span class="s"> A.&quot;</span><span class="p">,</span>
+                    <span class="nb">vars</span><span class="p">())</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Lennard van der Feltz, Kaihsu Tai, Oliver Beckstein.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

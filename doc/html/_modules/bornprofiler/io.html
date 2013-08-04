@@ -1,0 +1,427 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bornprofiler.io &mdash; BornProfiler 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="BornProfiler 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bornprofiler.io</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Input/Output for the BornProfiler modules --- :mod:`bornprofiler.io`</span>
+<span class="sd">====================================================================</span>
+
+<span class="sd">The module contains functions and classes to handle common</span>
+<span class="sd">functionality to read and write files.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">with_statement</span>
+<span class="kn">import</span> <span class="nn">os.path</span><span class="o">,</span> <span class="nn">errno</span>
+<span class="kn">from</span> <span class="nn">ConfigParser</span> <span class="kn">import</span> <span class="n">SafeConfigParser</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="kn">import</span> <span class="nn">config</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;bornprofiler.io&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="path"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.path">[docs]</a><span class="k">def</span> <span class="nf">path</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return *s* with user expansion.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="float_or_None"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.float_or_None">[docs]</a><span class="k">def</span> <span class="nf">float_or_None</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return *s* as float or None when x == &quot;None&quot;.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="s">&quot;None&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="RunParameters"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.RunParameters">[docs]</a><span class="k">class</span> <span class="nc">RunParameters</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;All parameters for a BornProfiler or APBSmem run are stored in a INI-style file.</span>
+
+<span class="sd">    This class accesses these parameters and can create a template with the</span>
+<span class="sd">    default values.</span>
+
+<span class="sd">    The class *guarantees* that all parameters exist; if needed they are</span>
+<span class="sd">    populated with default values. Hence it is always possible to access a</span>
+<span class="sd">    parameter without having to check if it is there.</span>
+
+<span class="sd">   :Parameters:</span>
+<span class="sd">        - zmem : membrane centre (A)</span>
+<span class="sd">        - lmem : membrane thickness (A)</span>
+<span class="sd">        - Vmem : cytosolic potential in kT/e (untested)</span>
+<span class="sd">        - pdie : protein dielectric</span>
+<span class="sd">        - sdie:  solvent dielectric</span>
+<span class="sd">        - mdie:  membrane dielectric</span>
+<span class="sd">        - Rtop : exclusion cylinder top</span>
+<span class="sd">        - Rbot : exclusion cylinder bottom</span>
+<span class="sd">        - x0_R : exclusion zone centre in X, ``None`` selects the default</span>
+<span class="sd">        - y0_R : exclusion zone centre in Y, ``None`` selects the default</span>
+<span class="sd">        - dx_R : shift centre of the exclusion zone in X</span>
+<span class="sd">        - dy_R : shift centre of the exclusion zone in Y</span>
+<span class="sd">        - cdie : dielectric in the channel (e.g. SDIE)</span>
+<span class="sd">        - headgroup_l : thicknes of headgroup region</span>
+<span class="sd">        - headgroup_die : dielectric for headgroup region</span>
+<span class="sd">        - temperature : temperature</span>
+<span class="sd">        - conc : ionic strength in mol/l</span>
+<span class="sd">        - ... and more</span>
+
+<span class="sd">    .. SeeAlso:; The example run input configurations file</span>
+<span class="sd">       :doc:`examples/example_runinput.cfg` is the full specification and</span>
+<span class="sd">       contains annotated values for *all* parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># For each task (cf the apbs-* scripts!) we define the variables that we</span>
+    <span class="c"># want to pull from the run input config file in the parameter_selections</span>
+    <span class="c"># dict. Keys are tasks, values are dicts that correspond to sections in the</span>
+    <span class="c"># cfg file, together with parameter names *and* types (for the conversion</span>
+    <span class="c"># to python types).</span>
+
+    <span class="c"># When new parameter are added to the cfg file then they need to be added</span>
+    <span class="c"># in various places:</span>
+    <span class="c">#</span>
+    <span class="c"># 1. examples/example_runinput.cfg (documentation/specification! :-p )</span>
+    <span class="c"># 2. RunParameters.parameter_selections (possibly multiple times!)</span>
+    <span class="c"># 3. RunParameters._populate_default()</span>
+    <span class="c"># 4. membrane.BaseMem: set as attribute</span>
+    <span class="c"># 5. membrane.APBSmem.vars: name of the attribute if needed for a task</span>
+    <span class="c"># 6. membrane.BornAPBSmem.vars: name of the attribute if needed for a task</span>
+
+    <span class="c"># The following should all be in a template file, together with the</span>
+    <span class="c"># defaults and types...</span>
+
+    <span class="c"># Note: The parameter keys are converted to lowercase when accessing</span>
+    <span class="c"># the runparameter file but need to be properly cased in the kwargs</span>
+    <span class="c"># list because this is how they are being used in the downstream code.</span>
+    <span class="c"># section -&gt; key, convertor_function</span>
+    <span class="c">#     float, int, str: simple values</span>
+    <span class="c">#     path:            expand ~ etc</span>
+    <span class="c">#     eval:            python expressions such as lists or tuples (NOT SAFE!!)</span>
+    <span class="n">parameter_selections</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">&#39;bornprofile&#39;</span><span class="p">:</span>
+            <span class="p">{</span><span class="s">&#39;environment&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="s">&#39;temperature&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;conc&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;sdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pqr&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;runtype&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">)],</span>
+             <span class="s">&#39;membrane&#39;</span><span class="p">:</span>    <span class="p">[(</span><span class="s">&#39;Rtop&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;Rbot&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;cdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;x0_R&#39;</span><span class="p">,</span> <span class="n">float_or_None</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;y0_R&#39;</span><span class="p">,</span> <span class="n">float_or_None</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;dx_R&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;dy_R&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;headgroup_die&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;headgroup_l&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;Vmem&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;lmem&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;zmem&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;mdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">)],</span>
+             <span class="s">&#39;bornprofile&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="s">&#39;ion&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;dime&#39;</span><span class="p">,</span> <span class="nb">eval</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;glen&#39;</span><span class="p">,</span> <span class="nb">eval</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;fglen&#39;</span><span class="p">,</span> <span class="nb">eval</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;points&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">)],</span>
+             <span class="s">&#39;job&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;script&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;arrayscript&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">)],</span>
+             <span class="p">},</span>
+        <span class="s">&#39;apbsmem&#39;</span><span class="p">:</span>
+            <span class="p">{</span><span class="s">&#39;environment&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="s">&#39;temperature&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;conc&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;sdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pqr&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">),],</span>
+             <span class="s">&#39;membrane&#39;</span><span class="p">:</span>    <span class="p">[(</span><span class="s">&#39;Rtop&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;Rbot&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;cdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;x0_R&#39;</span><span class="p">,</span> <span class="n">float_or_None</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;y0_R&#39;</span><span class="p">,</span> <span class="n">float_or_None</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;dx_R&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;dy_R&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;headgroup_die&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;headgroup_l&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;Vmem&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s">&#39;lmem&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;zmem&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;mdie&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">)],</span>
+             <span class="s">&#39;potential&#39;</span><span class="p">:</span>   <span class="p">[(</span><span class="s">&#39;dime&#39;</span><span class="p">,</span> <span class="nb">eval</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;glen&#39;</span><span class="p">,</span> <span class="nb">eval</span><span class="p">),],</span>
+             <span class="p">}</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">defaults</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reads and parses the configuration file for a job.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parser</span> <span class="o">=</span> <span class="n">SafeConfigParser</span><span class="p">(</span><span class="n">defaults</span><span class="p">)</span>
+
+        <span class="c"># set the defaults and override ...</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_populate_default</span><span class="p">()</span>
+
+        <span class="c"># start with user configuration:</span>
+        <span class="c"># (I could add the default values in a template file here... but still</span>
+        <span class="c"># need a way to determine the type for entries)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parser</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">CONFIGNAME</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Created new run input configuration </span><span class="si">%(filename)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># and then override with values from local file</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parser</span><span class="o">.</span><span class="n">readfp</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Read run input configuration from </span><span class="si">%(filename)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_populate_default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c"># NOTE: - the parser turns all keys into *lowercase*</span>
+        <span class="c">#       - values must be strings</span>
+        <span class="c">#       - hack: python types are defined via external dicts</span>
+        <span class="c">#         (see self.bornprofile_parameters and</span>
+        <span class="c">#         get_bornprofile_kwargs())</span>
+        <span class="k">if</span> <span class="n">parser</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">parser</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parser</span>
+        <span class="c"># can use %(basedir)s in other entries</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s">&#39;basedir&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">curdir</span><span class="p">))</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;DEFAULT&#39;</span><span class="p">,</span> <span class="s">&#39;solvent_dielectric&#39;</span><span class="p">,</span> <span class="s">&#39;80&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_section</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;Rtop&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;Rbot&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;x0_R&#39;</span><span class="p">,</span> <span class="s">&#39;None&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;y0_R&#39;</span><span class="p">,</span> <span class="s">&#39;None&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;dx_R&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;dy_R&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;cdie&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%(solvent_dielectric)s</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;headgroup_die&#39;</span><span class="p">,</span> <span class="s">&#39;20&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;headgroup_l&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;mdie&#39;</span><span class="p">,</span> <span class="s">&#39;2&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;Vmem&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;lmem&#39;</span><span class="p">,</span> <span class="s">&#39;40&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;membrane&#39;</span><span class="p">,</span> <span class="s">&#39;zmem&#39;</span><span class="p">,</span><span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_section</span><span class="p">(</span><span class="s">&#39;environment&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;environment&#39;</span><span class="p">,</span> <span class="s">&#39;pqr&#39;</span><span class="p">,</span> <span class="s">&#39;protein.pqr&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;environment&#39;</span><span class="p">,</span> <span class="s">&#39;temperature&#39;</span><span class="p">,</span> <span class="s">&#39;298.15&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;environment&#39;</span><span class="p">,</span> <span class="s">&#39;conc&#39;</span><span class="p">,</span> <span class="s">&#39;0.1&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;environment&#39;</span><span class="p">,</span> <span class="s">&#39;pdie&#39;</span><span class="p">,</span> <span class="s">&#39;10&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;environment&#39;</span><span class="p">,</span> <span class="s">&#39;sdie&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%(solvent_dielectric)s</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;environment&#39;</span><span class="p">,</span> <span class="s">&#39;runtype&#39;</span><span class="p">,</span> <span class="s">&#39;with_protein&#39;</span><span class="p">)</span>  <span class="c"># alternative: mem_only</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_section</span><span class="p">(</span><span class="s">&#39;bornprofile&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;bornprofile&#39;</span><span class="p">,</span> <span class="s">&#39;ion&#39;</span><span class="p">,</span> <span class="s">&#39;Na&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;bornprofile&#39;</span><span class="p">,</span> <span class="s">&#39;dime&#39;</span><span class="p">,</span> <span class="s">&#39;[(129,129,129),(129,129,129),(129,129,129)]&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;bornprofile&#39;</span><span class="p">,</span> <span class="s">&#39;glen&#39;</span><span class="p">,</span> <span class="s">&#39;[(250,250,250),(100,100,100),(50,50,50)]&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;bornprofile&#39;</span><span class="p">,</span> <span class="s">&#39;fglen&#39;</span><span class="p">,</span> <span class="s">&#39;(40,40,40)&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;bornprofile&#39;</span><span class="p">,</span> <span class="s">&#39;points&#39;</span><span class="p">,</span> <span class="s">&#39;points.dat&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_section</span><span class="p">(</span><span class="s">&#39;potential&#39;</span><span class="p">)</span>   <span class="c"># for membrane.APBSmem</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;potential&#39;</span><span class="p">,</span> <span class="s">&#39;dime&#39;</span><span class="p">,</span> <span class="s">&#39;(97,97,97)&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;potential&#39;</span><span class="p">,</span> <span class="s">&#39;glen&#39;</span><span class="p">,</span> <span class="s">&#39;(200,200,200)&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_section</span><span class="p">(</span><span class="s">&#39;executables&#39;</span><span class="p">)</span>
+        <span class="c">#should come from global file</span>
+        <span class="c">#parser.set(&#39;executables&#39;, &#39;drawmembrane&#39;, &#39;draw_membrane2a&#39;)</span>
+        <span class="c">#parser.set(&#39;executables&#39;, &#39;apbs&#39;, &#39;apbs&#39;)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_section</span><span class="p">(</span><span class="s">&#39;job&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;job&#39;</span><span class="p">,</span> <span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;mbornprofile&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;job&#39;</span><span class="p">,</span> <span class="s">&#39;script&#39;</span><span class="p">,</span> <span class="s">&#39;q_local.sh&#39;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;job&#39;</span><span class="p">,</span> <span class="s">&#39;arrayscript&#39;</span><span class="p">,</span> <span class="s">&#39;q_array.sge&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Prepare kwargs for a specified task.&quot;&quot;&quot;</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">parameter_selection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_selections</span><span class="p">[</span><span class="n">task</span><span class="p">]</span>
+
+        <span class="n">kw</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">section</span><span class="p">,</span><span class="n">parameters</span> <span class="ow">in</span> <span class="n">parameter_selection</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">option</span><span class="p">,</span><span class="n">convertor</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">kw</span><span class="p">[</span><span class="n">option</span><span class="p">]</span> <span class="o">=</span> <span class="n">convertor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parser</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">section</span><span class="p">,</span><span class="n">option</span><span class="p">,</span><span class="nb">vars</span><span class="o">=</span><span class="n">kwargs</span><span class="p">))</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Problem obtaining required parameter &quot;</span>
+                                 <span class="s">&quot;[</span><span class="si">%(section)s</span><span class="s">] </span><span class="si">%(option)s</span><span class="s"> from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">),</span> <span class="nb">vars</span><span class="p">())</span>
+                    <span class="k">raise</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">kw</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">kw</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">kw</span>
+
+<div class="viewcode-block" id="RunParameters.get_bornprofile_kwargs"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.RunParameters.get_bornprofile_kwargs">[docs]</a>    <span class="k">def</span> <span class="nf">get_bornprofile_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a dict with kwargs appropriate for :class:`membrane.BornAPBSmem`.</span>
+
+<span class="sd">        Default values can be supplied in *kwargs*. This method picks unique</span>
+<span class="sd">        parameter keys from the relevant sections of the run parameters file</span>
+<span class="sd">        (i.e. *bornprofile*, *membrane*, and *environment*).</span>
+
+<span class="sd">        If args are provided, then either a single value corresponding</span>
+<span class="sd">        to the key or a list of such values is returned instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_args</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;bornprofile&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">args</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_kwargs</span><span class="p">(</span><span class="o">*</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="RunParameters.get_apbsmem_kwargs"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.RunParameters.get_apbsmem_kwargs">[docs]</a>    <span class="k">def</span> <span class="nf">get_apbsmem_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a dict with kwargs appropriate for :class:`membrane.APBSmem`.</span>
+
+<span class="sd">        Default values can be supplied in *kwargs*. This method picks unique</span>
+<span class="sd">        parameter keys from the relevant sections of the run parameters file</span>
+<span class="sd">        (i.e. *bornprofile*, *membrane*, and *environment*).</span>
+
+<span class="sd">        If args are provided, then either a single value corresponding</span>
+<span class="sd">        to the key or a list of such values is returned instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_args</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;apbsmem&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">args</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_kwargs</span><span class="p">(</span><span class="o">*</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="RunParameters.write"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.RunParameters.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Write the current parameters to *filename*.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filename</span>
+</div></div>
+<div class="viewcode-block" id="readPoints"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.readPoints">[docs]</a><span class="k">def</span> <span class="nf">readPoints</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read coordinates from either data file or pdb.</span>
+
+<span class="sd">    Returns (N,3) array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">readPointsDat</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">readPointsPDB</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Read points from </span><span class="si">%(filename)r</span><span class="s">.&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">points</span>
+</div>
+<div class="viewcode-block" id="readPointsDat"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.readPointsDat">[docs]</a><span class="k">def</span> <span class="nf">readPointsDat</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read points from a simple data file.</span>
+
+<span class="sd">    Example::</span>
+<span class="sd">       # comment</span>
+<span class="sd">       x y z</span>
+<span class="sd">       x y z</span>
+<span class="sd">       ...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># or could just use numpy.loadtxt(filename) ...</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">pointsFile</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pointsFile</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;#&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%(filename)r</span><span class="s"> must contain at least 3 entries x y z per line. Offending line was </span><span class="si">%(line)r</span><span class="s">.&quot;</span> <span class="o">%</span> <span class="nb">vars</span><span class="p">())</span>
+            <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="readPointsPDB"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.readPointsPDB">[docs]</a><span class="k">def</span> <span class="nf">readPointsPDB</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read points form a PDB formatted file.</span>
+
+<span class="sd">    Takes x,y,z from any ATOM or HETATM record.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">pointsFile</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pointsFile</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;ATOM&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;HETATM&#39;</span><span class="p">)):</span>
+                <span class="k">continue</span>
+            <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">30</span><span class="p">:</span><span class="mi">38</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">38</span><span class="p">:</span><span class="mi">46</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">46</span><span class="p">:</span><span class="mi">54</span><span class="p">])</span>
+            <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="read_template"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.read_template">[docs]</a><span class="k">def</span> <span class="nf">read_template</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Return *filename* as one string.</span>
+
+<span class="sd">  *filename* can be one of the template files.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="c"># XXX: add a cache?? Would have to be careful with user supplied files.</span>
+  <span class="n">fn</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_template</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+  <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Reading file </span><span class="si">%(filename)r</span><span class="s"> from </span><span class="si">%(fn)r</span><span class="s">.&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">())</span>
+  <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">file</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span><span class="o">.</span><span class="n">readlines</span><span class="p">())</span>
+
+</div>
+<div class="viewcode-block" id="PQRReader"><a class="viewcode-back" href="../../developers/io.html#bornprofiler.io.PQRReader">[docs]</a><span class="k">class</span> <span class="nc">PQRReader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Naive implementation of a PQR reader.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pqrLines</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c"># verbatim copy of all ATOM lines, some functions just use that</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pqrFile</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pqrFile</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;ATOM&quot;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pqrLines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="n">_coords</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pqrLines</span><span class="p">:</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>      <span class="c"># This depends on correct spacing in the PQR file.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">_coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">fields</span><span class="p">[</span><span class="mi">5</span><span class="p">:</span><span class="mi">8</span><span class="p">]))</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s">&quot;Problem with PQR file format of file </span><span class="si">%(pqrName)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s">&quot;Offending line: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+                <span class="k">raise</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">coords</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">_coords</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">centroid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;PQRReader: Read </span><span class="si">%(pqrName)r</span><span class="s"> with centroid = </span><span class="si">%(centroid)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">coords</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">centerOfGeometry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">centroid</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Lennard van der Feltz, Kaihsu Tai, Oliver Beckstein.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,732 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>bornprofiler.core &mdash; BornProfiler 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="BornProfiler 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for bornprofiler.core</h1><div class="highlight"><pre>
+<span class="c"># -*- encoding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Core functionality --- :mod:`bornprofiler.core`</span>
+<span class="sd">===============================================</span>
+
+<span class="sd">Base classes around which the whole **BornProfiler** package is built,</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">with_statement</span>
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">errno</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="kn">import</span> <span class="n">read_template</span>
+<span class="kn">from</span> <span class="nn">config</span> <span class="kn">import</span> <span class="n">configuration</span>
+<span class="kn">from</span> <span class="nn">utilities</span> <span class="kn">import</span> <span class="n">in_dir</span><span class="p">,</span> <span class="n">asiterable</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;bornprofiler.core&#39;</span><span class="p">)</span>
+
+<span class="c"># This TEMPLATE dict is only used in WriteIn() but it acts like a global cache</span>
+<span class="c"># (which is good when writing a few thousand windows).</span>
+<span class="c"># (or add a cache to read_template??)</span>
+<span class="n">TEMPLATES</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;placeion&#39;</span><span class="p">:</span> <span class="n">read_template</span><span class="p">(</span><span class="s">&#39;placeion.in&#39;</span><span class="p">),</span> <span class="p">}</span>
+
+<span class="n">TABLE_IONS</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="s">&#39;bornions.dat&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Ion"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.Ion">[docs]</a><span class="k">class</span> <span class="nc">Ion</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Represent parameters for an ion.&quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">atomname</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">charge</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">Ion</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span> <span class="n">atomname</span><span class="o">=</span><span class="n">atomname</span><span class="p">,</span>
+                              <span class="n">radius</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">radius</span><span class="p">),</span> <span class="n">charge</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">charge</span><span class="p">))</span>
+  <span class="k">def</span> <span class="nf">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+      <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">Ion</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</div>
+<span class="k">def</span> <span class="nf">_parse_TABLE_IONS</span><span class="p">():</span>
+  <span class="n">ions</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="n">lines</span> <span class="o">=</span> <span class="n">TABLE_IONS</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;#&quot;</span><span class="p">):</span>
+      <span class="k">continue</span>
+    <span class="n">ions</span><span class="p">[</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Ion</span><span class="p">(</span><span class="o">*</span><span class="n">values</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">ions</span>
+
+<span class="c">#: Rashin&amp;Honig ion data as a dict, read from :file:`templates/bornions.dat`.</span>
+<span class="n">IONS</span> <span class="o">=</span> <span class="n">_parse_TABLE_IONS</span><span class="p">()</span>
+
+<div class="viewcode-block" id="BPbase"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.BPbase">[docs]</a><span class="k">class</span> <span class="nc">BPbase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Provide basic infra structure methods for bornprofiler classes.</span>
+
+<span class="sd">  Defines the file name API.</span>
+
+<span class="sd">  * simply number files, do not use z or other data in filename;</span>
+<span class="sd">  * assume standard python 0-based indexing and naming</span>
+<span class="sd">  * filenames are generated and typically only take *num*, the window</span>
+<span class="sd">    number, as an argument</span>
+
+<span class="sd">  .. Note:: This class cannot be used on its own and it relies on</span>
+<span class="sd">            other attributes being set by the parent class.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">jobpath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">jobscriptname</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">(</span><span class="s">&#39;job&#39;</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="s">&#39;.bash&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">infilename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">(</span><span class="s">&quot;job&quot;</span><span class="p">,</span><span class="n">num</span><span class="p">,</span><span class="s">&quot;.in&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">outfilename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">(</span><span class="s">&quot;job&quot;</span><span class="p">,</span><span class="n">num</span><span class="p">,</span><span class="s">&quot;.out&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">datafile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="s">&#39;.dat&#39;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">_</span><span class="si">%s%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">,</span> <span class="n">ext</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">filename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">ext</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">_</span><span class="si">%04d%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prefix</span><span class="p">,</span><span class="n">num</span><span class="p">,</span><span class="n">ext</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">window_jobname</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&quot;w</span><span class="si">%04d</span><span class="s">_</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">get_ion_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">(</span><span class="s">&quot;ion&quot;</span><span class="p">,</span><span class="n">num</span><span class="p">,</span><span class="s">&quot;.pqr&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">get_complex_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">(</span><span class="s">&quot;cpx&quot;</span><span class="p">,</span><span class="n">num</span><span class="p">,</span><span class="s">&quot;.pqr&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">get_protein_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&quot;pro.pqr&quot;</span>
+
+  <span class="k">def</span> <span class="nf">get_apbs_script_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">num</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="k">return</span> <span class="s">&quot;mem_placeion.in&quot;</span>  <span class="c"># see :class:`membrane.BornAPBSmem`</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">infilename</span><span class="p">(</span><span class="n">num</span><span class="p">)</span> <span class="c"># could probably make one of the two funcs redundant</span>
+
+  <span class="k">def</span> <span class="nf">get_windowdirname</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&quot;w</span><span class="si">%04d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">num</span>
+
+<div class="viewcode-block" id="BPbase.get_taskid"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.BPbase.get_taskid">[docs]</a>  <span class="k">def</span> <span class="nf">get_taskid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return 1-based Sun Gridengine taskid for an array job&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">num</span> <span class="o">+</span> <span class="mi">1</span>
+</div>
+  <span class="k">def</span> <span class="nf">_process_window_numbers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Window numbers are 0-based.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">windows</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">windows</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">numPoints</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">windows</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">asiterable</span><span class="p">(</span><span class="n">windows</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">windows</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span>  <span class="ow">or</span> <span class="n">windows</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">numPoints</span><span class="p">:</span>
+      <span class="n">errmsg</span> <span class="o">=</span> <span class="s">&quot;window numbers must be between 0 and </span><span class="si">%d</span><span class="s"> inclusive.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">numPoints</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+      <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+      <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">windows</span>
+
+  <span class="k">def</span> <span class="nf">getPqrLine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aID</span><span class="p">,</span> <span class="n">aType</span><span class="p">,</span> <span class="n">rID</span><span class="p">,</span> <span class="n">rType</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+    <span class="c"># PQR is white space separated!</span>
+    <span class="c"># but try to be close to PDB... http://www.wwpdb.org/documentation/format32/sect9.html</span>
+    <span class="c">#         1         2         3         4         5         6         7</span>
+    <span class="c">#123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.</span>
+    <span class="c">#ATOM  seria name res reSeq    x-------y-------z-------occup-tempFa</span>
+    <span class="n">fmt</span> <span class="o">=</span>  <span class="s">&quot;ATOM  </span><span class="si">%(aID)5d</span><span class="s"> </span><span class="si">%(aType)-4s</span><span class="s"> </span><span class="si">%(rType)3s</span><span class="s"> </span><span class="si">%(rID)5d</span><span class="s">    </span><span class="si">%(x)7.3f</span><span class="s"> </span><span class="si">%(y)7.3f</span><span class="s"> </span><span class="si">%(z)7.3f</span><span class="s"> </span><span class="si">%(q)5.3f</span><span class="s"> </span><span class="si">%(r)5.3f</span><span class="se">\n</span><span class="s">&quot;</span>
+    <span class="k">return</span> <span class="n">fmt</span> <span class="o">%</span> <span class="nb">vars</span><span class="p">()</span>
+
+<div class="viewcode-block" id="BPbase.readPoints"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.BPbase.readPoints">[docs]</a>  <span class="k">def</span> <span class="nf">readPoints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read positions for Born ions from data file.</span>
+
+<span class="sd">    Tries to be smart and autodetect standard x-y-z dat file or pdb.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">points</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">readPoints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">numPoints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="BPbase.readPQR"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.BPbase.readPQR">[docs]</a>  <span class="k">def</span> <span class="nf">readPQR</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read PQR file and determines protein centre of geometry&quot;&quot;&quot;</span>
+    <span class="n">pqr</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">PQRReader</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">pqrLines</span> <span class="o">=</span> <span class="n">pqr</span><span class="o">.</span><span class="n">pqrLines</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">protein_centre</span> <span class="o">=</span> <span class="n">pqr</span><span class="o">.</span><span class="n">centroid</span>
+    <span class="k">return</span> <span class="n">pqr</span><span class="o">.</span><span class="n">coords</span>
+</div>
+<div class="viewcode-block" id="BPbase.writePQRs"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.BPbase.writePQRs">[docs]</a>  <span class="k">def</span> <span class="nf">writePQRs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generate input pqr files for all windows and store them in separate directories.&quot;&quot;&quot;</span>
+    <span class="c"># NOTE: This is the only place where window numbers reference the sample points</span>
+    <span class="c">#       at the moment: point = self.points[num]</span>
+    <span class="n">windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_window_numbers</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">in_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">):</span>
+      <span class="c"># make directory if it does not exist and cd into it</span>
+      <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+        <span class="n">windowdirname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_windowdirname</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">in_dir</span><span class="p">(</span><span class="n">windowdirname</span><span class="p">):</span>
+          <span class="c"># write protein (make hard-link to save space)</span>
+          <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_protein_name</span><span class="p">())</span>
+          <span class="k">except</span> <span class="ne">OSError</span><span class="p">,</span> <span class="n">err</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">err</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">errno</span><span class="o">.</span><span class="n">EEXIST</span><span class="p">:</span>
+              <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">err</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">errno</span><span class="o">.</span><span class="n">EXDEV</span><span class="p">:</span>
+              <span class="kn">import</span> <span class="nn">shutil</span>
+              <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_protein_name</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+              <span class="k">raise</span>
+          <span class="c"># write complex and ion</span>
+          <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">num</span><span class="p">]</span>  <span class="c"># index points with window id</span>
+          <span class="n">aID</span> <span class="o">=</span> <span class="mi">99999</span>
+          <span class="n">rID</span> <span class="o">=</span> <span class="mi">9999</span>
+          <span class="c"># born ion is always resname ION</span>
+          <span class="n">ionLines</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getPqrLine</span><span class="p">(</span><span class="n">aID</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ion</span><span class="o">.</span><span class="n">atomname</span><span class="p">,</span> <span class="n">rID</span><span class="p">,</span> <span class="s">&#39;ION&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ion</span><span class="o">.</span><span class="n">charge</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ion</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span>
+          <span class="c"># write ion</span>
+          <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_ion_name</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ionFile</span><span class="p">:</span>
+            <span class="n">ionFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ionLines</span><span class="p">)</span>
+          <span class="c"># write complex</span>
+          <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_complex_name</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpxFile</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pqrLines</span><span class="p">:</span>
+              <span class="n">cpxFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">cpxFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ionLines</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;[</span><span class="si">%s</span><span class="s">] Wrote </span><span class="si">%d</span><span class="s"> pqr files for protein, ion=</span><span class="si">%s</span><span class="s"> and complex&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">windows</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ion</span><span class="o">.</span><span class="n">atomname</span><span class="p">)</span>
+</div>
+  <span class="k">def</span> <span class="nf">get_XYZ_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">+</span><span class="s">&#39;_XYZ&#39;</span><span class="p">:</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">vec</span><span class="p">))}</span>
+
+  <span class="k">def</span> <span class="nf">get_XYZ_str</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">vec</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&quot;&lt;</span><span class="si">%s</span><span class="s"> from pqr=</span><span class="si">%r</span><span class="s"> points=</span><span class="si">%r</span><span class="s">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+                                           <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span><span class="p">),</span>
+                                           <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="Placeion"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.Placeion">[docs]</a><span class="k">class</span> <span class="nc">Placeion</span><span class="p">(</span><span class="n">BPbase</span><span class="p">):</span>
+  <span class="s">&quot;preparing job for APBS energy profiling by placing ions&quot;</span>
+
+  <span class="n">padding_xy</span> <span class="o">=</span> <span class="mf">40.0</span>  <span class="c"># xy only used with use_cubic_boundaries = False</span>
+  <span class="n">padding_z</span>  <span class="o">=</span> <span class="mf">80.0</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="c"># new style</span>
+      <span class="kn">import</span> <span class="nn">io</span>
+      <span class="n">params</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">RunParameters</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">bornprofile_kwargs</span> <span class="o">=</span> <span class="n">kw</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get_bornprofile_kwargs</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;pqr&#39;</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;points&#39;</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ion</span> <span class="o">=</span> <span class="n">IONS</span><span class="p">[</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;ion&#39;</span><span class="p">,</span> <span class="s">&#39;Na&#39;</span><span class="p">)]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&quot;bornprofile&quot;</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ionicStrength</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;conc&#39;</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;temperature&#39;</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">sdie</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;sdie&#39;</span><span class="p">,</span> <span class="mf">78.5</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pdie</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;pdie&#39;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">arrayscript</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;arrayscript&#39;</span><span class="p">,</span> <span class="s">&#39;q_array.sge&#39;</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;script&#39;</span><span class="p">,</span> <span class="s">&#39;q_local.sh&#39;</span><span class="p">))</span>
+      <span class="n">dime</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;dime&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">129</span><span class="p">,</span><span class="mi">129</span><span class="p">,</span><span class="mi">129</span><span class="p">]))</span>
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dime</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dime</span> <span class="o">=</span> <span class="n">dime</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>   <span class="c"># only take the first one in a triplet</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dime</span> <span class="o">=</span> <span class="n">dime</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">fglen</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;fglen&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span><span class="mi">40</span><span class="p">,</span><span class="mi">40</span><span class="p">]))</span>
+      <span class="c"># glen not needed, auto-set from pqr and padding</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="kn">import</span> <span class="nn">warnings</span>
+      <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;Using deprecated Placeion(pqr,points) call (will be removed in 1.0)&quot;</span><span class="p">,</span>
+                    <span class="ne">DeprecationWarning</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;jobName&#39;</span><span class="p">,</span> <span class="s">&quot;bornprofile&quot;</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ion</span> <span class="o">=</span> <span class="n">IONS</span><span class="p">[</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;ionName&#39;</span><span class="p">,</span> <span class="s">&#39;Na&#39;</span><span class="p">)]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ionicStrength</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;ionicStrength&#39;</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;temperature&#39;</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">sdie</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;sdie&#39;</span><span class="p">,</span> <span class="mf">78.5</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pdie</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;pdie&#39;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">dime</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;dime&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">129</span><span class="p">,</span><span class="mi">129</span><span class="p">,</span><span class="mi">129</span><span class="p">]))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">fglen</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;fglen&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span><span class="mi">40</span><span class="p">,</span><span class="mi">40</span><span class="p">]))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;script&#39;</span><span class="p">,</span> <span class="s">&#39;q_local.sh&#39;</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">arrayscript</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;arrayscript&#39;</span><span class="p">,</span> <span class="s">&#39;q_array.sge&#39;</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">cglen</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>  <span class="c"># automatically set by readPQR() + padding!</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">use_cubic_boundaries</span> <span class="o">=</span> <span class="bp">True</span>     <span class="c"># False uses old placeion.py algorithm: manually adjust fglen!!</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">pqrLines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">protein_centre</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Placeion: pqr=</span><span class="si">%(pqrName)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Placeion: points=</span><span class="si">%(pointsName)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Placeion: ion=</span><span class="si">%(ion)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">readPQR</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">readPoints</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Placeion.generate"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.Placeion.generate">[docs]</a>  <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generate all input files.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">writePQRs</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">writeIn</span><span class="p">()</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">writeJob</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Placeion.readPQR"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.Placeion.readPQR">[docs]</a>  <span class="k">def</span> <span class="nf">readPQR</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read PQR file and determine bounding box and centre of geometry.&quot;&quot;&quot;</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Placeion</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">readPQR</span><span class="p">()</span>   <span class="c"># :-p</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cubic_boundaries</span><span class="p">:</span>
+      <span class="c"># use largest cubic box (note: fglen is cubic in templates/placeion.in)</span>
+      <span class="c"># but can be set in run parameters bornprofile.fglen.</span>
+      <span class="n">paddings</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">padding_xy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding_z</span><span class="p">])</span>
+      <span class="n">L</span> <span class="o">=</span> <span class="p">(</span><span class="n">coords</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">coords</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">+</span> <span class="n">paddings</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">cglen</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">L</span><span class="p">,</span><span class="n">L</span><span class="p">,</span><span class="n">L</span><span class="p">])</span>
+      <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Setting cubic box boundaries cglen = </span><span class="si">%(cglen)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="c"># original placeion.py algorithm</span>
+      <span class="c"># (note: for this to work better, the fglen in templates/placeion.in should</span>
+      <span class="c"># match the ratio of box lengths)</span>
+      <span class="n">paddings</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">padding_xy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding_xy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding_z</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">cglen</span> <span class="o">=</span> <span class="p">(</span><span class="n">coords</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">coords</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span> <span class="o">+</span> <span class="n">paddings</span>
+      <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Using old algorithm to determine cglen = </span><span class="si">%(cglen)r</span><span class="s">: make sure that fglen &quot;</span>
+                   <span class="s">&quot;matches the ratios of box lengths.&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">coords</span>
+</div>
+  <span class="k">def</span> <span class="nf">writeIn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_window_numbers</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+      <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">num</span><span class="p">]</span>
+      <span class="c"># old-style ... manual setting up :-p</span>
+      <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;x&#39;</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="s">&#39;y&#39;</span><span class="p">:</span> <span class="n">y</span><span class="p">,</span> <span class="s">&#39;z&#39;</span><span class="p">:</span> <span class="n">z</span><span class="p">,</span> <span class="s">&#39;protein_pqr&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_protein_name</span><span class="p">(</span><span class="n">num</span><span class="p">),</span>
+                <span class="s">&#39;ion_pqr&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ion_name</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="s">&#39;complex_pqr&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_complex_name</span><span class="p">(</span><span class="n">num</span><span class="p">),</span>
+                <span class="s">&#39;DIME_XYZ&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_XYZ_str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dime</span><span class="p">),</span> <span class="s">&#39;CGLEN_XYZ&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_XYZ_str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cglen</span><span class="p">),</span>
+                <span class="s">&#39;FGLEN_XYZ&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_XYZ_str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fglen</span><span class="p">),</span>
+                <span class="s">&#39;conc&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionicStrength</span><span class="p">,</span> <span class="s">&#39;temperature&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span>
+                <span class="s">&#39;sdie&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sdie</span><span class="p">,</span> <span class="s">&#39;pdie&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdie</span><span class="p">}</span>
+      <span class="n">inPath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_windowdirname</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">infilename</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">inPath</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">inFile</span><span class="p">:</span>
+        <span class="n">inFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">TEMPLATES</span><span class="p">[</span><span class="s">&#39;placeion&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="n">params</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">writeJob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="c"># TODO: consolidate with MPlaceion.writeJob</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;No script template provided; no queuing system scripts are written.&quot;</span><span class="p">)</span>
+      <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="n">windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_window_numbers</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+
+    <span class="n">bash_jobarray</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+      <span class="n">scriptargs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">&#39;jobname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_jobname</span><span class="p">(</span><span class="n">num</span><span class="p">),</span>
+        <span class="s">&#39;infile&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">infilename</span><span class="p">(</span><span class="n">num</span><span class="p">),</span>
+        <span class="s">&#39;outfile&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfilename</span><span class="p">(</span><span class="n">num</span><span class="p">),</span>
+        <span class="s">&#39;drawmembrane_script&#39;</span><span class="p">:</span> <span class="s">&#39;false&#39;</span><span class="p">,</span>  <span class="c"># hack so that we can use th MPlaceion scripts...</span>
+        <span class="s">&#39;unpack_dxgz&#39;</span><span class="p">:</span> <span class="s">&#39;false&#39;</span><span class="p">,</span>          <span class="c"># hack so that we can use th MPlaceion scripts...</span>
+        <span class="s">&#39;apbs_version&#39;</span><span class="p">:</span> <span class="s">&#39;*&#39;</span><span class="p">,</span>             <span class="c"># hack so that we can use th MPlaceion scripts...</span>
+        <span class="p">}</span>
+      <span class="n">scriptname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobscriptname</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+      <span class="n">scriptpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_windowdirname</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="n">scriptname</span><span class="p">)</span>
+      <span class="c"># job array taskids are 1-based</span>
+      <span class="n">bash_jobarray</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;job[</span><span class="si">%d</span><span class="s">]=&quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_taskid</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="n">scriptpath</span><span class="p">))</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">scriptpath</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">jobFile</span><span class="p">:</span>
+        <span class="n">jobFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="o">%</span> <span class="n">scriptargs</span><span class="p">)</span>
+      <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">scriptpath</span><span class="p">,</span> <span class="mo">0755</span><span class="p">)</span>
+
+    <span class="n">qsubName</span> <span class="o">=</span> <span class="s">&quot;qsub_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span> <span class="o">+</span> <span class="s">&quot;.bash&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">numJobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">qsubName</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">jobFile</span><span class="p">:</span>
+      <span class="n">jobFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arrayscript</span> <span class="o">%</span> <span class="p">{</span>
+          <span class="s">&#39;jobName&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">,</span>
+          <span class="s">&#39;numJobs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">numJobs</span><span class="p">,</span>
+          <span class="s">&#39;jobArray&#39;</span><span class="p">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bash_jobarray</span><span class="p">),</span>
+          <span class="p">})</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="MPlaceion"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.MPlaceion">[docs]</a><span class="k">class</span> <span class="nc">MPlaceion</span><span class="p">(</span><span class="n">BPbase</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;Generate all input files for a Born profile calculation WITH a membrane</span>
+
+
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="c">#: Schedule is run from first to last: L -&gt; M -&gt; S</span>
+  <span class="c">#: choose dime compatible with nlev=4 (in input file)</span>
+  <span class="n">schedule</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;dime&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">129</span><span class="p">,</span> <span class="mi">129</span><span class="p">,</span> <span class="mi">129</span><span class="p">),(</span><span class="mi">129</span><span class="p">,</span> <span class="mi">129</span><span class="p">,</span> <span class="mi">129</span><span class="p">),(</span><span class="mi">129</span><span class="p">,</span> <span class="mi">129</span><span class="p">,</span> <span class="mi">129</span><span class="p">)],</span>
+              <span class="s">&#39;glen&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">250</span><span class="p">,</span><span class="mi">250</span><span class="p">,</span><span class="mi">250</span><span class="p">),(</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">),(</span><span class="mi">50</span><span class="p">,</span><span class="mi">50</span><span class="p">,</span><span class="mi">50</span><span class="p">)],</span>
+              <span class="p">}</span>
+  <span class="c">#: These keywords are read from the runinput file but should not be passed on</span>
+  <span class="c">#: through the bornprofile_keywords mechanism. See</span>
+  <span class="c">#:meth:`process_bornprofile_keywords`.</span>
+  <span class="n">remove_bornprofile_keywords</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;fglen&#39;</span><span class="p">,</span> <span class="s">&#39;dx_R&#39;</span><span class="p">,</span> <span class="s">&#39;dy_R&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Setup Born profile with membrane.</span>
+
+<span class="sd">      MPlaceion(paramfile[,basedir])</span>
+
+<span class="sd">      MPlaceion(pqr,points[,memclass,jobName,ionName,ionicStrength,temperature,script,arrayscript,basedir])</span>
+
+<span class="sd">      :Arguments:</span>
+<span class="sd">        *parameterfile*</span>
+<span class="sd">           ini-style file containing all run parameters</span>
+<span class="sd">        *pqr*</span>
+<span class="sd">           PQR file                        **DEPRECATED**</span>
+<span class="sd">        *points*</span>
+<span class="sd">           data file with sample points    **DEPRECATED**</span>
+
+<span class="sd">      :Keywords:</span>
+<span class="sd">        *memclass*</span>
+<span class="sd">           a class or type :class:`APBSMem` to customize draw_membrane</span>
+<span class="sd">           **DEPRECATED**</span>
+<span class="sd">        *jobName*</span>
+<span class="sd">           name of the run, used as top directory name and as unique identifier</span>
+<span class="sd">           [mbornprofile]</span>
+<span class="sd">        *ionName*</span>
+<span class="sd">           name of the Rashin&amp;Honig ion to calculate; any ion in IONS works [Na]</span>
+<span class="sd">        *ionicStrength*</span>
+<span class="sd">           concentration of monovalent NaCl solution in mol/l [0.15]</span>
+<span class="sd">        *temperature*</span>
+<span class="sd">           temperature in K [300.0]</span>
+<span class="sd">        *script*</span>
+<span class="sd">           template for a submission script (contains &#39;abps %(infile)s &gt; %(outfile)s&#39;</span>
+<span class="sd">           or similar; %(jobname)s is also replaced). Can be (a) a local file, (b) a</span>
+<span class="sd">           file stored in he user template dir, (c) a bundled template file.</span>
+<span class="sd">        *arrayscript*</span>
+<span class="sd">           template for a queuing system array script; contains the the placeholders</span>
+<span class="sd">           %(jobName)s and %(jobArray)s; jobs are stored in the bash array &#39;job&#39; so</span>
+<span class="sd">           there should be a line &#39;declare -a job&#39;. Window numbers correspond to the</span>
+<span class="sd">           task ids (SGE) ar array ids (PBS) in the job array. See ``templates/q_array.sge``</span>
+<span class="sd">           as an example.</span>
+<span class="sd">        *basedir*</span>
+<span class="sd">           top directory of set up, defaults to [.]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__cache_MemBornSetup</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="c"># new style</span>
+      <span class="kn">import</span> <span class="nn">io</span>
+      <span class="n">params</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">RunParameters</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">bornprofile_kwargs</span> <span class="o">=</span> <span class="n">kw</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get_bornprofile_kwargs</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;pqr&#39;</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;points&#39;</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ion</span> <span class="o">=</span> <span class="n">IONS</span><span class="p">[</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;ion&#39;</span><span class="p">,</span> <span class="s">&#39;Na&#39;</span><span class="p">)]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&quot;mbornprofile&quot;</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ionicStrength</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;conc&#39;</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;temperature&#39;</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">arrayscript</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;arrayscript&#39;</span><span class="p">,</span> <span class="s">&#39;q_array.sge&#39;</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;script&#39;</span><span class="p">,</span> <span class="s">&#39;q_local.sh&#39;</span><span class="p">))</span>
+      <span class="c"># any variables that should NOT be passed to the constructor of the</span>
+      <span class="c"># SetupClass must be popped from self.bornprofile_kwargs; this is now</span>
+      <span class="c"># done (together with other hacks) inprocess_bornprofile_kwargs()</span>
+
+      <span class="kn">import</span> <span class="nn">membrane</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">SetupClass</span> <span class="o">=</span> <span class="n">membrane</span><span class="o">.</span><span class="n">BornAPBSmem</span>  <span class="c"># use parameters to customize (see get_MemBornSetup())</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="kn">import</span> <span class="nn">warnings</span>
+      <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)&quot;</span><span class="p">,</span>
+                    <span class="ne">DeprecationWarning</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pqrName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">pointsName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+      <span class="c"># copied &amp; pasted from Placeion because inheritance would be messy :-p</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;jobName&#39;</span><span class="p">,</span> <span class="s">&quot;mbornprofile&quot;</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ion</span> <span class="o">=</span> <span class="n">IONS</span><span class="p">[</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;ionName&#39;</span><span class="p">,</span> <span class="s">&#39;Na&#39;</span><span class="p">)]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">ionicStrength</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;ionicStrength&#39;</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;temperature&#39;</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">)</span>
+      <span class="n">scriptname</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;script&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">scriptname</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">scriptname</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">arrayscript</span> <span class="o">=</span> <span class="n">read_template</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;arrayscript&#39;</span><span class="p">,</span> <span class="s">&#39;q_array.sge&#39;</span><span class="p">))</span>
+
+      <span class="c"># hack for quickly customizing draw_membrane (uses custom classes)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">SetupClass</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;memclass&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">SetupClass</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">membrane</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">SetupClass</span> <span class="o">=</span> <span class="n">membrane</span><span class="o">.</span><span class="n">BornAPBSmem</span>  <span class="c"># to customize</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;MPlaceion: pqr=</span><span class="si">%(pqrName)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;MPlaceion: points=</span><span class="si">%(pointsName)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;MPlaceion: ion=</span><span class="si">%(ion)r</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="c"># sanity check</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SetupClass</span><span class="o">.</span><span class="n">suffices</span><span class="p">),</span> \
+        <span class="s">&quot;schedule does not correspond to naming scheme --- make sure that memclass is set up properly&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">pqrLines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">protein_centre</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c"># do some initial processing...</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">readPQR</span><span class="p">()</span>                     <span class="c"># hack: also sets self.protein_centre</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">readPoints</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">process_bornprofile_kwargs</span><span class="p">()</span>  <span class="c"># hackish hook (e.g. set exclusion zone centre)</span>
+
+<div class="viewcode-block" id="MPlaceion.process_bornprofile_kwargs"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.MPlaceion.process_bornprofile_kwargs">[docs]</a>  <span class="k">def</span> <span class="nf">process_bornprofile_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Hook to manipulate :attr:`bornprofile_kwargs`.</span>
+
+<span class="sd">    # set exclusion zone centre to the protein centroid (unless *x0_R* and/or</span>
+<span class="sd">      *y0_R* are set in the run input cfg file)</span>
+<span class="sd">    # shift exclusion zone centre by *dx_R* and *dy_R*</span>
+<span class="sd">    # filter :attr:`remove_bornprofile_keywords`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># :attr:`bornprofile_kwargs` are passed in :meth:`get_MemBornSetup`</span>
+    <span class="c"># directly into downstream classes such as :class:`membrane.APBSmem` and</span>
+    <span class="c"># :class:`membrane.BornAPBSmem` where they are used (or not) according to</span>
+    <span class="c"># requirements</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">kw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bornprofile_kwargs</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+      <span class="c"># XXX deprecated use of the class (not using cfg file) -- remove in 1.0</span>
+      <span class="kn">import</span> <span class="nn">version</span>
+      <span class="k">assert</span> <span class="n">version</span><span class="o">.</span><span class="n">get_version_tuple</span><span class="p">()</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+      <span class="k">return</span>
+
+    <span class="c"># exclusion zone centre</span>
+    <span class="k">if</span> <span class="n">kw</span><span class="p">[</span><span class="s">&#39;x0_R&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">kw</span><span class="p">[</span><span class="s">&#39;x0_R&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">protein_centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">kw</span><span class="p">[</span><span class="s">&#39;y0_R&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">kw</span><span class="p">[</span><span class="s">&#39;y0_R&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">protein_centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c"># shift the centre</span>
+    <span class="n">kw</span><span class="p">[</span><span class="s">&#39;x0_R&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">kw</span><span class="p">[</span><span class="s">&#39;dx_R&#39;</span><span class="p">]</span>
+    <span class="n">kw</span><span class="p">[</span><span class="s">&#39;y0_R&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">kw</span><span class="p">[</span><span class="s">&#39;dy_R&#39;</span><span class="p">]</span>
+
+    <span class="c"># filter stuff... probably should do this in a cleaner manner (e.g. different</span>
+    <span class="c"># sections in the parameter file?) -- if anything gets passed then we will die with a</span>
+    <span class="c"># TypeError: object.__init__() takes no parameters in BaseMem</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_bornprofile_keywords</span><span class="p">:</span>
+      <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MPlaceion.writeJob"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.MPlaceion.writeJob">[docs]</a>  <span class="k">def</span> <span class="nf">writeJob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Write the job script.</span>
+
+<span class="sd">    Can be done selectively for a subset of windows and then the</span>
+<span class="sd">    global array script will also only contain this subset of windows.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;No script template provided; no queuing system scripts are written.&quot;</span><span class="p">)</span>
+      <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="n">windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_window_numbers</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+
+    <span class="n">bash_jobarray</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+      <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_MemBornSetup</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>   <span class="c"># to access anything on a per-window basis</span>
+      <span class="n">scriptargs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">&#39;jobname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_jobname</span><span class="p">(</span><span class="n">num</span><span class="p">),</span>
+        <span class="s">&#39;infile&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">infilename</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="c"># XXX: could take this from m, too...</span>
+        <span class="s">&#39;outfile&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfilename</span><span class="p">(</span><span class="n">num</span><span class="p">),</span>
+        <span class="s">&#39;unpack_dxgz&#39;</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">unpack_dxgz</span><span class="p">,</span>   <span class="c"># XXX: these two really should be attributes of</span>
+        <span class="s">&#39;apbs_version&#39;</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">apbs_version</span><span class="p">,</span> <span class="c"># of MPlaceion but too lazy right now...</span>
+        <span class="s">&#39;drawmembrane_script&#39;</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">filenames</span><span class="p">[</span><span class="s">&#39;born_setup_script&#39;</span><span class="p">],</span>
+        <span class="p">}</span>
+      <span class="n">scriptname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobscriptname</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+      <span class="n">scriptpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_windowdirname</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="n">scriptname</span><span class="p">)</span>
+      <span class="c"># job array taskids are 1-based</span>
+      <span class="n">bash_jobarray</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;job[</span><span class="si">%d</span><span class="s">]=&quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_taskid</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="n">scriptpath</span><span class="p">))</span>
+      <span class="c"># write scriptfile into the window directory</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">scriptpath</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">jobFile</span><span class="p">:</span>
+        <span class="n">jobFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">script</span> <span class="o">%</span> <span class="n">scriptargs</span><span class="p">)</span>
+      <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">scriptpath</span><span class="p">,</span> <span class="mo">0755</span><span class="p">)</span>
+
+    <span class="n">qsubName</span> <span class="o">=</span> <span class="s">&quot;qsub_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span> <span class="o">+</span> <span class="s">&quot;.bash&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">numJobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c"># always record maximum number</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">qsubName</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">jobFile</span><span class="p">:</span>
+      <span class="n">jobFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arrayscript</span> <span class="o">%</span> <span class="p">{</span>
+          <span class="s">&#39;jobName&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobName</span><span class="p">,</span>
+          <span class="s">&#39;numJobs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">numJobs</span><span class="p">,</span>
+          <span class="s">&#39;jobArray&#39;</span><span class="p">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bash_jobarray</span><span class="p">),</span>
+          <span class="p">})</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MPlaceion.generateMem"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.MPlaceion.generateMem">[docs]</a>  <span class="k">def</span> <span class="nf">generateMem</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generate special diel/kappa/charge files and mem_placeion.in for each window.</span>
+
+<span class="sd">    The APBS calculation is set up for manual focusing in three stages:</span>
+<span class="sd">      1. **L** is a coarse grid and centered on the protein</span>
+<span class="sd">      2. **M** is a medium grod, centered on the ion, and using focusing</span>
+<span class="sd">         (the boundary values come from the **L** calculation)</span>
+<span class="sd">      3. **S** is the finest grid, also centered and focused on the ion</span>
+
+<span class="sd">    The ion positions (&quot;windows&quot;) are simply sequentially numbered, starting at</span>
+<span class="sd">    1, as they appear in the input file. Each window is set up in its own</span>
+<span class="sd">    directiroy (called &quot;wNNNN&quot; where NNNN is the 4-digit, zero-padded number).</span>
+
+<span class="sd">    .. Warning:: At the moment it is not checked that the &quot;inner&quot; focusing region M</span>
+<span class="sd">       are always contained in the outer region L; it&#39;s on the TODO list.</span>
+
+<span class="sd">    :Keywords:</span>
+<span class="sd">       *windows* : ``None``, number, or list</span>
+<span class="sd">          window number or list of window numbers to generate. If set to</span>
+<span class="sd">          ``None`` (the default) then all windows are generated. Window</span>
+<span class="sd">          numbers start at 0 and end at numPoints-1.</span>
+<span class="sd">       *run* : bool</span>
+<span class="sd">          ``True``: immediately generate files (can take a while); ``False`` defer</span>
+<span class="sd">          file generation and just write a script [``False``]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_window_numbers</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+      <span class="n">windowdirpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_windowdirname</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
+      <span class="k">with</span> <span class="n">in_dir</span><span class="p">(</span><span class="n">windowdirpath</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="c"># will throw an error if the directory does not exist -- currently users</span>
+        <span class="c"># responsibility to set it up properly (i.e. generate diel maps etc)</span>
+        <span class="n">membornsetup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_MemBornSetup</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+        <span class="n">membornsetup</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MPlaceion.get_MemBornSetup"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.MPlaceion.get_MemBornSetup">[docs]</a>  <span class="k">def</span> <span class="nf">get_MemBornSetup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return the setup class for window *num* (cached).</span>
+
+<span class="sd">    The method is responsible for passing all parameters to downstream classes</span>
+<span class="sd">    that are used to generate individual windows. It instantiates an</span>
+<span class="sd">    appropriately set up class for each window and caches each class. Classes</span>
+<span class="sd">    are indexed by *num* (which is the unique window identifier).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_MemBornSetup</span><span class="p">[</span><span class="n">num</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+      <span class="n">protein</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_protein_name</span><span class="p">()</span>
+      <span class="n">ion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ion_name</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+      <span class="n">cpx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_complex_name</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+      <span class="n">apbs_script_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_apbs_script_name</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+      <span class="c"># should get draw_membrane parameters as well, do this once we use cfg input files</span>
+      <span class="c"># TODO: add position of ion to comments</span>
+      <span class="c"># OLD-STYLE (still used ...):</span>
+      <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;conc&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">ionicStrength</span><span class="p">,</span> <span class="s">&#39;temperature&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span><span class="s">&#39;comment&#39;</span><span class="p">:</span><span class="s">&#39;window </span><span class="si">%d</span><span class="s">, z=XXX&#39;</span><span class="o">%</span><span class="n">num</span><span class="p">,</span>
+            <span class="s">&#39;basedir&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">jobpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_windowdirname</span><span class="p">(</span><span class="n">num</span><span class="p">))),</span>
+            <span class="s">&#39;apbs_script_name&#39;</span><span class="p">:</span> <span class="n">apbs_script_name</span><span class="p">}</span>
+      <span class="n">kw</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">)</span>  <span class="c"># set dime and glen !</span>
+      <span class="c"># NEW-STYLE (overrides old-style)</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">kw</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bornprofile_kwargs</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+      <span class="c"># using a custom SetupClass pre-populates the parameters for draw_membrane2</span>
+      <span class="c"># (hack!! -- should be moved into a cfg input file)</span>
+      <span class="c"># Cfg file sets remaining kw args [2010-11-19] but still messy;</span>
+      <span class="c"># but no custom classes needed anymore, just membrane.BornAPBSmem)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">__cache_MemBornSetup</span><span class="p">[</span><span class="n">num</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SetupClass</span><span class="p">(</span><span class="n">protein</span><span class="p">,</span> <span class="n">ion</span><span class="p">,</span> <span class="n">cpx</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_MemBornSetup</span><span class="p">[</span><span class="n">num</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="MPlaceion.generate"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.MPlaceion.generate">[docs]</a>  <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set up all input files for Born calculations with a membrane.</span>
+
+<span class="sd">    generate([windows[,run]])</span>
+
+<span class="sd">    The optional parameter *windows* allows one to select a subset of windows</span>
+<span class="sd">    instead of all the points in the sample points file; it can be a single</span>
+<span class="sd">    number or a list.</span>
+
+<span class="sd">    Setting *run* to ``True`` immediately generates setup files, in particular</span>
+<span class="sd">    it runs :program:`apbs` and :program:`draw_membrane2a` in order to add the</span>
+<span class="sd">    membrane to the system. Because this can take a long time for a large</span>
+<span class="sd">    number of windows it is also possible to only generate a bash script for</span>
+<span class="sd">    each window and defer the setup (*run* = ``False``, the default).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_window_numbers</span><span class="p">(</span><span class="n">windows</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">writePQRs</span><span class="p">(</span><span class="n">windows</span><span class="o">=</span><span class="n">windows</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">generateMem</span><span class="p">(</span><span class="n">windows</span><span class="o">=</span><span class="n">windows</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">writeJob</span><span class="p">(</span><span class="n">windows</span><span class="o">=</span><span class="n">windows</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="ngridpoints"><a class="viewcode-back" href="../../developers/core.html#bornprofiler.core.ngridpoints">[docs]</a><span class="k">def</span> <span class="nf">ngridpoints</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">nlev</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;The allowed number of grid points.</span>
+
+<span class="sd">  For mg-manual calculations, the arguments are dependent on the choice of *nlev*</span>
+<span class="sd">  by the formula</span>
+
+<span class="sd">    n = c*2**(nlev + 1) + 1</span>
+
+<span class="sd">  where n is the dime argument, c is a non-zero integer, lev is the nlev</span>
+<span class="sd">  value. The most common values for grid dimensions are 65, 97, 129, and 161</span>
+<span class="sd">  (they can be different in each direction); these are all compatible with a</span>
+<span class="sd">  nlev value of 4. If you happen to pick a &quot;bad&quot; value for the dimensions</span>
+<span class="sd">  (i.e., mismatch with nlev), the APBS code will adjust the specified dime</span>
+<span class="sd">  downwards to more appropriate values. This means that &quot;bad&quot; values will</span>
+<span class="sd">  typically result in lower resolution/accuracy calculations!</span>
+
+<span class="sd">  http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">return</span> <span class="n">c</span><span class="o">*</span><span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="n">nlev</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Lennard van der Feltz, Kaihsu Tai, Oliver Beckstein.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
