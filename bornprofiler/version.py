@@ -3,6 +3,15 @@
 # Copyright (c) 2010-2011 Oliver Beckstein
 # Published under the GNU Public Licence, version 3
 
+"""
+Version information --- :mod:`bornprofiler.version`
+===================================================
+
+This module records the version of the software and also makes
+functions available to access the version.
+"""
+
+
 __all__ = ['VERSION', 'get_version', 'get_version_tuple']
 
 #: Package version; this is the only place where it is set.

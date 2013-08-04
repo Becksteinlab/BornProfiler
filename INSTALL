@@ -2,12 +2,6 @@
  INSTALL BornProfiler
 ======================
 
-.. Warning: THIS IS ALPHA SOFTWARE. By using it you acknowledge that
-   you understand that it can potentially produce wrong results,
-   delete files, drink your beer from the fridge, and post an
-   embarassing picture of you on Facebook. Thanks for all feedback.
-   Oli 01:20, 6 December 2010 (UTC)
-
 Required pre-requisites
 =======================
 
@@ -20,12 +14,10 @@ Required pre-requisites
 Installation
 ============
 
-Get the source from Oli's repository (within SBCB) or unpack the tar
-ball.
+Get the source distribution and unpack the tar ball.
 
 Install the python module and scripts::
 
-  cd BornProfile
   python setup.py install --user
 
 (``--user`` might only work for Python 2.6; look at the output of

@@ -1,6 +1,16 @@
 # BornProfiler -- analysis classes, typically used in scripts
 # Copyright (c) 2008 Kaihsu Tai
 # Copyright (c) 2011, 2012 Oliver Beckstein
+
+"""
+Analysis of calculations --- :mod:`bornprofiler.analysis`
+=========================================================
+
+Functions and classes to process the output from the APBS
+calculations.
+
+"""
+
 from __future__ import with_statement
 
 import os.path

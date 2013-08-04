@@ -9,11 +9,6 @@ A small Python package to set up "Born" calculations of an ion in a
 membrane protein and calculate the electrostatic free energy with
 APBS_.
 
-For more details on this *internal SBCB release* see the Wiki at
-
-    https://sbcb.bioch.ox.ac.uk/wiki/index.php/BornProfiler
-
-
 .. _APBS: http://www.poissonboltzmann.org/apbs
 
 

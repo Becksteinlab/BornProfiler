@@ -4,7 +4,7 @@
 
 """
 Setting up logging --- :mod:`bornprofiler.log`
-====================================================
+==============================================
 
 Configure logging for the BornProfiler. Import this module if logging is
 desired in application code.
@@ -33,9 +33,9 @@ def create(logger_name="bornprofiler", logfile='bornprofiler.log'):
     - The console logger only logs INFO and above.
 
     Logging to a file and the console.
-    
+
     See http://docs.python.org/library/logging.html?#logging-to-multiple-destinations
-    
+
     The top level logger of the library is named 'bornprofiler'.  Note that
     we are configuring this logger with console output. If the root
     logger also does this then we will get two output lines to the
@@ -64,7 +64,7 @@ def create(logger_name="bornprofiler", logfile='bornprofiler.log'):
     return logger
 
 def clear_handlers(logger):
-    """clean out handlers in the library top level logger 
+    """clean out handlers in the library top level logger
 
     (only important for reload/debug cycles...)
     """

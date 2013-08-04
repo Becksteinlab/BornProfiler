@@ -4,7 +4,7 @@
 # See the file COPYING for details.
 
 """
-:mod:`bornprofiler.utilities` -- Helper functions and classes
+Helper functions and classes --- :mod:`bornprofiler.utilities`
 ==============================================================
 
 The module defines some convenience functions and classes that are
@@ -35,7 +35,7 @@ directories:
    Context manager to execute a code block in a directory.
 
    * The *directory* is created if it does not exist (unless
-     *create* = ``False`` is set)   
+     *create* = ``False`` is set)
    * At the end or after an exception code always returns to
      the directory that was the current directory before entering
      the block.
@@ -104,7 +104,7 @@ def anyopen(datasource, mode='r'):
     - *mode*: 'r' or 'w'
     """
     handlers = {'bz2': bz2.BZ2File, 'gz': gzip.open, '': file}
-    
+
     if mode.startswith('r'):
         if hasattr(datasource,'next') or hasattr(datasource,'readline'):
             stream = datasource
@@ -200,12 +200,12 @@ def find_first(filename, suffices=None):
       *filename*
          base filename; this file name is checked first
       *suffices*
-         list of suffices that are tried in turn on the root of *filename*; can contain the 
+         list of suffices that are tried in turn on the root of *filename*; can contain the
          ext separator (:data:`os.path.extsep`) or not
 
     :Returns: The first match or ``None``.
     """
-    
+
     root,extension = os.path.splitext(filename)
     if suffices is None:
         suffices = []
@@ -233,10 +233,10 @@ def iterable(obj):
         return False    # avoid iterating over characters of a string
 
     if hasattr(obj, 'next'):
-        return True    # any iterator will do 
-    try: 
+        return True    # any iterator will do
+    try:
         len(obj)       # anything else that might work
-    except TypeError: 
+    except TypeError:
         return False
     return True
 

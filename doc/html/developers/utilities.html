@@ -1,0 +1,223 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Helper functions and classes — bornprofiler.utilities &mdash; BornProfiler 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="BornProfiler 1.0.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="module-bornprofiler.utilities"></span><div class="section" id="helper-functions-and-classes-bornprofiler-utilities">
+<h1>Helper functions and classes &#8212; <a class="reference internal" href="#module-bornprofiler.utilities" title="bornprofiler.utilities"><tt class="xref py py-mod docutils literal"><span class="pre">bornprofiler.utilities</span></tt></a><a class="headerlink" href="#helper-functions-and-classes-bornprofiler-utilities" title="Permalink to this headline">¶</a></h1>
+<p>The module defines some convenience functions and classes that are
+used in other modules.</p>
+<div class="section" id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="bornprofiler.utilities.AttributeDict">
+<em class="property">class </em><tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">AttributeDict</tt><a class="reference internal" href="../_modules/bornprofiler/utilities.html#AttributeDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.AttributeDict" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dictionary with pythonic access to keys as attributes &#8212; useful for interactive work.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+<p>Some additional convenience functions that deal with files and
+directories:</p>
+<dl class="function">
+<dt id="bornprofiler.utilities.openany">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">openany</tt><big>(</big><em>directory</em><span class="optional">[</span>, <em>mode='r'</em><span class="optional">]</span><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#openany"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.openany" title="Permalink to this definition">¶</a></dt>
+<dd><p>Context manager to open a compressed (bzip2, gzip) or plain file
+(uses <a class="reference internal" href="#bornprofiler.utilities.anyopen" title="bornprofiler.utilities.anyopen"><tt class="xref py py-func docutils literal"><span class="pre">anyopen()</span></tt></a>).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bornprofiler.utilities.anyopen">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">anyopen</tt><big>(</big><em>datasource</em>, <em>mode='r'</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#anyopen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.anyopen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open datasource (gzipped, bzipped, uncompressed) and return a stream.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments :</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><em>datasource</em>: a file or a stream</li>
+<li><em>mode</em>: &#8216;r&#8217; or &#8216;w&#8217;</li>
+</ul>
+</dd></dl>
+
+<dl class="function">
+<dt id="bornprofiler.utilities.realpath">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">realpath</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#realpath"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.realpath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Join all args and return the real path, rooted at /.</p>
+<p>Expands &#8216;~&#8217;, &#8216;~user&#8217;, and environment variables such as $HOME.</p>
+<p>Returns <tt class="docutils literal"><span class="pre">None</span></tt> if any of the args is <tt class="docutils literal"><span class="pre">None</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bornprofiler.utilities.in_dir">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">in_dir</tt><big>(</big><em>directory</em><span class="optional">[</span>, <em>create=True</em><span class="optional">]</span><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#in_dir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.in_dir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Context manager to execute a code block in a directory.</p>
+<ul class="simple">
+<li>The <em>directory</em> is created if it does not exist (unless
+<em>create</em> = <tt class="docutils literal"><span class="pre">False</span></tt> is set)</li>
+<li>At the end or after an exception code always returns to
+the directory that was the current directory before entering
+the block.</li>
+</ul>
+</dd></dl>
+
+<dl class="function">
+<dt id="bornprofiler.utilities.find_first">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">find_first</tt><big>(</big><em>filename</em>, <em>suffices=None</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#find_first"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.find_first" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find first <em>filename</em> with a suffix from <em>suffices</em>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arguments :</th><td class="field-body"><dl class="first docutils">
+<dt><em>filename</em></dt>
+<dd><p class="first last">base filename; this file name is checked first</p>
+</dd>
+<dt><em>suffices</em></dt>
+<dd><p class="first last">list of suffices that are tried in turn on the root of <em>filename</em>; can contain the
+ext separator (<tt class="xref py py-data docutils literal"><span class="pre">os.path.extsep</span></tt>) or not</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns :</th><td class="field-body"><p class="first last">The first match or <tt class="docutils literal"><span class="pre">None</span></tt>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="bornprofiler.utilities.withextsep">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">withextsep</tt><big>(</big><em>extensions</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#withextsep"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.withextsep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return list in which each element is guaranteed to start with <tt class="xref py py-data docutils literal"><span class="pre">os.path.extsep</span></tt>.</p>
+</dd></dl>
+
+<p>Functions that improve list processing and which do <em>not</em> treat
+strings as lists:</p>
+<dl class="function">
+<dt id="bornprofiler.utilities.iterable">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">iterable</tt><big>(</big><em>obj</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#iterable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.iterable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns <tt class="docutils literal"><span class="pre">True</span></tt> if <em>obj</em> can be iterated over and is <em>not</em> a  string.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="bornprofiler.utilities.asiterable">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">asiterable</tt><big>(</big><em>obj</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#asiterable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.asiterable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns obj so that it can be iterated over; a string is <em>not</em> treated as iterable</p>
+</dd></dl>
+
+<p>Functions that help handling files:</p>
+<dl class="function">
+<dt id="bornprofiler.utilities.unlink_f">
+<tt class="descclassname">bornprofiler.utilities.</tt><tt class="descname">unlink_f</tt><big>(</big><em>path</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/utilities.html#unlink_f"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.utilities.unlink_f" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unlink path but do not complain if file does not exist.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Helper functions and classes &#8212; <tt class="docutils literal"><span class="pre">bornprofiler.utilities</span></tt></a><ul>
+<li><a class="reference internal" href="#classes">Classes</a></li>
+<li><a class="reference internal" href="#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/developers/utilities.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Lennard van der Feltz, Kaihsu Tai, Oliver Beckstein.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

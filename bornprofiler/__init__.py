@@ -12,7 +12,7 @@ for the APBS_ package, in particular calculations of the electrostatic
 solvation free energy of an ion along a pathway in a membrane protein (the
 so-called *Born profile*).
 
-.. _APBS:: http://www.poissonboltzmann.org
+.. _APBS: http://www.poissonboltzmann.org/apbs
 
 """
 from version import get_version, get_version_tuple

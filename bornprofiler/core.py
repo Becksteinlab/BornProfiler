@@ -1,5 +1,12 @@
-# -*- coding: utf-8 -*-
-"""Bornprofiler module"""
+# -*- encoding: utf-8 -*-
+"""
+Core functionality --- :mod:`bornprofiler.core`
+===============================================
+
+Base classes around which the whole **BornProfiler** package is built,
+
+
+"""
 
 from __future__ import with_statement
 
@@ -12,7 +19,7 @@ from config import configuration
 from utilities import in_dir, asiterable
 
 import logging
-logger = logging.getLogger('bornprofiler.core') 
+logger = logging.getLogger('bornprofiler.core')
 
 # This TEMPLATE dict is only used in WriteIn() but it acts like a global cache
 # (which is good when writing a few thousand windows).
@@ -22,6 +29,7 @@ TEMPLATES = {'placeion': read_template('placeion.in'), }
 TABLE_IONS = read_template('bornions.dat')
 
 class Ion(dict):
+  """Represent parameters for an ion."""
   def __init__(self, name, symbol, atomname, radius, charge):
     super(Ion, self).__init__(name=name, symbol=symbol, atomname=atomname,
                               radius=float(radius), charge=float(charge))
@@ -85,12 +93,12 @@ class BPbase(object):
     return self.filename("cpx",num,".pqr")
 
   def get_protein_name(self, num=None):
-    return "pro.pqr"  
+    return "pro.pqr"
 
   def get_apbs_script_name(self, num=None):
     if num is None:
       return "mem_placeion.in"  # see :class:`membrane.BornAPBSmem`
-    return self.infilename(num) # could probably make one of the two funcs redundant    
+    return self.infilename(num) # could probably make one of the two funcs redundant
 
   def get_windowdirname(self, num):
     return "w%04d" % num
@@ -119,7 +127,7 @@ class BPbase(object):
     #ATOM  seria name res reSeq    x-------y-------z-------occup-tempFa
     fmt =  "ATOM  %(aID)5d %(aType)-4s %(rType)3s %(rID)5d    %(x)7.3f %(y)7.3f %(z)7.3f %(q)5.3f %(r)5.3f\n"
     return fmt % vars()
- 
+
   def readPoints(self):
     """Read positions for Born ions from data file.
 
@@ -141,7 +149,7 @@ class BPbase(object):
     #       at the moment: point = self.points[num]
     windows = self._process_window_numbers(windows)
     with in_dir(self.jobName):
-      # make directory if it does not exist and cd into it      
+      # make directory if it does not exist and cd into it
       for num in windows:
         windowdirname = self.get_windowdirname(num)
         with in_dir(windowdirname):
@@ -156,7 +164,7 @@ class BPbase(object):
               shutil.copy(self.pqrName, self.get_protein_name())
             else:
               raise
-          # write complex and ion 
+          # write complex and ion
           x,y,z = self.points[num]  # index points with window id
           aID = 99999
           rID = 9999
@@ -170,9 +178,9 @@ class BPbase(object):
             for line in self.pqrLines:
               cpxFile.write(line)
             cpxFile.write(ionLines)
-    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex", 
+    logger.info("[%s] Wrote %d pqr files for protein, ion=%s and complex",
                 self.jobName, len(windows), self.ion.atomname)
- 
+
   def get_XYZ_dict(self, name, vec):
     return {name.upper()+'_XYZ': " ".join(map(str, vec))}
 
@@ -180,8 +188,8 @@ class BPbase(object):
     return " ".join(map(str, vec))
 
   def __repr__(self):
-    return "<%s from pqr=%r points=%r>" % (self.__class__.__name__, 
-                                           os.path.basename(self.pqrName), 
+    return "<%s from pqr=%r points=%r>" % (self.__class__.__name__,
+                                           os.path.basename(self.pqrName),
                                            os.path.basename(self.pointsName))
 
 
@@ -190,7 +198,7 @@ class Placeion(BPbase):
 
   padding_xy = 40.0  # xy only used with use_cubic_boundaries = False
   padding_z  = 80.0
- 
+
   def __init__(self, *args, **kwargs):
     if len(args) == 1:
       # new style
@@ -216,7 +224,7 @@ class Placeion(BPbase):
       # glen not needed, auto-set from pqr and padding
     else:
       import warnings
-      warnings.warn("Using deprecated Placeion(pqr,points) call (will be removed in 1.0)", 
+      warnings.warn("Using deprecated Placeion(pqr,points) call (will be removed in 1.0)",
                     DeprecationWarning)
       self.pqrName = os.path.realpath(args[0])
       self.pointsName = os.path.realpath(args[1])
@@ -325,7 +333,7 @@ class Placeion(BPbase):
 class MPlaceion(BPbase):
   """Generate all input files for a Born profile calculation WITH a membrane
 
-  
+
   """
 
   #: Schedule is run from first to last: L -> M -> S
@@ -346,14 +354,14 @@ class MPlaceion(BPbase):
       MPlaceion(pqr,points[,memclass,jobName,ionName,ionicStrength,temperature,script,arrayscript,basedir])
 
       :Arguments:
-        *parameterfile* 
+        *parameterfile*
            ini-style file containing all run parameters
         *pqr*
            PQR file                        **DEPRECATED**
-        *points* 
+        *points*
            data file with sample points    **DEPRECATED**
 
-      :Keywords:        
+      :Keywords:
         *memclass*
            a class or type :class:`APBSMem` to customize draw_membrane
            **DEPRECATED**
@@ -377,7 +385,7 @@ class MPlaceion(BPbase):
            task ids (SGE) ar array ids (PBS) in the job array. See ``templates/q_array.sge``
            as an example.
         *basedir*
-           top directory of set up, defaults to [.]           
+           top directory of set up, defaults to [.]
     """
     self.__cache_MemBornSetup = {}
 
@@ -402,7 +410,7 @@ class MPlaceion(BPbase):
       self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
     else:
       import warnings
-      warnings.warn("Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)", 
+      warnings.warn("Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)",
                     DeprecationWarning)
       self.pqrName = os.path.realpath(args[0])
       self.pointsName = os.path.realpath(args[1])
@@ -428,7 +436,7 @@ class MPlaceion(BPbase):
     logger.info("MPlaceion: pqr=%(pqrName)r", vars(self))
     logger.info("MPlaceion: points=%(pointsName)r", vars(self))
     logger.info("MPlaceion: ion=%(ion)r", vars(self))
-      
+
     # sanity check
     assert len(self.schedule) != len(self.SetupClass.suffices), \
         "schedule does not correspond to naming scheme --- make sure that memclass is set up properly"
@@ -471,7 +479,7 @@ class MPlaceion(BPbase):
     kw['y0_R'] += kw['dy_R']
 
     # filter stuff... probably should do this in a cleaner manner (e.g. different
-    # sections in the parameter file?) -- if anything gets passed then we will die with a 
+    # sections in the parameter file?) -- if anything gets passed then we will die with a
     # TypeError: object.__init__() takes no parameters in BaseMem
     for k in self.remove_bornprofile_keywords:
       kw.pop(k, None)
@@ -498,7 +506,7 @@ class MPlaceion(BPbase):
         'unpack_dxgz': m.unpack_dxgz,   # XXX: these two really should be attributes of
         'apbs_version': m.apbs_version, # of MPlaceion but too lazy right now...
         'drawmembrane_script': m.filenames['born_setup_script'],
-        }      
+        }
       scriptname = self.jobscriptname(num)
       scriptpath = self.jobpath(self.get_windowdirname(num), scriptname)
       # job array taskids are 1-based
@@ -507,7 +515,7 @@ class MPlaceion(BPbase):
       with open(scriptpath, "w") as jobFile:
         jobFile.write(self.script % scriptargs)
       os.chmod(scriptpath, 0755)
- 
+
     qsubName = "qsub_" + self.jobName + ".bash"
     self.numJobs = self.points.shape[0]  # always record maximum number
     with open(qsubName, "w") as jobFile:

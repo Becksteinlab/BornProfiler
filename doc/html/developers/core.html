@@ -1,0 +1,300 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Core functionality — bornprofiler.core &mdash; BornProfiler 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="BornProfiler 1.0.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="module-bornprofiler.core"></span><div class="section" id="core-functionality-bornprofiler-core">
+<h1>Core functionality &#8212; <a class="reference internal" href="#module-bornprofiler.core" title="bornprofiler.core"><tt class="xref py py-mod docutils literal"><span class="pre">bornprofiler.core</span></tt></a><a class="headerlink" href="#core-functionality-bornprofiler-core" title="Permalink to this headline">¶</a></h1>
+<p>Base classes around which the whole <strong>BornProfiler</strong> package is built,</p>
+<dl class="class">
+<dt id="bornprofiler.core.BPbase">
+<em class="property">class </em><tt class="descclassname">bornprofiler.core.</tt><tt class="descname">BPbase</tt><a class="reference internal" href="../_modules/bornprofiler/core.html#BPbase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.BPbase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provide basic infra structure methods for bornprofiler classes.</p>
+<p>Defines the file name API.</p>
+<ul class="simple">
+<li>simply number files, do not use z or other data in filename;</li>
+<li>assume standard python 0-based indexing and naming</li>
+<li>filenames are generated and typically only take <em>num</em>, the window
+number, as an argument</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This class cannot be used on its own and it relies on
+other attributes being set by the parent class.</p>
+</div>
+<dl class="method">
+<dt id="bornprofiler.core.BPbase.get_taskid">
+<tt class="descname">get_taskid</tt><big>(</big><em>num</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#BPbase.get_taskid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.BPbase.get_taskid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return 1-based Sun Gridengine taskid for an array job</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.BPbase.readPQR">
+<tt class="descname">readPQR</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#BPbase.readPQR"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.BPbase.readPQR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read PQR file and determines protein centre of geometry</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.BPbase.readPoints">
+<tt class="descname">readPoints</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#BPbase.readPoints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.BPbase.readPoints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read positions for Born ions from data file.</p>
+<p>Tries to be smart and autodetect standard x-y-z dat file or pdb.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.BPbase.writePQRs">
+<tt class="descname">writePQRs</tt><big>(</big><em>windows=None</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#BPbase.writePQRs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.BPbase.writePQRs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate input pqr files for all windows and store them in separate directories.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="data">
+<dt id="bornprofiler.core.IONS">
+<tt class="descclassname">bornprofiler.core.</tt><tt class="descname">IONS</tt><em class="property"> = {'La': {'charge': 3.0, 'radius': 1.808, 'symbol': 'La+3', 'atomname': 'La3+', 'name': 'La'}, 'Na': {'charge': 1.0, 'radius': 1.68, 'symbol': 'Na+', 'atomname': 'NA+', 'name': 'Na'}, 'Li': {'charge': 1.0, 'radius': 1.316, 'symbol': 'Li+', 'atomname': 'LI+', 'name': 'Li'}, 'Sc': {'charge': 3.0, 'radius': 1.541, 'symbol': 'Sc+3', 'atomname': 'Sc3+', 'name': 'Sc'}, 'Rb': {'charge': 1.0, 'radius': 2.311, 'symbol': 'Rb+', 'atomname': 'RB+', 'name': 'Rb'}, 'Ba': {'charge': 2.0, 'radius': 2.119, 'symbol': 'Ba+2', 'atomname': 'Ba2+', 'name': 'Ba'}, 'SH': {'charge': -1.0, 'radius': 1.969, 'symbol': 'SH-', 'atomname': 'SH-', 'name': 'SH'}, 'Br': {'charge': -1.0, 'radius': 2.087, 'symbol': 'Br-', 'atomname': 'BR-', 'name': 'Br'}, 'H': {'charge': 1.0, 'radius': 0.6209, 'symbol': 'H+', 'atomname': 'H+', 'name': 'H'}, 'Hg': {'charge': 2.0, 'radius': 1.541, 'symbol': 'Hg+2', 'atomname': 'Hg2+', 'name': 'Hg'}, 'Mg': {'charge': 2.0, 'radius': 1.455, 'symbol': 'Mg+2', 'atomname': 'MG2+', 'name': 'Mg'}, 'Cu2': {'charge': 2.0, 'radius': 1.242, 'symbol': 'Cu+2', 'atomname': 'Cu2+', 'name': 'Cu2'}, 'Cu1': {'charge': 1.0, 'radius': 1.252, 'symbol': 'Cu+', 'atomname': 'Cu+', 'name': 'Cu1'}, 'F': {'charge': -1.0, 'radius': 1.423, 'symbol': 'F-', 'atomname': 'F-', 'name': 'F'}, 'I': {'charge': -1.0, 'radius': 2.343, 'symbol': 'I-', 'atomname': 'I-', 'name': 'I'}, 'Sr': {'charge': 2.0, 'radius': 2.054, 'symbol': 'Sr+2', 'atomname': 'Sr2+', 'name': 'Sr'}, 'K': {'charge': 1.0, 'radius': 2.172, 'symbol': 'K+', 'atomname': 'K+', 'name': 'K'}, 'H3O': {'charge': 1.0, 'radius': 1.4848, 'symbol': 'H3O+', 'atomname': 'H3O+', 'name': 'H3O'}, 'NH4': {'charge': 4.0, 'radius': 2.13, 'symbol': 'NH+4', 'atomname': 'NH4+', 'name': 'NH4'}, 'S': {'charge': -2.0, 'radius': 1.969, 'symbol': 'S-2', 'atomname': 'S2-', 'name': 'S'}, 'Y': {'charge': 3.0, 'radius': 1.733, 'symbol': 'Y+3', 'atomname': 'Y3+', 'name': 'Y'}, 'OH2': {'charge': -1.0, 'radius': 1.5612, 'symbol': 'OH2-', 'atomname': 'OH2-', 'name': 'OH2'}, 'Zn': {'charge': 2.0, 'radius': 1.338, 'symbol': 'Zn+2', 'atomname': 'Zn2+', 'name': 'Zn'}, 'Ag': {'charge': 1.0, 'radius': 1.434, 'symbol': 'Ag+', 'atomname': 'Ag+', 'name': 'Ag'}, 'Cl': {'charge': -1.0, 'radius': 1.937, 'symbol': 'Cl-', 'atomname': 'CL-', 'name': 'Cl'}, 'Ca': {'charge': 2.0, 'radius': 1.862, 'symbol': 'Ca+2', 'atomname': 'Ca2+', 'name': 'Ca'}, 'OH': {'charge': -1.0, 'radius': 1.498, 'symbol': 'OH-', 'atomname': 'OH-', 'name': 'OH'}, 'Al': {'charge': 3.0, 'radius': 1.338, 'symbol': 'Al+3', 'atomname': 'Al3+', 'name': 'Al'}, 'Cd': {'charge': 2.0, 'radius': 1.509, 'symbol': 'Cd+2', 'atomname': 'Cd2+', 'name': 'Cd'}, 'Ce4': {'charge': 4.0, 'radius': 1.761, 'symbol': 'Ce+4', 'atomname': 'Ce4+', 'name': 'Ce4'}, 'Ce3': {'charge': 3.0, 'radius': 1.761, 'symbol': 'Ce+3', 'atomname': 'Ce3+', 'name': 'Ce3'}, 'Ga': {'charge': 3.0, 'radius': 1.338, 'symbol': 'Ga+3', 'atomname': 'Ga3+', 'name': 'Ga'}, 'In': {'charge': 3.0, 'radius': 1.605, 'symbol': 'In+3', 'atomname': 'In3+', 'name': 'In'}, 'Cs': {'charge': 1.0, 'radius': 2.514, 'symbol': 'Cs+', 'atomname': 'CS+', 'name': 'Cs'}}</em><a class="headerlink" href="#bornprofiler.core.IONS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rashin&amp;Honig ion data as a dict, read from <tt class="file docutils literal"><span class="pre">templates/bornions.dat</span></tt>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="bornprofiler.core.Ion">
+<em class="property">class </em><tt class="descclassname">bornprofiler.core.</tt><tt class="descname">Ion</tt><big>(</big><em>name</em>, <em>symbol</em>, <em>atomname</em>, <em>radius</em>, <em>charge</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#Ion"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.Ion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represent parameters for an ion.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="bornprofiler.core.MPlaceion">
+<em class="property">class </em><tt class="descclassname">bornprofiler.core.</tt><tt class="descname">MPlaceion</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#MPlaceion"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.MPlaceion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate all input files for a Born profile calculation WITH a membrane</p>
+<dl class="method">
+<dt id="bornprofiler.core.MPlaceion.generate">
+<tt class="descname">generate</tt><big>(</big><em>windows=None</em>, <em>run=False</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#MPlaceion.generate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.MPlaceion.generate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up all input files for Born calculations with a membrane.</p>
+<p>generate([windows[,run]])</p>
+<p>The optional parameter <em>windows</em> allows one to select a subset of windows
+instead of all the points in the sample points file; it can be a single
+number or a list.</p>
+<p>Setting <em>run</em> to <tt class="docutils literal"><span class="pre">True</span></tt> immediately generates setup files, in particular
+it runs <strong class="program">apbs</strong> and <strong class="program">draw_membrane2a</strong> in order to add the
+membrane to the system. Because this can take a long time for a large
+number of windows it is also possible to only generate a bash script for
+each window and defer the setup (<em>run</em> = <tt class="docutils literal"><span class="pre">False</span></tt>, the default).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.MPlaceion.generateMem">
+<tt class="descname">generateMem</tt><big>(</big><em>windows=None</em>, <em>run=False</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#MPlaceion.generateMem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.MPlaceion.generateMem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate special diel/kappa/charge files and mem_placeion.in for each window.</p>
+<dl class="docutils">
+<dt>The APBS calculation is set up for manual focusing in three stages:</dt>
+<dd><ol class="first last arabic simple">
+<li><strong>L</strong> is a coarse grid and centered on the protein</li>
+<li><strong>M</strong> is a medium grod, centered on the ion, and using focusing
+(the boundary values come from the <strong>L</strong> calculation)</li>
+<li><strong>S</strong> is the finest grid, also centered and focused on the ion</li>
+</ol>
+</dd>
+</dl>
+<p>The ion positions (&#8220;windows&#8221;) are simply sequentially numbered, starting at
+1, as they appear in the input file. Each window is set up in its own
+directiroy (called &#8220;wNNNN&#8221; where NNNN is the 4-digit, zero-padded number).</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">At the moment it is not checked that the &#8220;inner&#8221; focusing region M
+are always contained in the outer region L; it&#8217;s on the TODO list.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Keywords :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>windows</em> <span class="classifier-delimiter">:</span> <span class="classifier"><tt class="docutils literal"><span class="pre">None</span></tt>, number, or list</span></dt>
+<dd><p class="first last">window number or list of window numbers to generate. If set to
+<tt class="docutils literal"><span class="pre">None</span></tt> (the default) then all windows are generated. Window
+numbers start at 0 and end at numPoints-1.</p>
+</dd>
+<dt><em>run</em> <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd><p class="first last"><tt class="docutils literal"><span class="pre">True</span></tt>: immediately generate files (can take a while); <tt class="docutils literal"><span class="pre">False</span></tt> defer
+file generation and just write a script [<tt class="docutils literal"><span class="pre">False</span></tt>]</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.MPlaceion.get_MemBornSetup">
+<tt class="descname">get_MemBornSetup</tt><big>(</big><em>num</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#MPlaceion.get_MemBornSetup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.MPlaceion.get_MemBornSetup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the setup class for window <em>num</em> (cached).</p>
+<p>The method is responsible for passing all parameters to downstream classes
+that are used to generate individual windows. It instantiates an
+appropriately set up class for each window and caches each class. Classes
+are indexed by <em>num</em> (which is the unique window identifier).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.MPlaceion.process_bornprofile_kwargs">
+<tt class="descname">process_bornprofile_kwargs</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#MPlaceion.process_bornprofile_kwargs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.MPlaceion.process_bornprofile_kwargs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hook to manipulate <tt class="xref py py-attr docutils literal"><span class="pre">bornprofile_kwargs</span></tt>.</p>
+<dl class="docutils">
+<dt># set exclusion zone centre to the protein centroid (unless <em>x0_R</em> and/or</dt>
+<dd><em>y0_R</em> are set in the run input cfg file)</dd>
+</dl>
+<p># shift exclusion zone centre by <em>dx_R</em> and <em>dy_R</em>
+# filter <a class="reference internal" href="#bornprofiler.core.MPlaceion.remove_bornprofile_keywords" title="bornprofiler.core.MPlaceion.remove_bornprofile_keywords"><tt class="xref py py-attr docutils literal"><span class="pre">remove_bornprofile_keywords</span></tt></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="bornprofiler.core.MPlaceion.remove_bornprofile_keywords">
+<tt class="descname">remove_bornprofile_keywords</tt><em class="property"> = ('fglen', 'dx_R', 'dy_R')</em><a class="headerlink" href="#bornprofiler.core.MPlaceion.remove_bornprofile_keywords" title="Permalink to this definition">¶</a></dt>
+<dd><p>These keywords are read from the runinput file but should not be passed on
+through the bornprofile_keywords mechanism. See
+meth:<cite>process_bornprofile_keywords</cite>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="bornprofiler.core.MPlaceion.schedule">
+<tt class="descname">schedule</tt><em class="property"> = {'glen': [(250, 250, 250), (100, 100, 100), (50, 50, 50)], 'dime': [(129, 129, 129), (129, 129, 129), (129, 129, 129)]}</em><a class="headerlink" href="#bornprofiler.core.MPlaceion.schedule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Schedule is run from first to last: L -&gt; M -&gt; S
+choose dime compatible with nlev=4 (in input file)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.MPlaceion.writeJob">
+<tt class="descname">writeJob</tt><big>(</big><em>windows=None</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#MPlaceion.writeJob"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.MPlaceion.writeJob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the job script.</p>
+<p>Can be done selectively for a subset of windows and then the
+global array script will also only contain this subset of windows.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="bornprofiler.core.Placeion">
+<em class="property">class </em><tt class="descclassname">bornprofiler.core.</tt><tt class="descname">Placeion</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#Placeion"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.Placeion" title="Permalink to this definition">¶</a></dt>
+<dd><p>preparing job for APBS energy profiling by placing ions</p>
+<dl class="method">
+<dt id="bornprofiler.core.Placeion.generate">
+<tt class="descname">generate</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#Placeion.generate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.Placeion.generate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate all input files.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="bornprofiler.core.Placeion.readPQR">
+<tt class="descname">readPQR</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#Placeion.readPQR"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.Placeion.readPQR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read PQR file and determine bounding box and centre of geometry.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="bornprofiler.core.ngridpoints">
+<tt class="descclassname">bornprofiler.core.</tt><tt class="descname">ngridpoints</tt><big>(</big><em>c</em>, <em>nlev=4</em><big>)</big><a class="reference internal" href="../_modules/bornprofiler/core.html#ngridpoints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bornprofiler.core.ngridpoints" title="Permalink to this definition">¶</a></dt>
+<dd><p>The allowed number of grid points.</p>
+<p>For mg-manual calculations, the arguments are dependent on the choice of <em>nlev</em>
+by the formula</p>
+<blockquote>
+<div>n = c*2**(nlev + 1) + 1</div></blockquote>
+<p>where n is the dime argument, c is a non-zero integer, lev is the nlev
+value. The most common values for grid dimensions are 65, 97, 129, and 161
+(they can be different in each direction); these are all compatible with a
+nlev value of 4. If you happen to pick a &#8220;bad&#8221; value for the dimensions
+(i.e., mismatch with nlev), the APBS code will adjust the specified dime
+downwards to more appropriate values. This means that &#8220;bad&#8221; values will
+typically result in lower resolution/accuracy calculations!</p>
+<p><a class="reference external" href="http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime">http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime</a></p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/developers/core.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">BornProfiler 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Lennard van der Feltz, Kaihsu Tai, Oliver Beckstein.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
