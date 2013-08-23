@@ -1,7 +1,20 @@
 #!/usr/bin/env python
-# (c) 2010 Oliver Beckstein
-# Licensed under GPL
-"""%%prog [options] parameter-file [pqr]
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
+"""
+:Author:  Oliver Beckstein
+:Year: 2010
+:License: GPL3
+:Copyright: (c) 2010 Oliver Beckstein
+:Copyright: (c) 2013 Oliver Beckstein
+"""
+
+usage = """%%prog [options] parameter-file [pqr]
 
 Runs customized apbs calculation of a protein in a membrane. Because
 the number of options is pretty large, everything must be specified in

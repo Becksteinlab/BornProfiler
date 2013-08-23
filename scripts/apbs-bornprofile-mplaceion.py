@@ -1,11 +1,20 @@
 #!/usr/bin/env python
-# :Author: Oliver Beckstein <oliver.beckstein@bioch.ox.ac.uk>
-# :Year: 2010
-# :Licence: GNU Public Licence, version 3
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 #
-# Copyright (c) 2010 Oliver Beckstein <oliver.beckstein@bioch.ox.ac.uk>
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
+"""
+:Author:  Oliver Beckstein
+:Year: 2010
+:License: GPL3
+:Copyright: (c) 2010 Oliver Beckstein
+:Copyright: (c) 2013 Oliver Beckstein
+"""
 
-"""%prog [options] parameter-file
+usage = """%prog [options] parameter-file
 
 Setup Born profile calculation with a membrane. Parameters are read from the
 parameter file. A new parameter-file can be generated with the --template

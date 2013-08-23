@@ -1,9 +1,24 @@
 #!/usr/bin/env python
-# Code takes PDBID of protein, finds the coordinate file on the opm database, &
-# makes use of the dummy atoms to return the membrane thickness and position,
-# relative to the geometrical center of the protein. Also finds the maximal
-# protein radius at membrane edges. In general membrane will need to be given
-# a smaller radius than this.
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
+"""
+:Author: Lennard van der Feltz
+:Year: 2013
+:Licence: GPL 3
+:Copyright: (c) 2013 Lennard van der Feltz
+"""
+usage = """%prog PDBID
+
+ Code takes PDBID of protein, finds the coordinate file on the opm database, &
+ makes use of the dummy atoms to return the membrane thickness and position
+ relative to the geometrical center of the protein. Also finds the maximal
+ protein radius at membrane edges. In general membrane will need to be given
+ a smaller radius than this."""
 import numpy
 import MDAnalysis
 import MDAnalysis.analysis

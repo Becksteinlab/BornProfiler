@@ -1,7 +1,21 @@
 #!/usr/bin/env python
 # $Id: parallel.py 833 2009-12-17 21:52:39Z oliver $
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
+"""
+:Author:  Oliver Beckstein
+:Year: 2009
+:License: GPL3
+:Copyright: (c) 2009 Oliver Beckstein
+:Copyright: (c) 2013 Oliver Beckstein
+"""
 
-"""%prog NPROC command [args ...] --- [input ...]
+usage ="""%prog NPROC command [args ...] --- [input ...]
 
 Simple process-based parallelizer. Launches NPROC processes of
 ``command`` with the input list distributed equally over all

@@ -1,5 +1,12 @@
 #!/usr/bin/env python
-"""%prog [options] path-datafile
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
+usage ="""%prog [options] path-datafile
 
 Quick hack in order to generate a nice path from a manually changed
 one. The path is assumed to go roughly along the z direction. The
