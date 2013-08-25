@@ -6,6 +6,7 @@
 # Released under the GNU Public Licence, version 3
 #
 # APBS BornProfiler -- dealing with configuration files
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
 # Copyright (c) 2010-2013 Oliver Beckstein
 """
 Configuration file handling and setup
