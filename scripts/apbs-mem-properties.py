@@ -31,17 +31,9 @@ parser.add_argument('PDBID')
 
 args = parser.parse_args()
 def get_width(positions, center):
-  max_diffsq = 0
-  for position in positions:
-    diffsq = 0
-    i = 0
-    while i < 2:
-        diffsq += (position[i] - center[i])**2
-        i += 1
-    if diffsq > max_diffsq:
-      max_diffsq= diffsq
-  return max_diffsq**(0.5)
-
+    disparray = positions - center
+    distarray =(disparray * disparray)[:, 0:2].sum(axis=1)
+    return (distarray.max()**0.5)
 
 def memplacer(PDBID):
     pdburl = 'http://opm.phar.umich.edu/pdb/{pdb}.pdb'.format(pdb=PDBID)
