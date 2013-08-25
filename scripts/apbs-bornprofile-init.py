@@ -10,7 +10,7 @@
 :Author: Kaihsu Tai, Oliver Beckstein
 :Year: 2011
 :Licence: GPL
-:Copyright: (c) 2011 Oliver Beckstein
+:Copyright: (c) 2011-2013 Oliver Beckstein
 """
 
 import logging

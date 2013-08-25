@@ -10,7 +10,7 @@
 :Author: Oliver Beckstein
 :Year: 2010
 :Licence: GPL
-:Copyright: (c) 2010 Oliver Beckstein
+:Copyright: (c) 2010-2013 Oliver Beckstein
 """
 
 usage = """%prog [options] samplepoints-file *.out

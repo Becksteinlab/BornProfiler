@@ -11,7 +11,7 @@
 :Year: 2008, 2010
 :Licence: GPL
 :Copyright: (c) 2008 Kaihsu Tai
-:Copyright: (c) 2010 Oliver Beckstein
+:Copyright: (c) 2010-2013 Oliver Beckstein
 :URL: http://en.wikiversity.org/wiki/Talk:Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
 
 I wrote some Python code to automate this process. The job submission

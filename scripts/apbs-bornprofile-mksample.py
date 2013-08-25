@@ -5,7 +5,8 @@
 # BornProfiler --- A package to calculate electrostatic free energies with APBS
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
-#
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2013 Oliver Beckstein
 usage = """%prog [options] [FILE]
 
 Create samplepoints for the Born profile scripts from a pdb file or a
