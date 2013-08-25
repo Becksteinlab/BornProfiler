@@ -5,7 +5,8 @@
 # BornProfiler --- A package to calculate electrostatic free energies with APBS
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
-#
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2013 Oliver Beckstein
 """Bootstrap setuptools installation
 
 If you want to use setuptools in your package's setup.py, just include this
