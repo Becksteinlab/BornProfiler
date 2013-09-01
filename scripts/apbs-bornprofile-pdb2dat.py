@@ -16,7 +16,7 @@
 usage = """%prog input pdbs --title=output dat file
  Code for merging any number of PDB files into a single .dat file takes the
  file names and --title= and writes the coordinates in rows into a new file
- with the specified title."""
+ with the specified title. If title not specified names output 'pdbs.dat'"""
 import numpy as np
 import argparse
 from MDAnalysis import *
@@ -34,7 +34,13 @@ def pdb2dat(pdblist, name):
         for atom in positions:
             xyz.append(atom)
     dat = open('{x}.dat'.format(x = name),'w')
+    coordinate_string =""
     for coord in xyz:
-        dat.write("{x} {y} {z} \n".format(x = coord[0], y = coord[1], z = coord[2]))
+        coordinate_string += "{x} {y} {z} \n".format(x = coord[0], y = coord[1], z = coord[2])
+    dat.write(coordinate_string)
     dat.close()
-pdb2dat(pdbs,title)
+
+if title is None:
+    pdb2dat(pdbs,"pdbs")
+else:
+    pdb2dat(pdbs,title)
