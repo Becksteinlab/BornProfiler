@@ -12,10 +12,10 @@
 :Licence: GPL 3
 :Copyright: (c) 2013 Lennard van der Feltz
 """
-usage = """%prog pointx pointy pointz vecx vecy vecz length steplen
+usage = """%prog pointx pointy pointz vecx vecy vecz length steplen --title
 
  Code for creating a straight line path of a given length starting at a point
- in the direction of a vec with points every steplen"""
+ in the direction of a vec with points every steplen."""
 import argparse
 import numpy
 parser = argparse.ArgumentParser()
@@ -23,21 +23,25 @@ parser.add_argument('point',type=float, nargs = 3)
 parser.add_argument('vec',type=float, nargs = 3)
 parser.add_argument('length',type=float)
 parser.add_argument('steplen',type=float)
+parser.add_argument('--title', default="Line")
 args = parser.parse_args()
 vec = numpy.array(args.vec)
 point = numpy.array(args.point)
 length = args.length
 steplen = args.steplen
-def straightline(point, vec, length, steplen ):
+title = args.title
+def straightline(point, vec, length, steplen,Name ):
     nsteps= length/steplen
     step = 0
     newpoint = point
-    line = open("line.dat", 'w')
+    line = open("{name}.dat".format(name=Name), 'w')
     line.write("{zero} {one} {two} \n".format(zero=point[0],one=point[1],two=point[2]))
+    coordinate_string = ""
     while step < nsteps:
         newpoint = newpoint+vec*steplen
-        line.write("{zero} {one} {two} \n".format(zero=newpoint[0],one=newpoint[1],two=newpoint[2]))
+        coordinate_string +="{zero} {one} {two} \n".format(zero=newpoint[0],one=newpoint[1],two=newpoint[2])
         step += 1
+    line.write(coordinate_string)
     line.close()
 
-straightline(point, vec, length, steplen )
+straightline(point,vec,length,steplen,title)

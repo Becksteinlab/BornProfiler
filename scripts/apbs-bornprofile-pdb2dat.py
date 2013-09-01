@@ -22,7 +22,7 @@ import argparse
 from MDAnalysis import *
 parser=argparse.ArgumentParser()
 parser.add_argument('pdbs', nargs='+', type=str)
-parser.add_argument('--title')
+parser.add_argument('--title', default="pdbs")
 args = parser.parse_args()
 pdbs = args.pdbs
 title = args.title
@@ -40,7 +40,4 @@ def pdb2dat(pdblist, name):
     dat.write(coordinate_string)
     dat.close()
 
-if title is None:
-    pdb2dat(pdbs,"pdbs")
-else:
-    pdb2dat(pdbs,title)
+pdb2dat(pdbs,title)
