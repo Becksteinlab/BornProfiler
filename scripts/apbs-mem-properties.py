@@ -20,8 +20,6 @@ usage = """%prog PDBID
  protein radius at membrane edges. In general membrane will need to be given
  a smaller radius than this."""
 import numpy
-import MDAnalysis
-import MDAnalysis.analysis
 import sys
 import os
 import urllib2
@@ -31,6 +29,9 @@ parser.add_argument('PDBID')
 
 args = parser.parse_args()
 def get_width(positions, center):
+# Finds the maximum distance in the xy plane from center for a series of 
+# positions. This is accomplished with the 0:2 portion of the index which
+# returns only the x and y.
     disparray = positions - center
     distarray =(disparray * disparray)[:, 0:2].sum(axis=1)
     return (distarray.max()**0.5)
@@ -41,6 +42,11 @@ def memplacer(PDBID):
     pdb = open('{pdb}.pdb'.format(pdb=PDBID), 'w')
     pdb.write(dl.read())
     pdb.close()
+    try:
+        import MDAnalysis
+        import MDAnalysis.analysis
+    except ImportError:
+       print("MDAnalysis required for this script. Available from https://code.google.com/p/mdanalysis/")
     U = MDAnalysis.Universe('{pdb}.pdb'.format(pdb=PDBID))
     leaflet0 = MDAnalysis.analysis.leaflet.LeafletFinder(U, "resname DUM and prop z < 0").groups(0)
     leaflet1 = MDAnalysis.analysis.leaflet.LeafletFinder(U, "resname DUM and prop z > 0").groups(0)
@@ -54,9 +60,13 @@ def memplacer(PDBID):
     ztopbottom = ztop - .5
     zbottop = zbot + .5
     zbotbottom= zbot - .5
+# With the above tolerances in place, find the protein atoms from that section 
+# and the maximum distance(in the xy plane) to gain an idea of membrane radius
     bottomlayer = protein.selectAtoms("prop z > {zbb} and prop z < {zbt}".format(zbb=zbotbottom, zbt = zbottop))
     toplayer = protein.selectAtoms("prop z > {ztb} and prop z < {ztt}".format(ztb=ztopbottom, ztt = ztoptop))
     botradius = get_width(bottomlayer.positions, leaflet0.centroid())
     topradius = get_width(toplayer.positions, leaflet1.centroid())
     print("Membrane thickness = {thicky}, beginning at {disty} below protein centroid \n max radius of bottom membrane exclusion = {bot} \n max radius of top membrane exclusion = {top} ".format(thicky=thickness, disty=dist, bot = botradius, top = topradius))
+
+
 memplacer(args.PDBID)   
