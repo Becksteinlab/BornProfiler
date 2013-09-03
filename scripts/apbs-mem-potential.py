@@ -109,7 +109,7 @@ if __name__ == "__main__":
     kw.pop('dy_R')
         
 
-    # sanity checks (APBS and draw_membrane2a will be neeeded)
+    # sanity checks (APBS and draw_membrane2a will be needed)
     bornprofiler.config.check_APBS()
     bornprofiler.config.check_drawmembrane()
 
