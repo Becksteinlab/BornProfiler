@@ -86,7 +86,7 @@ def memplacer(PDBID,InputPDB):
         toplayer = protein.selectAtoms("prop z > {ztb} and prop z < {ztt}".format(ztb=ztopbottom, ztt = ztoptop))
         botradius = get_width(bottomlayer.positions, bottomlayer.centroid())
         topradius = get_width(toplayer.positions, toplayer.centroid())
-        print("Membrane thickness = {thicky}, beginning at {zbottom} in provided input pdb \n max radius of bottom membrane exclusion = {bot} \n max radius of top membrane exclusion = {top} ".format(thicky=thickness, zbottom=zbot, bot = botradius, top = topradius))
+        print("Membrane thickness = {thicky}, beginning at z={zbottom} in provided input pdb \n max radius of bottom membrane exclusion = {bot} \n max radius of top membrane exclusion = {top} ".format(thicky=thickness, zbottom=zbot, bot = botradius, top = topradius))
 
 
 memplacer(args.PDBID,args.InputPDB)   
