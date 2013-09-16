@@ -117,6 +117,10 @@ class RunParameters(object):
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'potential':   [('dime', eval), ('glen', eval),],
              }
+        'apbsnomem':
+            {'environment': [('temperature', float), ('conc', float), ('pdie', float),
+                             ('sdie', float), ('pqr', path),],
+             'potential':   [('dime', eval), ('glen', eval),],}
         }
 
     def __init__(self, filename, **defaults):
@@ -224,7 +228,18 @@ class RunParameters(object):
         """
         _args = ('bornprofile',) + args
         return self._get_kwargs(*_args, **kwargs)
+    def get_apbsnomem_kwards(self, *args, **kwargs):
+        """Return a dict with kwargs appropriate for :class:`membrane.APBSnomem`.
 
+        Default values can be supplied in *kwargs*. This method picks unique
+        parameter keys from the relevant sections of the run parameters file
+        (i.e. *bornprofile* and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
+        """
+        _args = ('apbsnomem',) + args
+        return self._get_kwargs(*_args, **kwargs)
     def get_apbsmem_kwargs(self, *args, **kwargs):
         """Return a dict with kwargs appropriate for :class:`membrane.APBSmem`.
 
