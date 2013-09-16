@@ -239,6 +239,66 @@ class BaseMem(object):
         """Run external ungzip on all dx files."""
         return self._gzip_dx('gunzip')
 
+class APBSnomem(BaseMem):
+    """Represent the apbsnomem tools.
+
+    Run for S, M, and L grid (change suffix).
+
+    .. Note:: see code for kwargs
+    """
+    # used by apbs-mem-potential.py
+
+    def __init__(self, *args, **kwargs):
+        """Set up calculation.
+
+        APBSnomem(pqr, suffix[, kwargs])
+
+        :Arguments:
+          - temperature: temperature [298.15]
+          - conc: ionic concentration of monovalent salt with radius 2 A
+                  in mol/l [0.1]
+          - dime: grid dimensions, as list [(97,97,97)]
+          - glen: grid length, as list in  Angstroem [(250,250,250}]
+        """
+        self.pqr = args[0]
+        self.suffix = args[1]
+        self.dime = kwargs.pop('dime', (97,97,97))     # grid points -- check allowed values!!
+        self.glen = kwargs.pop('glen', (250,250,250))  # Angstroem
+        self.filenames = {'dummy': 'dummy%(suffix)s.in' % vars(self),
+                          'solvation': 'solvation%(suffix)s.in' % vars(self),
+                          }
+        # names for diel, kappa, and charge maps hard coded; only suffix (=infix) varies
+        # (see templates/dummy.in)
+
+        #: "static" variables required for a  calculation
+        self.vars = {'dummy':
+                     "pqr,suffix,"
+                     "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
+                     "DIME_XYZ,GLEN_XYZ",
+                     'solvation':
+                     "pqr,suffix,pdie,sdie,conc,temperature,dxformat,dxsuffix,"
+                     "DIME_XYZ,GLEN_XYZ",
+                     }
+        # generate names
+        d = {}
+        d['DIME_XYZ'] = self.vec2str(self.dime)
+        d['GLEN_XYZ'] = self.vec2str(self.glen)
+        self.__dict__.update(d)
+
+
+    def generate(self):
+        """Setup solvation calculation.
+
+        1. create exclusion maps (runs apbs)
+        2. create apbs run input file
+        """
+        self.write('dummy')
+        self.run_apbs('dummy')
+        self.write_infile('solvation')
+        if self.dxformat == "dx":
+            logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
+            self.gzip_dx()
+
 
 class APBSmem(BaseMem):
     """Represent the apbsmem tools.
