@@ -14,8 +14,7 @@
 """
 usage = """%prog pointx pointy pointz vecx vecy vecz length steplen --title
 
- Code for creating a straight line path of a given length starting at a point
- in the direction of a vec with points every steplen."""
+ Code for creating a straight line path pdb of a given length starting at a point in the direction of a vec with points every steplen."""
 import argparse
 import numpy
 parser = argparse.ArgumentParser()
@@ -34,12 +33,12 @@ def straightline(point, vec, length, steplen,Name ):
     nsteps= length/steplen
     step = 0
     newpoint = point
-    line = open("{name}.dat".format(name=Name), 'w')
-    line.write("{zero} {one} {two} \n".format(zero=point[0],one=point[1],two=point[2]))
+    line = open("{name}.pdb".format(name=Name), 'w')
+    line.write("ATOM {atomnum:>7} X XXX X{atomnum:>4}{x:>12}{y:>8}{z:>8} \n".format(atomnum = step + 1,x=point[0],y=point[1],z=point[2]))
     coordinate_string = ""
     while step < nsteps:
-        newpoint = newpoint+vec*steplen
-        coordinate_string +="{zero} {one} {two} \n".format(zero=newpoint[0],one=newpoint[1],two=newpoint[2])
+        newpoint += vec*steplen
+        coordinate_string +="ATOM {atomnum:>7} X XXX X{atomnum:>4}{x:>12}{y:>8}{z:>8} \n".format(atomnum = step + 1,x=newpoint[0],y=newpoint[1],z=newpoint[2])
         step += 1
     line.write(coordinate_string)
     line.close()
