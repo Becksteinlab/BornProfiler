@@ -81,8 +81,9 @@ class RunParameters(object):
     # 2. RunParameters.parameter_selections (possibly multiple times!)
     # 3. RunParameters._populate_default()
     # 4. membrane.BaseMem: set as attribute
-    # 5. membrane.APBSmem.vars: name of the attribute if needed for a task
-    # 6. membrane.BornAPBSmem.vars: name of the attribute if needed for a task
+    # 5. membrane.APBSnomem.vars: name of the attribute if needed for a task
+    # 6. membrane.APBSmem.vars: name of the attribute if needed for a task
+    # 7. membrane.BornAPBSmem.vars: name of the attribute if needed for a task
 
     # The following should all be in a template file, together with the
     # defaults and types...
@@ -116,11 +117,12 @@ class RunParameters(object):
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'potential':   [('dime', eval), ('glen', eval),],
-             }
+             },
         'apbsnomem':
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path),],
-             'potential':   [('dime', eval), ('glen', eval),],}
+             'potential':   [('dime', eval), ('glen', eval),],
+             },
         }
 
     def __init__(self, filename, **defaults):
@@ -228,7 +230,7 @@ class RunParameters(object):
         """
         _args = ('bornprofile',) + args
         return self._get_kwargs(*_args, **kwargs)
-    def get_apbsnomem_kwards(self, *args, **kwargs):
+    def get_apbsnomem_kwargs(self, *args, **kwargs):
         """Return a dict with kwargs appropriate for :class:`membrane.APBSnomem`.
 
         Default values can be supplied in *kwargs*. This method picks unique
@@ -240,6 +242,7 @@ class RunParameters(object):
         """
         _args = ('apbsnomem',) + args
         return self._get_kwargs(*_args, **kwargs)
+
     def get_apbsmem_kwargs(self, *args, **kwargs):
         """Return a dict with kwargs appropriate for :class:`membrane.APBSmem`.
 

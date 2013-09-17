@@ -51,6 +51,7 @@ APBS = configuration["apbs"]
 #: cache for template files
 TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
+             'solvation_no_membrane': read_template('solvation_no_membrane.in'),
              'born_dummy': read_template('mdummy.in'),
              'with_protein': read_template('mplaceion.in'),
              'memonly': read_template('mplaceion_memonly.in'),
@@ -246,7 +247,7 @@ class APBSnomem(BaseMem):
 
     .. Note:: see code for kwargs
     """
-    # used by apbs-mem-potential.py
+    # used by apbs-bornprofile-potential.py
 
     def __init__(self, *args, **kwargs):
         """Set up calculation.
@@ -265,7 +266,7 @@ class APBSnomem(BaseMem):
         self.dime = kwargs.pop('dime', (97,97,97))     # grid points -- check allowed values!!
         self.glen = kwargs.pop('glen', (250,250,250))  # Angstroem
         self.filenames = {'dummy': 'dummy%(suffix)s.in' % vars(self),
-                          'solvation': 'solvation%(suffix)s.in' % vars(self),
+                          'solvation_no_membrane': 'solvation_no_membrane%(suffix)s.in' % vars(self),
                           }
         # names for diel, kappa, and charge maps hard coded; only suffix (=infix) varies
         # (see templates/dummy.in)
@@ -275,7 +276,7 @@ class APBSnomem(BaseMem):
                      "pqr,suffix,"
                      "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ,GLEN_XYZ",
-                     'solvation':
+                     'solvation_no_membrane':
                      "pqr,suffix,pdie,sdie,conc,temperature,dxformat,dxsuffix,"
                      "DIME_XYZ,GLEN_XYZ",
                      }
@@ -284,7 +285,10 @@ class APBSnomem(BaseMem):
         d['DIME_XYZ'] = self.vec2str(self.dime)
         d['GLEN_XYZ'] = self.vec2str(self.glen)
         self.__dict__.update(d)
+        # process parameters
+        super(APBSnomem, self).__init__(*args[2:], **kwargs)
 
+        
 
     def generate(self):
         """Setup solvation calculation.
@@ -294,7 +298,7 @@ class APBSnomem(BaseMem):
         """
         self.write('dummy')
         self.run_apbs('dummy')
-        self.write_infile('solvation')
+        self.write_infile('solvation_no_membrane')
         if self.dxformat == "dx":
             logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
             self.gzip_dx()

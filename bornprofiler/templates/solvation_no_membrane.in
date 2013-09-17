@@ -1,0 +1,38 @@
+# APBS input file
+# calculate the potential for a system embedded in a membrane
+
+read
+    mol pqr "%(pqr)s"
+    # Read Maps
+    diel %(dxformat)s dielx%(suffix)s.%(dxsuffix)s diely%(suffix)s.%(dxsuffix)s dielz%(suffix)s.%(dxsuffix)s
+    kappa %(dxformat)s kappa%(suffix)s.%(dxsuffix)s
+    charge %(dxformat)s charge%(suffix)s.%(dxsuffix)s
+end
+
+elec name bulksolvent
+    mg-manual
+    dime %(DIME_XYZ)s
+    glen %(GLEN_XYZ)s
+    lpbe
+    pdie %(pdie)f
+    sdie %(sdie)f
+    bcfl sdh
+    ion charge  1  conc %(conc)f  radius 0.95  # sodium
+    ion charge -1  conc %(conc)f  radius 1.81  # chloride
+    gcent mol 1
+    mol 1
+    chgm spl2
+    srfm mol
+    srad 1.4
+    swin 0.3
+    sdens 10
+    temp %(temperature)f
+    calcenergy total
+    calcforce no
+    write pot dx pot_bulksolvent%(suffix)s
+end
+
+print elecEnergy  bulksolvent
+end
+
+quit
