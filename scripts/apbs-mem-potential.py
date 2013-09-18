@@ -47,7 +47,7 @@ Paths to draw_membrane2 and apbs are set in the configuration file
 
 import os.path
 import bornprofiler
-import bornprofiler.membrane
+import bornprofiler.electrostatics
 import bornprofiler.io
 import logging
 logger = logging.getLogger('bornprofiler')
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     bornprofiler.config.check_APBS()
     bornprofiler.config.check_drawmembrane()
 
-    A = bornprofiler.membrane.APBSmem(pqr, opts.suffix, **kw)
+    A = bornprofiler.electrostatics.APBSmem(pqr, opts.suffix, **kw)
     A.generate()
     if opts.run:
         if A.unpack_dxgz:

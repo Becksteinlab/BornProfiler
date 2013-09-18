@@ -43,7 +43,7 @@ The path to apbs is set in the configuration file
 import os.path
 import bornprofiler
 import bornprofiler.io
-import bornprofiler.membrane
+import bornprofiler.electrostatics
 import logging
 logger = logging.getLogger('bornprofiler')
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     # sanity checks (APBS will be needed)
     bornprofiler.config.check_APBS()
 
-    A = bornprofiler.membrane.APBSnomem(pqr, opts.suffix, **kw)
+    A = bornprofiler.electrostatics.APBSnomem(pqr, opts.suffix, **kw)
     A.generate()
 
 

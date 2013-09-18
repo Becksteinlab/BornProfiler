@@ -40,7 +40,7 @@ if __name__ == "__main__":
                 bornprofiler.config.configdir)
     logger.info("The package can also be customized by editing %r.",
                 bornprofiler.config.CONFIGNAME)
-    logger.info("Questions and feedback: Oliver Beckstein <oliver.beckstein@bioch.ox.ac.uk>")
+    logger.info("Questions and feedback: Oliver Beckstein <obeckste@asu.edu>")
   else:
     logger.error("Something is wrong: Failed to setup the template directories.")
     logger.warn("You can proceed but problems migh arise and you will not be able "
