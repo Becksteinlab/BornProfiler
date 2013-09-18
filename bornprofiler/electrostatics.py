@@ -38,7 +38,7 @@ import numpy
 from itertools import izip
 
 import logging
-logger = logging.getLogger("bornprofiler.membrane")
+logger = logging.getLogger("bornprofiler.electrostatics")
 
 from io import read_template
 
