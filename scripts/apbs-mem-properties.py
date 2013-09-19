@@ -29,7 +29,7 @@ logger = logging.getLogger("bornprofiler")
 parser = argparse.ArgumentParser()
 parser.add_argument('PDBID')
 parser.add_argument('--InputPDB')
-args = parser.parse_args()
+args = parser.parse_args()    
 def get_width(positions, center):
 # Finds the maximum distance in the xy plane from center for a series of 
 # positions. This is accomplished with the 0:2 portion of the index which
@@ -50,13 +50,13 @@ def get_pdb_from_opm(PDBID):
         raise
 def memplacer(PDBID,InputPDB):
     bornprofiler.start_logging()
-    pdb = get_pdb_from_opm(PDBID)
     try:
         import MDAnalysis
         import MDAnalysis.analysis
     except ImportError:
         logger.fatal("MDAnalysis required for this script. Available from https://code.google.com/p/mdanalysis/")
         raise
+    pdb = get_pdb_from_opm(PDBID)
     U = MDAnalysis.Universe('{pdb}.pdb'.format(pdb=PDBID))
     try: 
         leaflet0 = MDAnalysis.analysis.leaflet.LeafletFinder(U, "resname DUM and prop z < 0").groups(0)
@@ -81,10 +81,7 @@ def memplacer(PDBID,InputPDB):
         toplayer = protein.selectAtoms("prop z > {ztb} and prop z < {ztt}".format(ztb=ztopbottom, ztt = ztoptop))
         botradii = get_width(bottomlayer.positions, leaflet0.centroid())
         topradii = get_width(toplayer.positions, leaflet1.centroid())
-        Meminfo = "Membrane thickness = {thicky}, beginning at {disty} below protein centroid \n suggested radius of bottom membrane exclusion = {botsug}, maximum {botmax} \n suggested radius of top membrane exclusion = {topsug}, maximum {topmax} ".format(thicky=thickness, disty=dist,botsug = botradii[0], botmax = botradii[1], topsug = topradii[0], topmax = topradii[1])
-        Meminfofile = open("Membrane_info.txt", 'w')
-        Meminfofile.write(Meminfo)
-        Meminfofile.close()
+        Meminfo = "Membrane thickness = {thicky}, beginning at {disty} below protein centroid \nminimum suggested radius of bottom membrane exclusion = {botsug}, maximum {botmax} \nminimum suggested radius of top membrane exclusion = {topsug}, maximum {topmax} ".format(thicky=thickness, disty=dist,botsug = botradii[0], botmax = botradii[1], topsug = topradii[0], topmax = topradii[1])
 
     else:
         logger.info("Input PDB specified. Resulting values only valid if input PDB is protomer of PDBID. See documentation of this script for further information.")
@@ -103,11 +100,12 @@ def memplacer(PDBID,InputPDB):
         toplayer = protein.selectAtoms("prop z > {ztb} and prop z < {ztt}".format(ztb=ztopbottom, ztt = ztoptop))
         botradii = get_width(bottomlayer.positions, bottomlayer.centroid())
         topradii = get_width(toplayer.positions, toplayer.centroid())
-        Meminfo = "Membrane thickness = {thicky}, beginning at z={zbottom} in provided input pdb \n suggested radius of bottom membrane exclusion = {botsug}, maximum {botmax} \n suggested radius of top membrane exclusion = {topsug}, maximum {topmax} ".format(thicky=thickness, zbottom = zbot,botsug = botradii[0], botmax = botradii[1], topsug = topradii[0], topmax = topradii[1])
-        Meminfofile = open("Membrane_info.txt", 'w')
-        Meminfofile.write(Meminfo)
-        Meminfofile.close()
-    logger.info("Membrane information written to Membrane_info.txt")
+        Meminfo = "Membrane thickness = {thicky}, beginning at z={zbottom} in provided input pdb \nminimum suggested radius of bottom membrane exclusion = {botsug}, maximum {botmax} \nminimum suggested radius of top membrane exclusion = {topsug}, maximum {topmax} ".format(thicky=thickness, zbottom = zbot,botsug = botradii[0], botmax = botradii[1], topsug = topradii[0], topmax = topradii[1])
+    Meminfo_filename = "Membrane_info_{pdbid}.txt".format(pdbid=PDBID)
+    Meminfofile = open(Meminfo_filename, 'w')
+    Meminfofile.write(Meminfo)
+    Meminfofile.close()
+    logger.info("Membrane information written to {filename}".format(filename=Meminfo_filename))
     bornprofiler.stop_logging()
 
 memplacer(args.PDBID,args.InputPDB)   
