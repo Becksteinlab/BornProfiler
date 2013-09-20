@@ -23,6 +23,8 @@ usage = """%prog PDBID --InputPDB
 import numpy
 import bornprofiler
 import urllib2
+import sys
+import traceback
 import argparse
 import logging
 logger = logging.getLogger("bornprofiler")
@@ -46,23 +48,26 @@ def get_pdb_from_opm(PDBID):
         pdb.close()
         return pdb
     except:
+        traceback.print_exc()
         logger.fatal("File not found in opm database. Double check PDBID")
-        raise
+        sys.exit(1)
 def memplacer(PDBID,InputPDB):
     bornprofiler.start_logging()
     try:
         import MDAnalysis
         import MDAnalysis.analysis
     except ImportError:
+        traceback.print_exc()
         logger.fatal("MDAnalysis required for this script. Available from https://code.google.com/p/mdanalysis/")
-        raise
+        sys.exit(1)
     pdb = get_pdb_from_opm(PDBID)
     U = MDAnalysis.Universe('{pdb}.pdb'.format(pdb=PDBID))
     try: 
         leaflet0 = MDAnalysis.analysis.leaflet.LeafletFinder(U, "resname DUM and prop z < 0").groups(0)
     except IndexError:
+        traceback.print_exc()
         logger.fatal("Membrane information not available for submitted protein")
-        raise
+        sys.exit(1)
     leaflet1 = MDAnalysis.analysis.leaflet.LeafletFinder(U, "resname DUM and prop z > 0").groups(0)
     protein = U.selectAtoms("protein")
     centroid = protein.centroid()
