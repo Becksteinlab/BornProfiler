@@ -48,9 +48,8 @@ def get_pdb_from_opm(PDBID):
         pdb.close()
         return pdb
     except:
-        traceback.print_exc()
-        logger.fatal("File not found in opm database. Double check PDBID")
-        sys.exit(1)
+        raise
+
 def memplacer(PDBID,InputPDB):
     bornprofiler.start_logging()
     try:
@@ -60,7 +59,13 @@ def memplacer(PDBID,InputPDB):
         traceback.print_exc()
         logger.fatal("MDAnalysis required for this script. Available from https://code.google.com/p/mdanalysis/")
         sys.exit(1)
-    pdb = get_pdb_from_opm(PDBID)
+    try:
+        pdb = get_pdb_from_opm(PDBID)
+    except:
+        traceback.print_exc()
+        logger.fatal("File not found in opm database. Double check PDBID")
+        sys.exit(1)
+
     U = MDAnalysis.Universe('{pdb}.pdb'.format(pdb=PDBID))
     try: 
         leaflet0 = MDAnalysis.analysis.leaflet.LeafletFinder(U, "resname DUM and prop z < 0").groups(0)
