@@ -96,7 +96,7 @@ class BPbase(object):
 
   def get_apbs_script_name(self, num=None):
     if num is None:
-      return "mem_placeion.in"  # see :class:`membrane.BornAPBSmem`
+      return "mem_placeion.in"  # see :class:`electrostatics.BornAPBSmem`
     return self.infilename(num) # could probably make one of the two funcs redundant    
 
   def get_windowdirname(self, num):
@@ -405,8 +405,8 @@ class MPlaceion(BPbase):
       # SetupClass must be popped from self.bornprofile_kwargs; this is now
       # done (together with other hacks) inprocess_bornprofile_kwargs()
 
-      import membrane
-      self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
+      import electrostatics
+      self.SetupClass = electrostatics.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
     else:
       import warnings
       warnings.warn("Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)", 
@@ -429,8 +429,8 @@ class MPlaceion(BPbase):
       # hack for quickly customizing draw_membrane (uses custom classes)
       self.SetupClass = kwargs.pop('memclass', None)
       if self.SetupClass is None:
-        import membrane
-        self.SetupClass = membrane.BornAPBSmem  # to customize
+        import electrostatics
+        self.SetupClass = electrostatics.BornAPBSmem  # to customize
 
     logger.info("MPlaceion: pqr=%(pqrName)r", vars(self))
     logger.info("MPlaceion: points=%(pointsName)r", vars(self))
@@ -456,8 +456,8 @@ class MPlaceion(BPbase):
     # filter :attr:`remove_bornprofile_keywords`
     """
     # :attr:`bornprofile_kwargs` are passed in :meth:`get_MemBornSetup`
-    # directly into downstream classes such as :class:`membrane.APBSmem` and
-    # :class:`membrane.BornAPBSmem` where they are used (or not) according to
+    # directly into downstream classes such as :class:`electrostatics.APBSmem` and
+    # :class:`electrostatics.BornAPBSmem` where they are used (or not) according to
     # requirements
     try:
       kw = self.bornprofile_kwargs
@@ -590,7 +590,7 @@ class MPlaceion(BPbase):
       # using a custom SetupClass pre-populates the parameters for draw_membrane2
       # (hack!! -- should be moved into a cfg input file)
       # Cfg file sets remaining kw args [2010-11-19] but still messy;
-      # but no custom classes needed anymore, just membrane.BornAPBSmem)
+      # but no custom classes needed anymore, just electrostatics.BornAPBSmem)
       self.__cache_MemBornSetup[num] = self.SetupClass(protein, ion, cpx, **kw)
     return self.__cache_MemBornSetup[num]
 

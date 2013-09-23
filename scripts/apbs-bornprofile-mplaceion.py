@@ -13,7 +13,7 @@
 :Copyright: (c) 2010 Oliver Beckstein
 :Copyright: (c) 2013 Oliver Beckstein
 """
-
+from __future__ import with_statement
 usage = """%prog [options] parameter-file
 
 Setup Born profile calculation with a membrane. Parameters are read from the
@@ -56,8 +56,6 @@ from the solvation free energies in
 
 directly via the Born equation. USE AT YOUR OWN RISK!!
 """
-
-from __future__ import with_statement
 
 import bornprofiler
 
