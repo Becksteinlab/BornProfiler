@@ -41,7 +41,6 @@ if __name__ == "__main__":
   import glob
   from optparse import OptionParser
 
-  bornprofiler.start_logging()
 
   parser = OptionParser(usage=usage)
   parser.add_option("--name", dest="jobName",
@@ -75,6 +74,8 @@ if __name__ == "__main__":
   parser.set_defaults(basedir=os.path.curdir, ionName="ION", create=True, copy_pqr=False)
 
   opts,args = parser.parse_args()
+
+  bornprofiler.start_logging()
 
   if len(args) == 0:
     logger.fatal("Needs samplepoints file and at least one APBS output file. See --help.")
