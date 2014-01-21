@@ -7,6 +7,9 @@
 # Released under the GNU Public Licence, version 3
 # Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
 # Copyright (c) 2010-2013 Oliver Beckstein
+
+from __future__ import with_statement
+
 usage = """%prog [options] [FILE]
 
 Create samplepoints for the Born profile scripts from a pdb file or a
@@ -24,7 +27,6 @@ R(z). If more accurate values are required one needs to grep HOLE's
 output.
 """
 
-from __future__ import with_statement
 
 import string
 import sys

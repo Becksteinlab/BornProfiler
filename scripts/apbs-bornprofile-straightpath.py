@@ -34,11 +34,11 @@ def straightline(point, vec, length, steplen,Name ):
     step = 0
     newpoint = point
     line = open("{name}.pdb".format(name=Name), 'w')
-    line.write("ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12}{y:>8}{z:>8} \n".format(atomnum = step + 1,x=point[0],y=point[1],z=point[2]))
+    line.write("ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12,.2f}{y:>8,.2f}{z:>8,.2f} \n".format(atomnum = step + 1,x=point[0],y=point[1],z=point[2]))
     coordinate_string = ""
     while step < nsteps:
         newpoint += vec*steplen
-        coordinate_string +="ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12}{y:>8}{z:>8} \n".format(atomnum = step + 2,x=newpoint[0],y=newpoint[1],z=newpoint[2])
+        coordinate_string +="ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12,.2f}{y:>8,.2f}{z:>8,.2f} \n".format(atomnum = step + 2,x=newpoint[0],y=newpoint[1],z=newpoint[2])
         step += 1
     line.write(coordinate_string)
     line.close()
