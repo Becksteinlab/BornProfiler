@@ -51,7 +51,7 @@ else:
     logger.fatal("Number of plot labels does not match number of data files.")
     sys.exit(1)
 
-def graph_mult_data_colors(file_list,xcolumn,ycolumnplot_labels,colors,x_label,ylabel,title):
+def graph_mult_data_colors(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,ylabel,title):
     logger.info("unpacking data")
     datalist = [[pylab.loadtxt(filename),label,color] for filename,label,color in zip(file_list, plot_labels,colors)]
     logger.info("plotting")
