@@ -28,7 +28,7 @@ import itertools
 import traceback
 import os
 import sys
-import pathmetrics_par
+from bornprofiler import pathmetrics_par
 import bornprofiler
 import MDAnalysis
 from scipy.spatial import Delaunay

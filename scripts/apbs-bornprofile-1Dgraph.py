@@ -14,7 +14,7 @@
 """
 usage = """%prog dat_files --xcolumn --ycolumn --title --xlabel --ylabel --plot_labels --colors
 Produces a pylab plot of the data of the xcolumn vs the data of the ycolumn from a column-orgranized dat file with the labels, colors, and title. Defaults set for apbs analysis of energy vs z coordinate."""
-
+import bornprofiler
 import argparse
 import logging
 import pylab
@@ -41,8 +41,8 @@ plot_labels = args.plot_labels
 colors = args.colors
 bornprofiler.start_logging()
 # Checks to ensure matching numbers of labels, colors, and files.
-if len(dat_files) == len(plot_labels):
-    if len(dat_files) == len(colors) or colors == None:
+if  plot_labels == None or len(dat_files) == len(plot_labels):
+    if colors == None or len(dat_files) == len(colors):
         pass
     else:
         logger.fatal("Number of colors does not match number of data files.")
@@ -74,9 +74,11 @@ def graph_mult_data(file_list,xcolumn,ycolumn,plot_labels,x_label,ylabel,title):
     pylab.title(title)
     pylab.xlabel(xlabel)
     pylab.ylabel(ylabel)
-    logger.info("saving figure to {title}.png".format(title=title)
+    logger.info("saving figure to {title}.png".format(title=title))
     pylab.savefig(title)
+
 # If no labels are specified, generates them from the file names, removing directory and format information
+
 if plot_labels == None:
     plot_labels = [dat_file.split('/')[-1].split('.')[0] for dat_file in dat_files]    
 # Follows automatic pylab color scheme if none specified
@@ -84,4 +86,5 @@ if colors == None:
     graph_mult_data(dat_files,xcolumn,ycolumn,plot_labels,xlabel,ylabel,title)
 else:
     graph_mult_data_colors(dat_files,xcolumn,ycolumn,plot_labels,colors,xlabel,ylabel,title) 
+
 bornprofiler.stop_logging()   
