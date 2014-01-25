@@ -47,11 +47,11 @@ def get_protein_pdb(PDBID):
         logger.fatal("MDAnalysis required for this script. Available from https://code.google.com/p/mdanalysis/")
         sys.exit(1)
     try:
-        logger.info("Downloading pdb from opm database")
+        logger.info("Downloading pdb for {pdb} from opm database".format(pdb=PDBID))
         pdb = get_pdb_from_opm(PDBID)
     except:
         traceback.print_exc()
-        logger.fatal("File not found in opm database. Double check PDBID")
+        logger.fatal("File not found in opm database. Double check PDBID {pdb}".format(pdb=PDBID))
         sys.exit(1)
 
     U = MDAnalysis.Universe('{pdb}.pdb'.format(pdb=PDBID))
