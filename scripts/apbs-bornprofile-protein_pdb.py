@@ -39,7 +39,6 @@ def get_pdb_from_opm(PDBID):
         raise
 
 def get_protein_pdb(PDBID):
-    bornprofiler.start_logging()
     try:
         import MDAnalysis
         import MDAnalysis.analysis
@@ -72,7 +71,7 @@ def get_protein_pdb(PDBID):
     u = open("{pdbid}_protein.pdb".format(pdbid=PDBID), 'w')
     u.write(outstring)
     u.close()
-    bornprofiler.stop_logging()
 
-
+bornprofiler.start_logging()
 get_protein_pdb(args.PDBID)
+bornprofiler.stop_logging()
