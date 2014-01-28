@@ -107,7 +107,8 @@ class RunParameters(object):
              'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
                              ('points', path)],
              'job': [('name', str), ('script', path), ('arrayscript', path)],
-             },
+             'graphing': [('xcolumn',int),('ycolumn',int),('title',str),('xlabel',str), ('ylabel',str),('plot_label',str),('color',str)]
+            },
         'apbsmem':
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path),],
@@ -196,6 +197,14 @@ class RunParameters(object):
         parser.set('job', 'name', 'mbornprofile')
         parser.set('job', 'script', 'q_local.sh')
         parser.set('job', 'arrayscript', 'q_array.sge')
+        parser.add_section('graphing')
+        parser.set('graphing','xcolumn','2')
+        parser.set('graphing','ycolumn','3')
+        parser.set('graphing','title','BP')
+        parser.set('graphing','xlabel','z')
+        parser.set('graphing','ylabel','W_elec')
+        parser.set('graphing','plot_label','Ion')
+        parser.set('graphing','color','black')
 
     def _get_kwargs(self, *args, **kwargs):
         """Prepare kwargs for a specified task."""
