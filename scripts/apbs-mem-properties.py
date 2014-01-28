@@ -31,7 +31,8 @@ logger = logging.getLogger("bornprofiler")
 parser = argparse.ArgumentParser()
 parser.add_argument('PDBID')
 parser.add_argument('--InputPDB')
-args = parser.parse_args()    
+args = parser.parse_args() 
+   
 def get_width(positions, center):
 # Finds the maximum distance in the xy plane from center for a series of 
 # positions. This is accomplished with the 0:2 portion of the index which
@@ -39,6 +40,7 @@ def get_width(positions, center):
     disparray = positions - center
     distarray =(disparray * disparray)[:, 0:2].sum(axis=1)
     return numpy.array([numpy.mean(distarray)**0.5,numpy.max(distarray)**0.5])
+
 def get_pdb_from_opm(PDBID):
     pdburl = 'http://opm.phar.umich.edu/pdb/{pdb}.pdb'.format(pdb=PDBID.lower())
     try:
@@ -51,7 +53,6 @@ def get_pdb_from_opm(PDBID):
         raise
 
 def memplacer(PDBID,InputPDB):
-    bornprofiler.start_logging()
     try:
         import MDAnalysis
         import MDAnalysis.analysis
@@ -116,6 +117,8 @@ def memplacer(PDBID,InputPDB):
     Meminfofile.write(Meminfo)
     Meminfofile.close()
     logger.info("Membrane information written to {filename}".format(filename=Meminfo_filename))
-    bornprofiler.stop_logging()
+    return [botradii[0],topradii[0],thickness,zbot]
 
-memplacer(args.PDBID,args.InputPDB)   
+bornprofiler.start_logging()
+memplacer(args.PDBID,args.InputPDB)
+bornprofiler.stop_logging()   
