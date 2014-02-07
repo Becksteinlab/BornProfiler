@@ -21,57 +21,12 @@ import sys
 import traceback
 import argparse
 import logging
+from bornprofiler import run_setup
 logger = logging.getLogger("bornprofiler")
 parser = argparse.ArgumentParser()
 parser.add_argument('PDBID')
 args = parser.parse_args()
 
-
-def get_pdb_from_opm(PDBID):
-    pdburl = 'http://opm.phar.umich.edu/pdb/{pdb}.pdb'.format(pdb=PDBID.lower())
-    try:
-        dl = urllib2.urlopen(pdburl)
-        pdb = open('{pdb}.pdb'.format(pdb=PDBID), 'w')
-        pdb.write(dl.read())
-        pdb.close()
-        return pdb
-    except:
-        raise
-
-def get_protein_pdb(PDBID):
-    try:
-        import MDAnalysis
-        import MDAnalysis.analysis
-    except ImportError:
-        traceback.print_exc()
-        logger.fatal("MDAnalysis required for this script. Available from https://code.google.com/p/mdanalysis/")
-        sys.exit(1)
-    try:
-        logger.info("Downloading pdb for {pdb} from opm database".format(pdb=PDBID))
-        pdb = get_pdb_from_opm(PDBID)
-    except:
-        traceback.print_exc()
-        logger.fatal("File not found in opm database. Double check PDBID {pdb}".format(pdb=PDBID))
-        sys.exit(1)
-
-    U = MDAnalysis.Universe('{pdb}.pdb'.format(pdb=PDBID))
-    logger.info("Stripping waters, ligands, and other non-protein molecules")
-    protein = U.selectAtoms("protein")
-    logger.info("Writing protein info to {pdbid}_protein.pdb".format(pdbid=PDBID))
-    protein.write("{pdbid}_protein.pdb".format(pdbid=PDBID))
-    logger.info("Removing header section")
-    f = open("{pdbid}_protein.pdb".format(pdbid=PDBID), 'r')
-    outstring = ""
-    for line in f:
-        if line.split()[0] == 'ATOM':
-            outstring+= line
-        else:
-            pass
-    f.close()
-    u = open("{pdbid}_protein.pdb".format(pdbid=PDBID), 'w')
-    u.write(outstring)
-    u.close()
-
 bornprofiler.start_logging()
-get_protein_pdb(args.PDBID)
+run_setup.get_protein_pdb(args.PDBID)
 bornprofiler.stop_logging()
