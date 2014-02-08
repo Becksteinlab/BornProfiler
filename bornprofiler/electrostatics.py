@@ -133,7 +133,7 @@ class BaseMem(object):
 
         #logger.debug("BornProfiler: detected APBS version %(apbs_version)r", vars(self))
 
-        super(BaseMem, self).__init__(*args, **kwargs)
+        super(BaseMem, self).__init__()
 
     def get_var_dict(self, stage):
         """Load required values for stage from vars(self) into d."""
