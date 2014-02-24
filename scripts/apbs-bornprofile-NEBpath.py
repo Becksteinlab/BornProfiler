@@ -307,7 +307,7 @@ def write_dat_of_paths_energies(paths,dat_title,energies_arrays):
         cumulative_distance = 0
         current_bead = 0
         for position in path:
-            dat_string +="{x:>10,.2f}{y:>10,.2f}{z:>10,.2f}{number:>10,.2f}{progress:>10,.2f}{energy:>10,.2f} \n".format(number = atomnum,x=position[0],y=position[1],z=position[2],progress=cumulative_distance, energy = energies[atomnum-1][0])
+            dat_string +="{x:>10,.2f}{y:>10,.2f}{z:>10,.2f}{number:>10}{progress:>10,.2f}{energy:>10,.2f} \n".format(number = atomnum,x=position[0],y=position[1],z=position[2],progress=cumulative_distance, energy = energies[atomnum-1][0])
             
             atomnum += 1
             try:
