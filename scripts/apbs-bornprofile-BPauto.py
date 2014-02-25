@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
+"""
+:Author: Lennard van der Feltz
+:Year: 2014
+:Licence: GPL 3
+:Copyright: (c) 2014 Lennard van der Feltz
+"""
+usage = """%prog -protein -pdbids -ions --pqr_forcefield --membrane"""
+import os
+import argparse
+import logging
+import bornprofiler
+import sys
+import importlib
+import subprocess
+from bornprofiler.config import cfg
+import bornprofiler.run_setup as run_setup
+
+logger = logging.getLogger("bornprofiler")
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-protein")
+parser.add_argument("-pdbids",nargs = '+')
+parser.add_argument("-ions",nargs = '+')
+parser.add_argument("--pqr_forcefield",default = 'CHARMM')
+parser.add_argument("--membrane",type = bool, default = True)
+parser.add_argument("--path", default = True)
+parser.add_argument("--pathres", default = 1)
+args = parser.parse_args()
+protein = args.protein
+pdbids = args.pdbids
+ions = args.ions
+forcefield = args.pqr_forcefield
+membrane = args.membrane
+path = args.path
+pathres= args.pathres
+
+def generate_directory(directory):
+    try:
+        os.mkdir(directory)
+    except OSError:
+        logger.fatal("Directory {dir} already exists. Delete it or submit a different title.")
+
+def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
+    if path:
+        try:
+            import MDAnalysis
+        except ImportError:
+            logger.fatal("Unable to import MDAnalysis. MDAnalysis required to ensure simulation box is large enough to contain points for calculation. Available from https://code.google.com/p/mdanalysis/")
+    logger.info("generating {prot} directory".format(prot=protein))
+    generate_directory(protein)
+    os.chdir(protein)
+    cfg.add_section('plotting')
+    cfg.add_section('environment')
+    cfg.add_section('bornprofile')
+    cfg.add_section('job')
+    for pdbid in pdbids:
+        logger.info("generating {prot}/{pdb} directory".format(prot=protein,pdb=pdbid))
+        generate_directory(pdbid)
+        os.chdir(pdbid)
+        run_setup.get_protein_pdb(pdbid)
+        if membrane:
+            bot_rad,top_rad,thickness,zbot = run_setup.memplacer(pdbid,None)
+        try:
+            subprocess.call(["pdb2pqr.py","--ff={force}".format(force=forcefield),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
+        except:
+            logger.info("pqr generation for {pdb}_protein.pdb failed. This pqr must be generated before running apbs calculations. Make sure pdb2pqr is available.".format(pdb=pdbid))
+        u = MDAnalysis.Universe("{pdb}_protein.pdb".format(pdb=pdbid))
+        bmin,bmax = u.atoms.bbox()
+        if path == True:
+            subprocess.call(["apbs-bornprofile-straightpath.py","0", "0", "{z}".format(z = bmin[2] - 10), "0", "0", "1", "{leng}".format(leng = (bmax-bmin)[2] + 20), "{stepleng}".format(stepleng = pathres), "--title","Centerline"])
+        else:
+            P = MDAnalysis.Universe("../../{path}".format(path=path))
+            pmin,pmax = P.atoms.bbox()           
+        for ion in ions:
+            logger.info("generating {prot}/{pdb}/{ion} directory".format(prot=protein,pdb=pdbid,ion=ion))
+            generate_directory(ion)
+            os.chdir(ion)
+            if membrane: 
+                cfg.set('membrane','rtop','{}'.format(top_rad))
+                cfg.set('membrane','rbot','{}'.format(bot_rad))
+                cfg.set('membrane','lmem','{}'.format(thickness))
+                cfg.set('membrane','zmem','{}'.format(zbot))
+            cfg.set('environment','pqr','../{pdb}.pqr'.format(pdb=pdbid))
+            cfg.set('bornprofile','ion',ion)
+            if path==True:
+                cfg.set('bornprofile','points','../Centerline.pdb')
+            else:
+                cfg.set('bornprofile','points','../../../{path}'.format(path=path))
+            cfg.set('plotting','protein_bottom','{bot}'.format(bot = bmin[2]))
+            cfg.set('plotting','protein_length','{leng}'.format(leng = (bmax-bmin)[2]))
+            cfg.set('job','name','{pdbid}line{ion}'.format(pdbid=pdbid,ion=ion))
+            with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
+                cfg.write(config_file)
+            subprocess.call(['apbs-bornprofile-mplaceion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
+            os.chdir('..')
+        os.chdir("..")
+        
+
+bornprofiler.start_logging()
+prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres)
+bornprofiler.stop_logging()
