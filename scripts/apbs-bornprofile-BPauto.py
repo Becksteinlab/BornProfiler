@@ -57,7 +57,7 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
     logger.info("generating {prot} directory".format(prot=protein))
     generate_directory(protein)
     os.chdir(protein)
-    cfg.add_section('plotting')
+    cfg.add_section('graphing')
     cfg.add_section('environment')
     cfg.add_section('bornprofile')
     cfg.add_section('job')
@@ -74,8 +74,11 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
             logger.info("pqr generation for {pdb}_protein.pdb failed. This pqr must be generated before running apbs calculations. Make sure pdb2pqr is available.".format(pdb=pdbid))
         u = MDAnalysis.Universe("{pdb}_protein.pdb".format(pdb=pdbid))
         bmin,bmax = u.atoms.bbox()
+        centroidz = u.atoms.centroid()[2]
         if path == True:
-            subprocess.call(["apbs-bornprofile-straightpath.py","0", "0", "{z}".format(z = bmin[2] - 10), "0", "0", "1", "{leng}".format(leng = (bmax-bmin)[2] + 20), "{stepleng}".format(stepleng = pathres), "--title","Centerline"])
+            pmin = bmin[2]-10
+            pmax = bmax[2] + 10
+            subprocess.call(["apbs-bornprofile-straightpath.py","0", "0", "{z}".format(z = pmin), "0", "0", "1", "{leng}".format(leng = pmax-pmin), "{stepleng}".format(stepleng = pathres), "--title","Centerline"])
         else:
             P = MDAnalysis.Universe("../../{path}".format(path=path))
             pmin,pmax = P.atoms.bbox()           
@@ -90,12 +93,26 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
                 cfg.set('membrane','zmem','{}'.format(zbot))
             cfg.set('environment','pqr','../{pdb}.pqr'.format(pdb=pdbid))
             cfg.set('bornprofile','ion',ion)
+            if pmax - centroidz > 75:
+                box = (centroidz - pmax + 100)*2
+                if box/161 - 250/129 < box/129 -250/129:
+                    dime = 161
+            elif pmin - centroidz < -75:
+                box = (centroidz - pmin + 100)*2
+                if box/161 - 250/129 < box/129 -250/129:
+                    dime = 161
+            else:
+                box = 250
+                dime = 129
+            cfg.set('bornprofile','glen','[({box},{box},{box}),(100,100,100),(50,50,50)]'.format(box=box))
+            cfg.set('bornprofile','dime','[({dime},{dime},{dime}),({dime},{dime},{dime}),({dime},{dime},{dime})]'.format(dime=dime))
             if path==True:
                 cfg.set('bornprofile','points','../Centerline.pdb')
             else:
                 cfg.set('bornprofile','points','../../../{path}'.format(path=path))
-            cfg.set('plotting','protein_bottom','{bot}'.format(bot = bmin[2]))
-            cfg.set('plotting','protein_length','{leng}'.format(leng = (bmax-bmin)[2]))
+
+            cfg.set('graphing','protein_bottom','{bot}'.format(bot = bmin[2]))
+            cfg.set('graphing','protein_length','{leng}'.format(leng = (bmax-bmin)[2]))
             cfg.set('job','name','{pdbid}line{ion}'.format(pdbid=pdbid,ion=ion))
             with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
                 cfg.write(config_file)
