@@ -18,7 +18,6 @@ import argparse
 import logging
 import bornprofiler
 import sys
-import importlib
 import subprocess
 from bornprofiler.config import cfg
 import bornprofiler.run_setup as run_setup
@@ -33,6 +32,9 @@ parser.add_argument("--pqr_forcefield",default = 'CHARMM')
 parser.add_argument("--membrane",type = bool, default = True)
 parser.add_argument("--path", default = True)
 parser.add_argument("--pathres", default = 1)
+parser.add_argument("--script", default = 'q_ASU.sh')
+parser.add_argument("--arrayscript",default = 'array_ASU_workstations.sge')
+parser.add_argument("--submit",default = "qsub")
 args = parser.parse_args()
 protein = args.protein
 pdbids = args.pdbids
@@ -41,26 +43,31 @@ forcefield = args.pqr_forcefield
 membrane = args.membrane
 path = args.path
 pathres= args.pathres
+script = args.script
+arrayscript = args.arrayscript
 
 def generate_directory(directory):
     try:
         os.mkdir(directory)
     except OSError:
-        logger.fatal("Directory {dir} already exists. Delete it or submit a different title.")
+        logger.fatal("Directory {drc} already exists. Delete it or submit a different title.".format(drc=directory))
 
-def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
-    if path:
-        try:
-            import MDAnalysis
-        except ImportError:
-            logger.fatal("Unable to import MDAnalysis. MDAnalysis required to ensure simulation box is large enough to contain points for calculation. Available from https://code.google.com/p/mdanalysis/")
+def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript):
+    try:
+        import MDAnalysis
+    except ImportError:
+        logger.fatal("Unable to import MDAnalysis. MDAnalysis required for many steps in run preparation. Available from https://code.google.com/p/mdanalysis/")    
+        sys.exit(1)
     logger.info("generating {prot} directory".format(prot=protein))
     generate_directory(protein)
     os.chdir(protein)
+    logger.info("generating cfg sections")
     cfg.add_section('graphing')
     cfg.add_section('environment')
     cfg.add_section('bornprofile')
     cfg.add_section('job')
+    cfg.set("job","script",script)
+    cfg.set("job","arrayscript",arrayscript)
     for pdbid in pdbids:
         logger.info("generating {prot}/{pdb} directory".format(prot=protein,pdb=pdbid))
         generate_directory(pdbid)
@@ -69,23 +76,27 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
         if membrane:
             bot_rad,top_rad,thickness,zbot = run_setup.memplacer(pdbid,None)
         try:
-            subprocess.call(["pdb2pqr.py","--ff={force}".format(force=forcefield),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
+            subprocess.call(["pdb2pqr.py","--whitespace","--ff={force}".format(force=forcefield),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
         except:
             logger.info("pqr generation for {pdb}_protein.pdb failed. This pqr must be generated before running apbs calculations. Make sure pdb2pqr is available.".format(pdb=pdbid))
+        logger.info("Calculating protein size and location information")
         u = MDAnalysis.Universe("{pdb}_protein.pdb".format(pdb=pdbid))
         bmin,bmax = u.atoms.bbox()
         centroidz = u.atoms.centroid()[2]
         if path == True:
+            logger.info("Creating path")
             pmin = bmin[2]-10
             pmax = bmax[2] + 10
             subprocess.call(["apbs-bornprofile-straightpath.py","0", "0", "{z}".format(z = pmin), "0", "0", "1", "{leng}".format(leng = pmax-pmin), "{stepleng}".format(stepleng = pathres), "--title","Centerline"])
         else:
+            logger.info("Calculating path size information")
             P = MDAnalysis.Universe("../../{path}".format(path=path))
             pmin,pmax = P.atoms.bbox()           
         for ion in ions:
             logger.info("generating {prot}/{pdb}/{ion} directory".format(prot=protein,pdb=pdbid,ion=ion))
             generate_directory(ion)
             os.chdir(ion)
+            logger.info("Setting cfg elements based on protein, ion, membrane, and path information")
             if membrane: 
                 cfg.set('membrane','rtop','{}'.format(top_rad))
                 cfg.set('membrane','rbot','{}'.format(bot_rad))
@@ -94,11 +105,11 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
             cfg.set('environment','pqr','../{pdb}.pqr'.format(pdb=pdbid))
             cfg.set('bornprofile','ion',ion)
             if pmax - centroidz > 75:
-                box = (centroidz - pmax + 100)*2
+                box = (abs(centroidz - pmax) + 100)*2
                 if box/161 - 250/129 < box/129 -250/129:
                     dime = 161
             elif pmin - centroidz < -75:
-                box = (centroidz - pmin + 100)*2
+                box = (abs(centroidz - pmin) + 100)*2
                 if box/161 - 250/129 < box/129 -250/129:
                     dime = 161
             else:
@@ -114,6 +125,7 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
             cfg.set('graphing','protein_bottom','{bot}'.format(bot = bmin[2]))
             cfg.set('graphing','protein_length','{leng}'.format(leng = (bmax-bmin)[2]))
             cfg.set('job','name','{pdbid}line{ion}'.format(pdbid=pdbid,ion=ion))
+            logger.info("writing cfg file.")
             with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
                 cfg.write(config_file)
             subprocess.call(['apbs-bornprofile-mplaceion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
@@ -122,5 +134,5 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres):
         
 
 bornprofiler.start_logging()
-prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres)
+prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript)
 bornprofiler.stop_logging()
