@@ -34,7 +34,7 @@ parser.add_argument("--path", default = True)
 parser.add_argument("--pathres", default = 1)
 parser.add_argument("--script", default = 'q_ASU.sh')
 parser.add_argument("--arrayscript",default = 'array_ASU_workstations.sge')
-parser.add_argument("--submit",default = "qsub")
+parser.add_argument("--submit",default = 'qsub')
 args = parser.parse_args()
 protein = args.protein
 pdbids = args.pdbids
@@ -45,14 +45,14 @@ path = args.path
 pathres= args.pathres
 script = args.script
 arrayscript = args.arrayscript
-
+submit = args.submit
 def generate_directory(directory):
     try:
         os.mkdir(directory)
     except OSError:
         logger.fatal("Directory {drc} already exists. Delete it or submit a different title.".format(drc=directory))
 
-def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript):
+def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript,submit):
     try:
         import MDAnalysis
     except ImportError:
@@ -129,10 +129,12 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arra
             with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
                 cfg.write(config_file)
             subprocess.call(['apbs-bornprofile-mplaceion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
+            if submit != "off":
+                subprocess.call(['{submit}'.format(submit=submit),'qsub_{pdbid}line{ion}.bash'.format(pdbid=pdbid,ion=ion)])
             os.chdir('..')
         os.chdir("..")
         
 
 bornprofiler.start_logging()
-prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript)
+prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript,submit)
 bornprofiler.stop_logging()
