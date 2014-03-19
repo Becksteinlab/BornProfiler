@@ -12,7 +12,7 @@ from __future__ import with_statement
 
 import os, errno
 import numpy
-
+import sys
 import io
 from io import read_template
 from config import configuration
@@ -249,11 +249,20 @@ class Placeion(BPbase):
 
     self.readPQR()
     self.readPoints()
-
+    self.pmax = numpy.amax(self.points,axis=0)
+    self.pmin = numpy.amin(self.points,axis=0)
   def generate(self):
     """Generate all input files."""
+    if self.pmax[2] - self.protein_centre[2] > self.cglen[2]/2.0 - 55.0 :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+        sys.exit(1)
+    if self.pmin[2] - self.protein_centre[2] < -(self.cglen[2]/2.0 - 55.0) :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+        sys.exit(1)
+
     self.writePQRs()
     self.writeIn()
+
     return self.writeJob()
 
   def readPQR(self):
@@ -445,8 +454,17 @@ class MPlaceion(BPbase):
     # do some initial processing...
     self.readPQR()                     # hack: also sets self.protein_centre
     self.readPoints()
-    self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
+    self.pmax = numpy.amax(self.points,axis=0)
+    self.pmin = numpy.amin(self.points,axis=0)
 
+
+    self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
+    if self.pmax[2] - self.protein_centre[2] > kw['glen'][0][2]/2.0 - 55.0 :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+        sys.exit(1)
+    if self.pmin[2] - self.protein_centre[2] < -(kw['glen'][0][2]/2.0 - 55.0) :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+        sys.exit(1)
   def process_bornprofile_kwargs(self):
     """Hook to manipulate :attr:`bornprofile_kwargs`.
 
@@ -530,7 +548,7 @@ class MPlaceion(BPbase):
 
     The APBS calculation is set up for manual focusing in three stages:
       1. **L** is a coarse grid and centered on the protein
-      2. **M** is a medium grod, centered on the ion, and using focusing
+      2. **M** is a medium grid, centered on the ion, and using focusing
          (the boundary values come from the **L** calculation)
       3. **S** is the finest grid, also centered and focused on the ion
 
@@ -591,6 +609,7 @@ class MPlaceion(BPbase):
       # (hack!! -- should be moved into a cfg input file)
       # Cfg file sets remaining kw args [2010-11-19] but still messy;
       # but no custom classes needed anymore, just electrostatics.BornAPBSmem)
+
       self.__cache_MemBornSetup[num] = self.SetupClass(protein, ion, cpx, **kw)
     return self.__cache_MemBornSetup[num]
 
@@ -609,6 +628,7 @@ class MPlaceion(BPbase):
     number of windows it is also possible to only generate a bash script for
     each window and defer the setup (*run* = ``False``, the default).
     """
+
     windows = self._process_window_numbers(windows)
     self.writePQRs(windows=windows)
     self.generateMem(windows=windows, run=run)
