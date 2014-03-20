@@ -459,12 +459,13 @@ class MPlaceion(BPbase):
 
 
     self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
-    if self.pmax[2] - self.protein_centre[2] > kw['glen'][0][2]/2.0 - 55.0 :
-        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+    if self.pmax[2] - self.protein_centre[2] > kw['glen'][0][2]/2.0 - (kw['glen'][1][2]/2.0+5.0) :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
         sys.exit(1)
-    if self.pmin[2] - self.protein_centre[2] < -(kw['glen'][0][2]/2.0 - 55.0) :
-        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+    if self.pmin[2] - self.protein_centre[2] < -(kw['glen'][0][2]/2.0 - (kw['glen'][1][2]/2.0+5.0)) :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
         sys.exit(1)
+
   def process_bornprofile_kwargs(self):
     """Hook to manipulate :attr:`bornprofile_kwargs`.
 
