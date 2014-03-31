@@ -194,52 +194,29 @@ class BPbase(object):
 
 class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
-
-  padding_xy = 40.0  # xy only used with use_cubic_boundaries = False
-  padding_z  = 80.0
  
   def __init__(self, *args, **kwargs):
-    if len(args) == 1:
-      # new style
-      import io
-      params = io.RunParameters(args[0])
-      self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
-      self.pqrName = os.path.realpath(kw.pop('pqr'))
-      self.pointsName = os.path.realpath(kw.pop('points'))
-      self.ion = IONS[kw.pop('ion', 'Na')]
-      self.jobName = kw.pop('name', "bornprofile")
-      self.ionicStrength = kw.pop('conc', 0.15)
-      self.temperature = kw.pop('temperature', 300.0)
-      self.sdie = kw.pop('sdie', 78.5)
-      self.pdie = kw.pop('pdie', 10.0)
-      self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
-      self.script = read_template(kw.pop('script', 'q_local.sh'))
-      dime = numpy.array(kw.pop('dime', [129,129,129]))
-      if len(dime.shape) == 2:
-        self.dime = dime[0]   # only take the first one in a triplet
-      else:
-        self.dime = dime
-      self.fglen = numpy.array(kw.pop('fglen', [40,40,40]))
-      # glen not needed, auto-set from pqr and padding
+    import io
+    params = io.RunParameters(args[0])
+    self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
+    self.pqrName = os.path.realpath(kw.pop('pqr'))
+    self.pointsName = os.path.realpath(kw.pop('points'))
+    self.ion = IONS[kw.pop('ion', 'Na')]
+    self.jobName = kw.pop('name', "bornprofile")
+    self.ionicStrength = kw.pop('conc', 0.15)
+    self.temperature = kw.pop('temperature', 300.0)
+    self.sdie = kw.pop('sdie', 78.5)
+    self.pdie = kw.pop('pdie', 10.0)
+    self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
+    self.script = read_template(kw.pop('script', 'q_local.sh'))
+    dime = numpy.array(kw.pop('dime', [129,129,129]))
+    if len(dime.shape) == 2:
+      self.dime = dime[0]   # only take the first one in a triplet
     else:
-      import warnings
-      warnings.warn("Using deprecated Placeion(pqr,points) call (will be removed in 1.0)", 
-                    DeprecationWarning)
-      self.pqrName = os.path.realpath(args[0])
-      self.pointsName = os.path.realpath(args[1])
-      self.jobName = kwargs.pop('jobName', "bornprofile")
-      self.ion = IONS[kwargs.pop('ionName', 'Na')]
-      self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
-      self.temperature = kwargs.pop('temperature', 300.0)
-      self.sdie = kwargs.pop('sdie', 78.5)
-      self.pdie = kwargs.pop('pdie', 10.0)
-      self.dime = numpy.array(kwargs.pop('dime', [129,129,129]))
-      self.fglen = numpy.array(kwargs.pop('fglen', [40,40,40]))
-      self.script = read_template(kwargs.pop('script', 'q_local.sh'))
-      self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
+      self.dime = dime
+    self.fglen = numpy.array(kw.pop('fglen', [40,40,40]))
+    self.glen = numpy.array(kw.pop('glen',[[250,250,250],[100,100,100],[50,50,50]]))
 
-    self.cglen = numpy.array([0, 0, 0])  # automatically set by readPQR() + padding!
-    self.use_cubic_boundaries = True     # False uses old placeion.py algorithm: manually adjust fglen!!
     self.pqrLines = []
     self.protein_centre = None
 
@@ -251,13 +228,16 @@ class Placeion(BPbase):
     self.readPoints()
     self.pmax = numpy.amax(self.points,axis=0)
     self.pmin = numpy.amin(self.points,axis=0)
+
   def generate(self):
     """Generate all input files."""
-    if self.pmax[2] - self.protein_centre[2] > self.cglen[2]/2.0 - 55.0 :
-        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+    
+    if self.pmax[2] - self.protein_centre[2] > self.glen[0][2]/2.0 - (self.glen[1][2]/2.0+5.0) :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
         sys.exit(1)
-    if self.pmin[2] - self.protein_centre[2] < -(self.cglen[2]/2.0 - 55.0) :
-        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have 50 Angstrom buffer between points and box boundary)")
+
+    if self.pmin[2] - self.protein_centre[2] < -(self.glen[0][2]/2.0 - (self.glen[1][2]/2.0+5.0)) :
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
         sys.exit(1)
 
     self.writePQRs()
@@ -268,22 +248,6 @@ class Placeion(BPbase):
   def readPQR(self):
     """Read PQR file and determine bounding box and centre of geometry."""
     coords = super(Placeion, self).readPQR()   # :-p
-
-    if self.use_cubic_boundaries:
-      # use largest cubic box (note: fglen is cubic in templates/placeion.in)
-      # but can be set in run parameters bornprofile.fglen.
-      paddings = numpy.max([self.padding_xy, self.padding_z])
-      L = (coords.max() - coords.min()) + paddings
-      self.cglen = numpy.array([L,L,L])
-      logger.debug("Setting cubic box boundaries cglen = %(cglen)r", vars(self))
-    else:
-      # original placeion.py algorithm
-      # (note: for this to work better, the fglen in templates/placeion.in should
-      # match the ratio of box lengths)
-      paddings = numpy.array([self.padding_xy, self.padding_xy, self.padding_z])
-      self.cglen = (coords.max(axis=0) - coords.min(axis=0)) + paddings
-      logger.debug("Using old algorithm to determine cglen = %(cglen)r: make sure that fglen "
-                   "matches the ratios of box lengths.", vars(self))
     return coords
 
   def writeIn(self, windows=None):
@@ -293,7 +257,7 @@ class Placeion(BPbase):
       # old-style ... manual setting up :-p
       params = {'x': x, 'y': y, 'z': z, 'protein_pqr': self.get_protein_name(num),
                 'ion_pqr': self.get_ion_name(num), 'complex_pqr': self.get_complex_name(num),
-                'DIME_XYZ': self.get_XYZ_str(self.dime), 'CGLEN_XYZ': self.get_XYZ_str(self.cglen),
+                'DIME_XYZ': self.get_XYZ_str(self.dime), 'CGLEN_XYZ': self.get_XYZ_str(self.glen),
                 'FGLEN_XYZ': self.get_XYZ_str(self.fglen),
                 'conc': self.ionicStrength, 'temperature': self.temperature,
                 'sdie': self.sdie, 'pdie': self.pdie}
