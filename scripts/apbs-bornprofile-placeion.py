@@ -6,42 +6,39 @@
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
 #
-# apbs-bornprofile-placeion.py: originally based on placeion.py
-
 """
-:Author: Kaihsu Tai, Oliver Beckstein
-:Year: 2008, 2010
-:Licence: GPL
-:Copyright: (c) 2008 Kaihsu Tai
-:Copyright: (c) 2010-2013 Oliver Beckstein
-:URL: http://en.wikiversity.org/wiki/Talk:Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
-
-I wrote some Python code to automate this process. The job submission
-requires a queuing system called Grid Engine. Copyright © 2008 Kaihsu
-Tai. Moral rights asserted. Hereby licensed under either GFDL
-or GNU General Public License at your option.
+:Author:  Oliver Beckstein
+:Year: 2010
+:License: GPL3
+:Copyright: (c) 2010 Oliver Beckstein
+:Copyright: (c) 2013 Oliver Beckstein
 """
 from __future__ import with_statement
+usage = """%prog [options] parameter-file
 
-import os
-import logging
-logger = logging.getLogger('bornprofiler')
+Setup Born profile calculation with a membrane. Parameters are read from the
+parameter file. A new parameter-file can be generated with the --template
+option; in this case only the file is written and no further actions are
+performed.
 
-usage = """%prog [options] run-parameters
-        %prog [options] pqr-file samplepoints-file
+This script creates directories for ion positions, required input files to
+APBS, and scripts that can be run locally or through a queuing system to
+perform all calculations.
 
-This script sets up input files for Born energy calculations for APBS.
+All parameters for the calculation must be set in the parameter file. In this
+way, one parameter file completely describes the calculation. In particular,
+each calculation should have a different job name (section [job] name =
+JobName). For example, the ion is set in the section ::
 
-One can either provide the samplepoinst and the protein PQR file on
-the commandline and control the setup through options, *or* collect
-all options in a run parameter file (preferred). To get a run
-parameter file template, just run the script with the --template
-option and the desired filename and then edit the template with your
-favourite editor.
+  [bornprofile]
+  ion = <name>
 
-The ion positions in the file samplepoints (``[bornprofile] points``
-in the run parameter file) should be formatted as one white-space
-separated xyz coordinate per line, or a PDB file or a HOLE sph file.
+where `<name>` is one of the ions for which the package knows the Born
+radius (see below). The input file also specifies the input PQR file
+and the list of sample points at which the ion is placed
+(``[bornprofile] points``). The sample points file should be formatted
+as one white-space separated xyz coordinate per line, or a PDB file or
+a HOLE sph file.
 
 The "Born radii" for ions were taken from Table III in
 
@@ -61,7 +58,10 @@ directly via the Born equation. USE AT YOUR OWN RISK!!
 """
 
 import bornprofiler
-from bornprofiler.core import IONS, Placeion
+
+import os
+import logging
+logger = logging.getLogger('bornprofiler')
 
 if __name__ == "__main__":
   import sys
@@ -69,52 +69,33 @@ if __name__ == "__main__":
 
   bornprofiler.start_logging()
 
-  parser = OptionParser(usage=usage)
+  parser = OptionParser(usage=__doc__)
   parser.add_option("--template", dest="write_template", action="store_true",
                     help="write template parameter file and exit")
-  parser.add_option("--name", dest="jobName",
-                    metavar="STRING",
-                    help="name for the job submission script [%default]")
-  parser.add_option("--ion", dest="ionName", type="choice", choices=IONS.keys(),
-                    metavar="NAME",
-                    help="name of the ion to be sampled. Available values: %r. "
-                    "Radii were taken from Table III in Rashin & Honig  1985. "
-                    "The default ion is '%%default'." % (IONS.keys(),))
-  parser.add_option("--dime", dest="dime", nargs=3, type="int",
-                    metavar="NX NY NZ",
-                    help="dimensions of the computational grid [97 97 193]")
-  parser.add_option("--ionic-strength", dest="ionicStrength", type="float",
-                    metavar="CONC",
-                    help="set ionic strength of NaCl bath to the given concentration "
-                    "CONC in mol/l [%default]")
-  parser.add_option("--script", dest="script",
-                    metavar="NAME",
-                    help="name of a stored script template or (advanced usage!) a "
-                    "filename that contains appropriate place holders [%default]")
-  parser.set_defaults(ionicStrength=0.15, jobName="bornprofile",
-                      ionName="Na", dime=[97,97,193], script="q_local.sh")
-
+  parser.add_option("--run", dest="run", action="store_true",
+                    help="immediately run apbs and draw_membrane2a to produce "
+                    "all input files (can take a while); the default is to do "
+                    "this as part of the individual jobs")
+  parser.add_option("--nomembrane", dest = "no_membrane",action = "store_true",help="skip membrane steps by running placeion instead of mplaceion.")
   opts,args = parser.parse_args()
 
-  if len(args) == 0 or len(args) > 3:
-    logger.fatal("Needs run parameters file or PQR file and sample points. See --help.")
+  try:
+    filename = args[0]
+  except:
+    logger.fatal("Provide the parameter filename. See --help.")
     sys.exit(1)
 
-  if len(args) == 1:
-    filename = args[0]
-    if opts.write_template:
+
+  if opts.write_template:
       bornprofiler.write_parameters(filename)
       sys.exit(0)
-    logger.info("run config = %(filename)r", vars())
-    P = Placeion(filename)
-  else:
-    pqrfile, pointsfile = args
-    logger.warn("Deprecated use of PQR file with points list!")
-    logger.warn("Use a run configuration file in the future.")
-    logger.info("pqr = %(pqrfile)r, points = %(pointsfile)r", vars())
-    P = Placeion(pqrfile, pointsfile, ionName=opts.ionName, ionicStrength=opts.ionicStrength,
-                 dime=opts.dime, jobName=opts.jobName, script=opts.script)
 
-  P.generate()
+  logger.info("run config = %(filename)r", vars())
+  if opts.no_membrane:
+     P = bornprofiler.core.Placeion(filename)
+     P.generate()
+  else:
+     P = bornprofiler.core.MPlaceion(filename)
+     P.generate(run=opts.run)
 
   bornprofiler.stop_logging()
