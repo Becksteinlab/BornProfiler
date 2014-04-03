@@ -232,11 +232,8 @@ class Placeion(BPbase):
   def generate(self):
     """Generate all input files."""
     
-    if self.pmax[2] - self.protein_centre[2] > self.glen[0][2]/2.0 - (self.glen[1][2]/2.0+5.0) :
-        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
-        sys.exit(1)
-
-    if self.pmin[2] - self.protein_centre[2] < -(self.glen[0][2]/2.0 - (self.glen[1][2]/2.0+5.0)) :
+    #Check to ensure no points for evaluation would cause secondary grid to lie outside of  primary grid
+    if numpy.greater(self.pmax - self.protein_centre,numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0)).all() or numpy.less(self.pmin - self.protein_centre, -(numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0))).all():
         logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
         sys.exit(1)
 
@@ -361,49 +358,23 @@ class MPlaceion(BPbase):
     """
     self.__cache_MemBornSetup = {}
 
-    if len(args) == 1:
-      # new style
-      import io
-      params = io.RunParameters(args[0])
-      self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
-      self.pqrName = os.path.realpath(kw.pop('pqr'))
-      self.pointsName = os.path.realpath(kw.pop('points'))
-      self.ion = IONS[kw.pop('ion', 'Na')]
-      self.jobName = kw.pop('name', "mbornprofile")
-      self.ionicStrength = kw.pop('conc', 0.15)
-      self.temperature = kw.pop('temperature', 300.0)
-      self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
-      self.script = read_template(kw.pop('script', 'q_local.sh'))
-      # any variables that should NOT be passed to the constructor of the
-      # SetupClass must be popped from self.bornprofile_kwargs; this is now
-      # done (together with other hacks) inprocess_bornprofile_kwargs()
+    import io
+    params = io.RunParameters(args[0])
+    self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
+    self.pqrName = os.path.realpath(kw.pop('pqr'))
+    self.pointsName = os.path.realpath(kw.pop('points'))
+    self.ion = IONS[kw.pop('ion', 'Na')]
+    self.jobName = kw.pop('name', "mbornprofile")
+    self.ionicStrength = kw.pop('conc', 0.15)
+    self.temperature = kw.pop('temperature', 300.0)
+    self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
+    self.script = read_template(kw.pop('script', 'q_local.sh'))
+    # any variables that should NOT be passed to the constructor of the
+    # SetupClass must be popped from self.bornprofile_kwargs; this is now
+    # done (together with other hacks) inprocess_bornprofile_kwargs()
 
-      import electrostatics
-      self.SetupClass = electrostatics.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
-    else:
-      import warnings
-      warnings.warn("Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)", 
-                    DeprecationWarning)
-      self.pqrName = os.path.realpath(args[0])
-      self.pointsName = os.path.realpath(args[1])
-
-      # copied & pasted from Placeion because inheritance would be messy :-p
-      self.jobName = kwargs.pop('jobName', "mbornprofile")
-      self.ion = IONS[kwargs.pop('ionName', 'Na')]
-      self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
-      self.temperature = kwargs.pop('temperature', 300.0)
-      scriptname = kwargs.pop('script', None)
-      if not scriptname is None:
-        self.script = read_template(scriptname)
-      else:
-        self.script = None
-      self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
-
-      # hack for quickly customizing draw_membrane (uses custom classes)
-      self.SetupClass = kwargs.pop('memclass', None)
-      if self.SetupClass is None:
-        import electrostatics
-        self.SetupClass = electrostatics.BornAPBSmem  # to customize
+    import electrostatics
+    self.SetupClass = electrostatics.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
 
     logger.info("MPlaceion: pqr=%(pqrName)r", vars(self))
     logger.info("MPlaceion: points=%(pointsName)r", vars(self))
@@ -418,15 +389,13 @@ class MPlaceion(BPbase):
     # do some initial processing...
     self.readPQR()                     # hack: also sets self.protein_centre
     self.readPoints()
-    self.pmax = numpy.amax(self.points,axis=0)
-    self.pmin = numpy.amin(self.points,axis=0)
+    self.pmax = numpy.amax(self.points) # determines the maximum x y and z values for checking against grid sizes
+    self.pmin = numpy.amin(self.points)
 
 
     self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
-    if self.pmax[2] - self.protein_centre[2] > kw['glen'][0][2]/2.0 - (kw['glen'][1][2]/2.0+5.0) :
-        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
-        sys.exit(1)
-    if self.pmin[2] - self.protein_centre[2] < -(kw['glen'][0][2]/2.0 - (kw['glen'][1][2]/2.0+5.0)) :
+    # Checks if any grids from the second phase of focusing will lie outside of the first grid. Exits if true.
+    if numpy.greater(self.pmax - self.protein_centre,numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0)).all() or numpy.less(self.pmin - self.protein_centre, -(numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0))).all():
         logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
         sys.exit(1)
 
