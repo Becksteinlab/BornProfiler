@@ -7,19 +7,19 @@
 # Released under the GNU Public Licence, version 3
 #
 """
-:Author:  Oliver Beckstein
-:Year: 2010
+:Authors:  Oliver Beckstein & Lennard van der Feltz
+:Year: 2010 2014
 :License: GPL3
 :Copyright: (c) 2010 Oliver Beckstein
 :Copyright: (c) 2013 Oliver Beckstein
+:Copyright: (c) 2014 Lennard van der Feltz
 """
 from __future__ import with_statement
 usage = """%prog [options] parameter-file
 
-Setup Born profile calculation with a membrane. Parameters are read from the
-parameter file. A new parameter-file can be generated with the --template
-option; in this case only the file is written and no further actions are
-performed.
+Setup Born profile calculation with or without a membrane. Default is with 
+membrane, if option --nomembrane is specified, setup will proceed without 
+membrane considerations. Parameters are read from the parameter file.
 
 This script creates directories for ion positions, required input files to
 APBS, and scripts that can be run locally or through a queuing system to
@@ -70,8 +70,6 @@ if __name__ == "__main__":
   bornprofiler.start_logging()
 
   parser = OptionParser(usage=__doc__)
-  parser.add_option("--template", dest="write_template", action="store_true",
-                    help="write template parameter file and exit")
   parser.add_option("--run", dest="run", action="store_true",
                     help="immediately run apbs and draw_membrane2a to produce "
                     "all input files (can take a while); the default is to do "
@@ -84,11 +82,6 @@ if __name__ == "__main__":
   except:
     logger.fatal("Provide the parameter filename. See --help.")
     sys.exit(1)
-
-
-  if opts.write_template:
-      bornprofiler.write_parameters(filename)
-      sys.exit(0)
 
   logger.info("run config = %(filename)r", vars())
   if opts.no_membrane:
