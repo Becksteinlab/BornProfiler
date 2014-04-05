@@ -40,7 +40,7 @@ from itertools import izip
 import logging
 logger = logging.getLogger("bornprofiler.electrostatics")
 
-from io import read_template
+from bpio import read_template
 
 import config
 from config import configuration

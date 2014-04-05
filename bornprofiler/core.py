@@ -14,7 +14,7 @@ import os, errno
 import numpy
 import sys
 import io
-from io import read_template
+from bpio import read_template
 from config import configuration
 from utilities import in_dir, asiterable
 

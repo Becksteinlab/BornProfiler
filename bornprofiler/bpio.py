@@ -107,7 +107,10 @@ class RunParameters(object):
              'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
                              ('points', path)],
              'job': [('name', str), ('script', path), ('arrayscript', path)],
-             'graphing': [('xcolumn',int),('ycolumn',int),('title',str),('xlabel',str), ('ylabel',str),('plot_label',str),('color',str)]
+             'graphing': [('xcolumn',int),('ycolumn',int),('title',str),
+                          ('xlabel',str), ('ylabel',str),('plot_label',str),
+                          ('color',str),('protein_bottom',float),
+                          ('protein_length', float)]
             },
         'apbsmem':
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
