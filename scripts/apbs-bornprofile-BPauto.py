@@ -91,7 +91,9 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arra
         else:
             logger.info("Calculating path size information")
             P = MDAnalysis.Universe("../../{path}".format(path=path))
-            pmin,pmax = P.atoms.bbox()           
+            topcorner,botcorner = P.atoms.bbox()
+            pmin=botcorner[2]
+            pmax=topcorner[2]           
         for ion in ions:
             logger.info("generating {prot}/{pdb}/{ion} directory".format(prot=protein,pdb=pdbid,ion=ion))
             generate_directory(ion)

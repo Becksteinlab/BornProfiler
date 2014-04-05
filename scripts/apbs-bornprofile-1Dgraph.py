@@ -20,6 +20,7 @@ import logging
 import pylab
 import sys
 from bornprofiler import plotting
+from bornprofiler.config import cfg
 logger = logging.getLogger("bornprofiler")
 parser = argparse.ArgumentParser()
 parser.add_argument('dat_files', nargs = '+')
