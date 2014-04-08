@@ -13,7 +13,6 @@ from __future__ import with_statement
 import os, errno
 import numpy
 import sys
-import io
 from bpio import read_template
 from config import configuration
 from utilities import in_dir, asiterable
@@ -132,12 +131,12 @@ class BPbase(object):
 
     Tries to be smart and autodetect standard x-y-z dat file or pdb.
     """
-    self.points = io.readPoints(self.pointsName)
+    self.points = bpio.readPoints(self.pointsName)
     self.numPoints = self.points.shape[0]
 
   def readPQR(self):
     """Read PQR file and determines protein centre of geometry"""
-    pqr = io.PQRReader(self.pqrName)
+    pqr = bpio.PQRReader(self.pqrName)
     self.pqrLines = pqr.pqrLines
     self.protein_centre = pqr.centroid
     return pqr.coords
@@ -196,8 +195,8 @@ class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
  
   def __init__(self, *args, **kwargs):
-    import io
-    params = io.RunParameters(args[0])
+    import bpio
+    params = bpio.RunParameters(args[0])
     self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
     self.pqrName = os.path.realpath(kw.pop('pqr'))
     self.pointsName = os.path.realpath(kw.pop('points'))
@@ -358,8 +357,8 @@ class MPlaceion(BPbase):
     """
     self.__cache_MemBornSetup = {}
 
-    import io
-    params = io.RunParameters(args[0])
+    import bpio
+    params = bpio.RunParameters(args[0])
     self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
     self.pqrName = os.path.realpath(kw.pop('pqr'))
     self.pointsName = os.path.realpath(kw.pop('points'))
@@ -378,7 +377,7 @@ class MPlaceion(BPbase):
 
     logger.info("MPlaceion: pqr=%(pqrName)r", vars(self))
     logger.info("MPlaceion: points=%(pointsName)r", vars(self))
-    logger.info("MPlaceion: ion=%(ion)r", vars(self))
+    logger.info("MPlaceion: bpion=%(ion)r", vars(self))
       
     # sanity check
     assert len(self.schedule) != len(self.SetupClass.suffices), \
