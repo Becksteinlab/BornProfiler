@@ -129,13 +129,12 @@ class RunParameters(object):
              },
         }
 
-    def __init__(self, filename, **defaults):
+    def __init__(self, filename,*omissions, **defaults):
         """Reads and parses the configuration file for a job."""
         self.filename = filename
         self.parser = SafeConfigParser(defaults)
-
-        # set the defaults and override ...
-        self._populate_default()
+        # set the defaults and override, omitting omissions...
+        self._populate_default(*omissions)
 
         # start with user configuration:
         # (I could add the default values in a template file here... but still
@@ -151,7 +150,7 @@ class RunParameters(object):
 
         logger.info("Read run input configuration from %(filename)r", vars())
 
-    def _populate_default(self, parser=None):
+    def _populate_default(self, nomembrane, noplotting, parser=None):
         # NOTE: - the parser turns all keys into *lowercase*
         #       - values must be strings
         #       - hack: python types are defined via external dicts
@@ -162,20 +161,23 @@ class RunParameters(object):
         # can use %(basedir)s in other entries
         parser.set('DEFAULT', 'basedir', os.path.realpath(os.path.curdir))
         parser.set('DEFAULT', 'solvent_dielectric', '80')
-        parser.add_section('membrane')
-        parser.set('membrane', 'Rtop', '0')
-        parser.set('membrane', 'Rbot', '0')
-        parser.set('membrane', 'x0_R', 'None')
-        parser.set('membrane', 'y0_R', 'None')
-        parser.set('membrane', 'dx_R', '0')
-        parser.set('membrane', 'dy_R', '0')
-        parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
-        parser.set('membrane', 'headgroup_die', '20')
-        parser.set('membrane', 'headgroup_l', '0')
-        parser.set('membrane', 'mdie', '2')
-        parser.set('membrane', 'Vmem', '0')
-        parser.set('membrane', 'lmem', '40')
-        parser.set('membrane', 'zmem','0')
+        if nomembrane:
+            pass
+        else:
+            parser.add_section('membrane')
+            parser.set('membrane', 'Rtop', '0')
+            parser.set('membrane', 'Rbot', '0')
+            parser.set('membrane', 'x0_R', 'None')
+            parser.set('membrane', 'y0_R', 'None')
+            parser.set('membrane', 'dx_R', '0')
+            parser.set('membrane', 'dy_R', '0')
+            parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
+            parser.set('membrane', 'headgroup_die', '20')
+            parser.set('membrane', 'headgroup_l', '0')
+            parser.set('membrane', 'mdie', '2')
+            parser.set('membrane', 'Vmem', '0')
+            parser.set('membrane', 'lmem', '40')
+            parser.set('membrane', 'zmem','0')
         parser.add_section('environment')
         parser.set('environment', 'pqr', 'protein.pqr')
         parser.set('environment', 'temperature', '298.15')
@@ -200,14 +202,17 @@ class RunParameters(object):
         parser.set('job', 'name', 'mbornprofile')
         parser.set('job', 'script', 'q_local.sh')
         parser.set('job', 'arrayscript', 'q_array.sge')
-        parser.add_section('graphing')
-        parser.set('graphing','xcolumn','2')
-        parser.set('graphing','ycolumn','3')
-        parser.set('graphing','title','BP')
-        parser.set('graphing','xlabel','z')
-        parser.set('graphing','ylabel','W_elec')
-        parser.set('graphing','plot_label','Ion')
-        parser.set('graphing','color','black')
+        if noplotting:
+            pass
+        else:
+            parser.add_section('plotting')
+            parser.set('plotting','xcolumn','2')
+            parser.set('plotting','ycolumn','3')
+            parser.set('plotting','title','BP')
+            parser.set('plotting','xlabel','z')
+            parser.set('plotting','ylabel','W_elec')
+            parser.set('plotting','plot_label','Ion')
+            parser.set('plotting','color','black')
 
     def _get_kwargs(self, *args, **kwargs):
         """Prepare kwargs for a specified task."""
