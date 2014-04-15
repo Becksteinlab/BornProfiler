@@ -67,8 +67,8 @@ if cfg ==None:
         plotting.graph_mult_data_colors(dat_files,xcolumn,ycolumn,plot_labels,colors,xlabel,ylabel,title) 
 else:
     if colors == None:
-        plotting.graph_mult_data_cfg(dat_files,xcolumn,ycolumn,plot_labels,xlabel,ylabel,title,cfgs)
+        plotting.graph_mult_data_cfgs(dat_files,xcolumn,ycolumn,plot_labels,xlabel,ylabel,title,cfgs)
     else:
-        plotting.graph_mult_data_colors_cfg(dat_files,xcolumn,ycolumn,plot_labels,colors,xlabel,ylabel,title,cfgs)
+        plotting.graph_mult_data_colors_cfgs(dat_files,xcolumn,ycolumn,plot_labels,colors,xlabel,ylabel,title,cfgs)
 
 bornprofiler.stop_logging()   
