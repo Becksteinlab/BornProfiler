@@ -62,7 +62,7 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arra
     generate_directory(protein)
     os.chdir(protein)
     logger.info("generating cfg sections")
-    cfg.add_section('graphing')
+    cfg.add_section('plotting')
     cfg.add_section('environment')
     cfg.add_section('bornprofile')
     cfg.add_section('job')
@@ -124,8 +124,8 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arra
             else:
                 cfg.set('bornprofile','points','../../../{path}'.format(path=path))
 
-            cfg.set('graphing','protein_bottom','{bot}'.format(bot = bmin[2]))
-            cfg.set('graphing','protein_length','{leng}'.format(leng = (bmax-bmin)[2]))
+            cfg.set('plotting','protein_bottom','{bot}'.format(bot = bmin[2]))
+            cfg.set('plotting','protein_length','{leng}'.format(leng = (bmax-bmin)[2]))
             cfg.set('job','name','{pdbid}line{ion}'.format(pdbid=pdbid,ion=ion))
             logger.info("writing cfg file.")
             with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
