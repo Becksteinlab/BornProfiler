@@ -13,7 +13,7 @@
 :Copyright: (c) 2014 Lennard van der Feltz
 """
 usage = """%prog dat_files --xcolumn --ycolumn --title --xlabel --ylabel --plot_labels --colors
-Produces a pylab plot of the data of the xcolumn vs the data of the ycolumn from a column-orgranized dat file with the labels, colors, and title. Defaults set for apbs analysis of energy vs z coordinate."""
+Produces a matplotlib.pyplot plot of the data of the xcolumn vs the data of the ycolumn from a column-orgranized dat file with the labels, colors, and title. Defaults set for apbs analysis of energy vs z coordinate."""
 import bornprofiler
 import argparse
 import logging
@@ -27,8 +27,8 @@ parser.add_argument('dat_files', nargs = '+')
 parser.add_argument('--xcolumn',default = 2)
 parser.add_argument('--cfgs', nargs = '+')
 parser.add_argument('--ycolumn',default = 3)
-parser.add_argument('--title', default = 'Energy')
-parser.add_argument('--xlabel',default = 'z(angstrom)')
+parser.add_argument('--title', default = 'Born Energy')
+parser.add_argument('--xlabel',default = r'z $\AA$')
 parser.add_argument('--ylabel',default = 'kJ/mol')
 parser.add_argument('--plot_labels',default=None, nargs = '+')
 parser.add_argument('--colors', default=None ,nargs = '+')
@@ -59,7 +59,7 @@ else:
 
 if plot_labels == None:
     plot_labels = [dat_file.split('/')[-1].split('.')[0] for dat_file in dat_files]    
-# Follows automatic pylab color scheme if none specified
+# Follows automatic pylab color scheme if none specified. Additionally determines whether to apply cfg methods or not.
 if cfg ==None:
     if colors == None:
        plotting.graph_mult_data(dat_files,xcolumn,ycolumn,plot_labels,xlabel,ylabel,title)
