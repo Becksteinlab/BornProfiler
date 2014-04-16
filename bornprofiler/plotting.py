@@ -31,7 +31,7 @@ def graph_mult_data(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,title)
     logger.info("plotting")
     for data,label in datalist:
         plt.plot( data[:,2],data[:,3],label=label)
-    plt.legend()
+    plt.legend(loc='best')
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -44,7 +44,7 @@ def graph_mult_data_colors(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,
     logger.info("plotting")
     for data,label,color in datalist:
         plt.plot( data[:,xcolumn],data[:,ycolumn],label=label,color=color)
-    plt.legend()
+    plt.legend(loc='best')
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -66,7 +66,7 @@ def graph_mult_data_cfgs(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,t
     axis = fig.add_subplot(111)
     for data,label in datalist:
         axis.plot( data[:,2],data[:,3],label=label)
-    axis.legend()
+    axis.legend(loc='best')
     axis.set_title(title)
     axis.set_xlabel(x_label)
     axis.set_ylabel(y_label)
@@ -92,7 +92,7 @@ def graph_mult_data_colors_cfgs(file_list,xcolumn,ycolumn,plot_labels,colors,x_l
     axis = fig.add_subplot(111)
     for data,label,color in datalist:
         axis.plot( data[:,xcolumn],data[:,ycolumn],label=label,color=color)
-    axis.legend()
+    axis.legend(loc='best')
     axis.set_title(title)
     axis.set_xlabel(x_label)
     axis.set_ylabel(y_label)
