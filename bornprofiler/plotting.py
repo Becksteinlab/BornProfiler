@@ -54,7 +54,8 @@ def graph_mult_data_colors(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,
 def graph_mult_data_cfgs(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,title,cfgs):
     logger.info("unpacking data")
     datalist = [[numpy.loadtxt(filename),label] for filename,label in zip(file_list, plot_labels)]
-    logger.info("reading cfg, assuming membrane/protein info identical across")
+    logger.info("reading cfg")
+    logger.warning("Assuming membrane and protein locations identical in all cfgs")
     cfg.readfp(open(cfgs[0]))
     protein_bottom = float(cfg.get('plotting','protein_bottom'))
     protein_top = protein_bottom + float(cfg.get('plotting','protein_length'))
@@ -79,7 +80,8 @@ def graph_mult_data_cfgs(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,t
 def graph_mult_data_colors_cfgs(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,y_label,title,cfgs):
     logger.info("unpacking data")
     datalist = [[numpy.loadtxt(filename),label,color] for filename,label,color in zip(file_list, plot_labels,colors)]
-    logger.info("reading cfg, assuming membrane/protein info identical across")
+    logger.info("reading cfg")
+    logger.warning("Assuming membrane and protein locations identical in all cfgs")
     cfg.readfp(open(cfgs[0]))
     protein_bottom = float(cfg.get('plotting','protein_bottom'))
     protein_top = protein_bottom + float(cfg.get('plotting','protein_length'))
