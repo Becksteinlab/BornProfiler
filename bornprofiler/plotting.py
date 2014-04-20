@@ -35,7 +35,8 @@ def graph_mult_data(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,title)
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
-    logger.info("saving figure to {title}.png".format(title=title))
+    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
+    plt.savefig(title,format='pdf')
     plt.savefig(title)
 
 def graph_mult_data_colors(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,y_label,title):
@@ -48,7 +49,8 @@ def graph_mult_data_colors(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
-    logger.info("saving figure to {title}.png".format(title=title))
+    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
+    plt.savefig(title,format='pdf')
     plt.savefig(title)
 
 def graph_mult_data_cfgs(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,title,cfgs):
@@ -74,7 +76,8 @@ def graph_mult_data_cfgs(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,t
     protein_low,protein_high = [plot_bot*.6 + plot_top*.4,plot_bot*.4+plot_top*.6]
     axis.fill_between([membrane_bottom,membrane_top],[plot_top,plot_top],[plot_bot,plot_bot],facecolor='yellow',alpha=0.3)
     axis.fill_between([protein_bottom,protein_top],[protein_high,protein_high],[protein_low,protein_low],facecolor='red',alpha=0.3)
-    logger.info("saving figure to {title}.png".format(title=title))
+    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
+    fig.savefig(title,format='pdf')
     fig.savefig(title)
 
 def graph_mult_data_colors_cfgs(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,y_label,title,cfgs):
@@ -101,5 +104,6 @@ def graph_mult_data_colors_cfgs(file_list,xcolumn,ycolumn,plot_labels,colors,x_l
     axis.fill_between([membrane_bottom,membrane_top],[plot_top,plot_top],[plot_bot,plot_bot],facecolor='yellow',alpha=0.3)
     axis.fill_between([protein_bottom,protein_top],[protein_high,protein_high],[protein_low,protein_low],facecolor='red',alpha=0.3)
 
-    logger.info("saving figure to {title}.png".format(title=title))
+    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
+    fig.savefig(title,format='pdf')
     fig.savefig(title)
