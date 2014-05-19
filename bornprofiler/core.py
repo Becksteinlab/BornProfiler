@@ -13,6 +13,7 @@ from __future__ import with_statement
 import os, errno
 import numpy
 import sys
+import bpio
 from bpio import read_template
 from config import configuration
 from utilities import in_dir, asiterable
@@ -195,8 +196,7 @@ class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
  
   def __init__(self, *args, **kwargs):
-    import bpio
-    params = bpio.RunParameters(args[0])
+    params = bpio.RunParameters(args[0],True,False)
     self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
     self.pqrName = os.path.realpath(kw.pop('pqr'))
     self.pointsName = os.path.realpath(kw.pop('points'))
@@ -357,8 +357,7 @@ class MPlaceion(BPbase):
     """
     self.__cache_MemBornSetup = {}
 
-    import bpio
-    params = bpio.RunParameters(args[0])
+    params = bpio.RunParameters(args[0],False,False)
     self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
     self.pqrName = os.path.realpath(kw.pop('pqr'))
     self.pointsName = os.path.realpath(kw.pop('points'))

@@ -107,7 +107,7 @@ class RunParameters(object):
              'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
                              ('points', path)],
              'job': [('name', str), ('script', path), ('arrayscript', path)],
-             'graphing': [('xcolumn',int),('ycolumn',int),('title',str),
+             'plotting': [('xcolumn',int),('ycolumn',int),('title',str),
                           ('xlabel',str), ('ylabel',str),('plot_label',str),
                           ('color',str),('protein_bottom',float),
                           ('protein_length', float)]
@@ -150,12 +150,14 @@ class RunParameters(object):
 
         logger.info("Read run input configuration from %(filename)r", vars())
 
-    def _populate_default(self, nomembrane, noplotting, parser=None):
+    def _populate_default(self, nomembrane, noplotting, **kwargs):
         # NOTE: - the parser turns all keys into *lowercase*
         #       - values must be strings
         #       - hack: python types are defined via external dicts
         #         (see self.bornprofile_parameters and
         #         get_bornprofile_kwargs())
+        parser = kwargs.get('parser', None)
+        
         if parser is None:
             parser = self.parser
         # can use %(basedir)s in other entries
@@ -213,7 +215,8 @@ class RunParameters(object):
             parser.set('plotting','ylabel','W_elec')
             parser.set('plotting','plot_label','Ion')
             parser.set('plotting','color','black')
-
+            parser.set('plotting','protein_bottom','-20')
+            parser.set('plotting','protein_length','40')
     def _get_kwargs(self, *args, **kwargs):
         """Prepare kwargs for a specified task."""
         task = args[0]
