@@ -23,9 +23,9 @@ logger = logging.getLogger('bornprofiler.analysis')
 def get_files(runfile, basedir=os.path.curdir):
     """Read *runfile* and return dict with input files and names."""
     # convenience function --- one could also just read the cfg file
-    from bornprofiler.io import RunParameters
+    from bornprofiler.bpio import RunParameters
     try:
-        p = RunParameters(runfile)
+        p = RunParameters(runfile,False,False)
         samplepoints = p.get_bornprofile_kwargs('points')
         fileglob = os.path.join(basedir, p.get_bornprofile_kwargs('name'),
                                 'w[0-9][0-9][0-9][0-9]', 'job*.out')
