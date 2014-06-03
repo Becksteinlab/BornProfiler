@@ -234,8 +234,9 @@ class AnalyzeElec(Analyzer):
           *kwargs*
              other keyword arguments that are passed on to :func:`pylab.plot`
         """
-        from pylab import plot, xlabel, ylabel, savefig
-
+        import matplotlib
+        matplotlib.use('AGG')
+        import matplotlib.pyplot as plt
         if filename is None:
             plotName = self.datafile("welec",".pdf")
         else:
@@ -243,10 +244,10 @@ class AnalyzeElec(Analyzer):
         kwargs.setdefault('color', 'black')
         kwargs.setdefault('linewidth', 2)
         z,W = self.data[-2], self.data[-1]  # should work for (4,N) and (2,N) data
-        plot(z,W, **kwargs)
-        xlabel(r'$z$ in nm')
-        ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
-        savefig(plotName)
+        plt.plot(z,W, **kwargs)
+        plt.xlabel(r'$z$ in nm')
+        plt.ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
+        plt.savefig(plotName)
         logger.info("Plotted graph W(z) %(plotName)r.", vars())
         return plotName
 
