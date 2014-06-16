@@ -29,30 +29,36 @@ parser.add_argument("-protein")
 parser.add_argument("-pdbids",nargs = '+')
 parser.add_argument("-ions",nargs = '+')
 parser.add_argument("--pqr_forcefield",default = 'CHARMM')
+parser.add_argument("--pHs",nargs = '+')
 parser.add_argument("--membrane",type = bool, default = True)
 parser.add_argument("--path", default = True)
 parser.add_argument("--pathres", default = 1)
 parser.add_argument("--script", default = 'q_ASU.sh')
 parser.add_argument("--arrayscript",default = 'array_ASU_workstations.sge')
-parser.add_argument("--submit",default = 'qsub')
+parser.add_argument("--submit_com",default = None)
 args = parser.parse_args()
 protein = args.protein
 pdbids = args.pdbids
 ions = args.ions
 forcefield = args.pqr_forcefield
+pHs = args.pHs
 membrane = args.membrane
 path = args.path
 pathres= args.pathres
 script = args.script
 arrayscript = args.arrayscript
-submit = args.submit
+submit_com = args.submit_com
+#generating default pH list
+if pHs==None:
+    pHs = [7] * len(pdbids)
+
 def generate_directory(directory):
     try:
         os.mkdir(directory)
     except OSError:
         logger.fatal("Directory {drc} already exists. Delete it or submit a different title.".format(drc=directory))
 
-def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript,submit):
+def prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,arrayscript,submit_com):
     try:
         import MDAnalysis
     except ImportError:
@@ -68,7 +74,7 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arra
     cfg.add_section('job')
     cfg.set("job","script",script)
     cfg.set("job","arrayscript",arrayscript)
-    for pdbid in pdbids:
+    for pdbid,pH in zip(pdbids,pHs):
         logger.info("generating {prot}/{pdb} directory".format(prot=protein,pdb=pdbid))
         generate_directory(pdbid)
         os.chdir(pdbid)
@@ -76,7 +82,7 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arra
         if membrane:
             bot_rad,top_rad,thickness,zbot = run_setup.memplacer(pdbid,None)
         try:
-            subprocess.call(["pdb2pqr.py","--whitespace","--ff={force}".format(force=forcefield),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
+            subprocess.call(["pdb2pqr.py","--whitespace","--ff={force}".format(force=forcefield),"--with-ph={pH}".format(pH=pH),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
         except:
             logger.info("pqr generation for {pdb}_protein.pdb failed. This pqr must be generated before running apbs calculations. Make sure pdb2pqr is available.".format(pdb=pdbid))
         logger.info("Calculating protein size and location information")
@@ -131,12 +137,12 @@ def prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arra
             with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
                 cfg.write(config_file)
             subprocess.call(['apbs-bornprofile-mplaceion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
-            if submit != "off":
-                subprocess.call(['{submit}'.format(submit=submit),'qsub_{pdbid}line{ion}.bash'.format(pdbid=pdbid,ion=ion)])
+            if submit_com != None:
+                subprocess.call(['{submit_com}'.format(submit_com=submit_com),'qsub_{pdbid}line{ion}.bash'.format(pdbid=pdbid,ion=ion)])
             os.chdir('..')
         os.chdir("..")
         
 
 bornprofiler.start_logging()
-prepare_run(protein,pdbids,ions,forcefield,membrane,path,pathres,script,arrayscript,submit)
+prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,arrayscript,submit_com)
 bornprofiler.stop_logging()
