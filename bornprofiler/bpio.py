@@ -140,8 +140,6 @@ class RunParameters(object):
         # (I could add the default values in a template file here... but still
         # need a way to determine the type for entries)
         self.parser.read(config.CONFIGNAME)
-        if self.parser.get('bornprofile','ion') == 'H':
-            logger.info("WARNING: submitted config file has H as ion. This will result in use of the mostly meaningless H+ proton. Try H30 for a more meaningful calculation")
         if not os.path.exists(filename):
             self.write(filename)
             logger.info("Created new run input configuration %(filename)r", vars())
@@ -150,6 +148,8 @@ class RunParameters(object):
             self.parser.readfp(open(filename))
 
         logger.info("Read run input configuration from %(filename)r", vars())
+        if self.parser.get('bornprofile','ion') == 'H':
+            logger.info("WARNING: submitted config file has H as ion. This will result in use of the mostly meaningless H+ proton. Try H30 for a more meaningful calculation")
 
     def _populate_default(self, nomembrane, noplotting, **kwargs):
         # NOTE: - the parser turns all keys into *lowercase*
