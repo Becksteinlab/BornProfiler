@@ -74,7 +74,7 @@ if __name__ == "__main__":
                     help="immediately run apbs and draw_membrane2a to produce "
                     "all input files (can take a while); the default is to do "
                     "this as part of the individual jobs")
-  parser.add_option("--nomembrane", dest = "no_membrane",action = "store_true",help="skip membrane steps by running placeion instead of mplaceion.")
+  parser.add_option("--nomembrane", dest = "no_membrane",action = "store_true",help="skip membrane steps")
   opts,args = parser.parse_args()
 
   try:
