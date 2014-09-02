@@ -116,6 +116,7 @@ def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script
                 cfg.set('membrane','zmem','{}'.format(zbot))
             cfg.set('environment','pqr','../{pdb}.pqr'.format(pdb=pdbid))
             cfg.set('bornprofile','ion',ion)
+            #section to ensure fine grids always contained within coarse grids
             if pmax - centroidz > 75:
                 box = (abs(centroidz - pmax) + 100)*2
                 if box/161 - 250/129 < box/129 -250/129:
