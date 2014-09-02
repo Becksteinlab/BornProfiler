@@ -12,7 +12,7 @@ from __future__ import with_statement
 
 import os.path
 import glob
-
+import math
 import numpy
 import bornprofiler
 from bornprofiler.core import BPbase
@@ -25,10 +25,15 @@ def get_files(runfile, basedir=os.path.curdir):
     # convenience function --- one could also just read the cfg file
     from bornprofiler.bpio import RunParameters
     try:
-        p = RunParameters(runfile,False,False)
+        p = RunParameters(runfile,False)
         samplepoints = p.get_bornprofile_kwargs('points')
+        numpoints = len(samplepoints)
+        oompoints = int(math.ceil(math.log10(numpoints)))
+        if oompoints < 4:
+            oompoints = 4
+        winnum = '[0-9]'*oompoints
         fileglob = os.path.join(basedir, p.get_bornprofile_kwargs('name'),
-                                'w[0-9][0-9][0-9][0-9]', 'job*.out')
+                                'w{winnum}'.format(winnum=winnum), 'job*.out')
         jobName = p.get_bornprofile_kwargs('name')
         ionName = p.get_bornprofile_kwargs('ion')
         pqr = p.get_bornprofile_kwargs('pqr')

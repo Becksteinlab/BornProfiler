@@ -52,6 +52,7 @@ setup(name="APBS-BornProfiler",
                  "scripts/apbs-bornprofile-straightpath.py",
                  "scripts/apbs-bornprofile-BPauto.py",
                  "scripts/apbs-bornprofile-autoanalyze.py",      
+                 "scripts/apbs-bornprofile-cfg_template.py",
            ],
       install_requires=[ 
         'numpy>=1.0.3', 

@@ -12,7 +12,7 @@
 :Licence: GPL 3
 :Copyright: (c) 2014 Lennard van der Feltz
 """
-usage = """%prog -protein -pdbids -ions --pqr_forcefield --membrane"""
+usage = """%prog -protein -pdbids -ions --pqr_forcefield --Nomembrane"""
 import os
 import argparse
 import logging
@@ -29,8 +29,8 @@ parser.add_argument("-protein")
 parser.add_argument("-pdbids",nargs = '+')
 parser.add_argument("-ions",nargs = '+')
 parser.add_argument("--pqr_forcefield",default = 'CHARMM')
-parser.add_argument("--pHs",nargs = '+')
-parser.add_argument("--membrane",type = bool, default = True)
+parser.add_argument("--pH", default = None)
+parser.add_argument("--Nomembrane",action='store_true')
 parser.add_argument("--path", default = True)
 parser.add_argument("--pathres", default = 1)
 parser.add_argument("--script", default = 'q_ASU.sh')
@@ -41,24 +41,21 @@ protein = args.protein
 pdbids = args.pdbids
 ions = args.ions
 forcefield = args.pqr_forcefield
-pHs = args.pHs
-membrane = args.membrane
+pH = args.pH
+Nomembrane = args.Nomembrane
 path = args.path
 pathres= args.pathres
 script = args.script
 arrayscript = args.arrayscript
 submit_com = args.submit_com
-#generating default pH list
-if pHs==None:
-    pHs = [7] * len(pdbids)
 
 def generate_directory(directory):
     try:
         os.mkdir(directory)
     except OSError:
-        logger.fatal("Directory {drc} already exists. Delete it or submit a different title.".format(drc=directory))
+        logger.warning("Directory {drc} already exists. Did not delete".format(drc=directory))
 
-def prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,arrayscript,submit_com):
+def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script,arrayscript,submit_com):
     try:
         import MDAnalysis
     except ImportError:
@@ -74,15 +71,20 @@ def prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,
     cfg.add_section('job')
     cfg.set("job","script",script)
     cfg.set("job","arrayscript",arrayscript)
-    for pdbid,pH in zip(pdbids,pHs):
+    for pdbid in pdbids:
         logger.info("generating {prot}/{pdb} directory".format(prot=protein,pdb=pdbid))
         generate_directory(pdbid)
         os.chdir(pdbid)
         run_setup.get_protein_pdb(pdbid)
-        if membrane:
+        if Nomembrane:
+            pass
+        else:
             bot_rad,top_rad,thickness,zbot = run_setup.memplacer(pdbid,None)
         try:
-            subprocess.call(["pdb2pqr.py","--whitespace","--ff={force}".format(force=forcefield),"--with-ph={pH}".format(pH=pH),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
+            if pH == None:
+                subprocess.call(["pdb2pqr.py","--whitespace","--ff={force}".format(force=forcefield),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
+            else:
+                subprocess.call(["pdb2pqr.py","--whitespace","--ff={force}".format(force=forcefield),"--with-ph={pH}".format(pH=pH),"{pdb}_protein.pdb".format(pdb=pdbid),"{pdb}.pqr".format(pdb=pdbid)])
         except:
             logger.info("pqr generation for {pdb}_protein.pdb failed. This pqr must be generated before running apbs calculations. Make sure pdb2pqr is available.".format(pdb=pdbid))
         logger.info("Calculating protein size and location information")
@@ -105,7 +107,9 @@ def prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,
             generate_directory(ion)
             os.chdir(ion)
             logger.info("Setting cfg elements based on protein, ion, membrane, and path information")
-            if membrane: 
+            if Nomembrane:
+                pass
+            else: 
                 cfg.set('membrane','rtop','{}'.format(top_rad))
                 cfg.set('membrane','rbot','{}'.format(bot_rad))
                 cfg.set('membrane','lmem','{}'.format(thickness))
@@ -136,7 +140,10 @@ def prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,
             logger.info("writing cfg file.")
             with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
                 cfg.write(config_file)
-            subprocess.call(['apbs-bornprofile-mplaceion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
+            if Nomembrane:
+                subprocess.call(['apbs-bornprofile-placeion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion),'--nomembrane'])
+            else:
+                subprocess.call(['apbs-bornprofile-placeion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
             if submit_com != None:
                 subprocess.call(['{submit_com}'.format(submit_com=submit_com),'qsub_{pdbid}line{ion}.bash'.format(pdbid=pdbid,ion=ion)])
             os.chdir('..')
@@ -144,5 +151,5 @@ def prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,
         
 
 bornprofiler.start_logging()
-prepare_run(protein,pdbids,ions,forcefield,pHs,membrane,path,pathres,script,arrayscript,submit_com)
+prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script,arrayscript,submit_com)
 bornprofiler.stop_logging()

@@ -112,6 +112,17 @@ class RunParameters(object):
                           ('color',str),('protein_bottom',float),
                           ('protein_length', float)]
             },
+        'bornprofilenomem':
+            {'environment': [('temperature', float), ('conc', float), ('pdie', float),
+                             ('sdie', float), ('pqr', path), ('runtype', str)],
+             'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
+                             ('points', path)],
+             'job': [('name', str), ('script', path), ('arrayscript', path)],
+             'plotting': [('xcolumn',int),('ycolumn',int),('title',str),
+                          ('xlabel',str), ('ylabel',str),('plot_label',str),
+                          ('color',str),('protein_bottom',float),
+                          ('protein_length', float)]
+            },
         'apbsmem':
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path),],
@@ -151,7 +162,7 @@ class RunParameters(object):
         if self.parser.get('bornprofile','ion') == 'H':
             logger.info("WARNING: submitted config file has H as ion. This will result in use of the mostly meaningless H+ proton. Try H30 for a more meaningful calculation")
 
-    def _populate_default(self, nomembrane, noplotting, **kwargs):
+    def _populate_default(self, nomembrane, **kwargs):
         # NOTE: - the parser turns all keys into *lowercase*
         #       - values must be strings
         #       - hack: python types are defined via external dicts
@@ -179,7 +190,7 @@ class RunParameters(object):
             parser.set('membrane', 'headgroup_l', '0')
             parser.set('membrane', 'mdie', '2')
             parser.set('membrane', 'Vmem', '0')
-            parser.set('membrane', 'lmem', '40')
+            parser.set('membrane', 'lmem', '0')
             parser.set('membrane', 'zmem','0')
         parser.add_section('environment')
         parser.set('environment', 'pqr', 'protein.pqr')
@@ -205,19 +216,17 @@ class RunParameters(object):
         parser.set('job', 'name', 'mbornprofile')
         parser.set('job', 'script', 'q_local.sh')
         parser.set('job', 'arrayscript', 'q_array.sge')
-        if noplotting:
-            pass
-        else:
-            parser.add_section('plotting')
-            parser.set('plotting','xcolumn','2')
-            parser.set('plotting','ycolumn','3')
-            parser.set('plotting','title','BP')
-            parser.set('plotting','xlabel','z')
-            parser.set('plotting','ylabel','W_elec')
-            parser.set('plotting','plot_label','Ion')
-            parser.set('plotting','color','black')
-            parser.set('plotting','protein_bottom','-20')
-            parser.set('plotting','protein_length','40')
+        parser.add_section('plotting')
+        parser.set('plotting','xcolumn','2')
+        parser.set('plotting','ycolumn','3')
+        parser.set('plotting','title','BP')
+        parser.set('plotting','xlabel','z')
+        parser.set('plotting','ylabel','W_elec')
+        parser.set('plotting','plot_label','Ion')
+        parser.set('plotting','color','black')
+        parser.set('plotting','protein_bottom','-20')
+        parser.set('plotting','protein_length','40')
+
     def _get_kwargs(self, *args, **kwargs):
         """Prepare kwargs for a specified task."""
         task = args[0]
@@ -240,7 +249,7 @@ class RunParameters(object):
         return kw
 
     def get_bornprofile_kwargs(self, *args, **kwargs):
-        """Return a dict with kwargs appropriate for :class:`membrane.BornAPBSmem`.
+        """Return a dict with kwargs appropriate for :class:`bornprofile`.
 
         Default values can be supplied in *kwargs*. This method picks unique
         parameter keys from the relevant sections of the run parameters file
@@ -251,6 +260,20 @@ class RunParameters(object):
         """
         _args = ('bornprofile',) + args
         return self._get_kwargs(*_args, **kwargs)
+
+    def get_bornprofilenomem_kwargs(self, *args, **kwargs):
+        """Return a dict with kwargs appropriate for :class:`bornprofilenomem`.
+
+        Default values can be supplied in *kwargs*. This method picks unique
+        parameter keys from the relevant sections of the run parameters file
+        (i.e. *bornprofile*, *membrane*, and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
+        """
+        _args = ('bornprofilenomem',) + args
+        return self._get_kwargs(*_args,**kwargs)
+
     def get_apbsnomem_kwargs(self, *args, **kwargs):
         """Return a dict with kwargs appropriate for :class:`membrane.APBSnomem`.
 

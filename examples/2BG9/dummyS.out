@@ -1,0 +1,21 @@
+Sun Sep 15 19:27:26 2013
+
+elec name solv0
+    mg-dummy
+    mol 1
+    dime 97 97 97
+    lpbe
+    ion 0.950 1.000 0.150
+    ion 1.810 -1.000 0.150
+    pdie 10.000
+    sdie 80.000
+    srfm mol
+    srad 1.400
+    bcfl zero
+    temp 298.150
+    calc
+        id 1
+        grid 2.083 2.083 2.083
+        glen 200.000 200.000 200.000
+    end
+end

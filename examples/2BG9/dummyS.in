@@ -1,0 +1,34 @@
+# APBS: write coefficient maps
+# (based on APBSmem-generated output)
+read
+    mol pqr "./structures/2bg9_z.pqr"
+end
+
+elec name solv0
+    mg-dummy
+    dime 97 97 97
+    glen 200 200 200
+    lpbe
+    pdie 10.000000
+    sdie 80.000000
+    bcfl zero
+    ion  charge  1   conc 0.15  radius 0.95   # sodium ions
+    ion  charge -1   conc 0.15  radius 1.81   # chloride ions
+    gcent mol 1
+    mol 1
+    chgm spl2
+    srfm mol
+    srad 1.4
+    swin 0.3
+    sdens 10
+    temp 298.150000
+    calcenergy no
+    calcforce no
+    write dielx gz dielxS
+    write diely gz dielyS
+    write dielz gz dielzS
+    write kappa gz kappaS
+    write charge gz chargeS
+end
+
+quit

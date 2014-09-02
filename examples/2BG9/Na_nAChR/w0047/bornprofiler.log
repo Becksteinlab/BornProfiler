@@ -1,0 +1,3 @@
+2013-06-08 12:19:31,677 bornprofiler INFO     BornProfiler STARTED logging to 'bornprofiler.log'
+2013-06-08 12:19:31,680 bornprofiler.io INFO     Created new run input configuration 'Na_nAChR.cfg'
+2013-06-08 12:19:31,680 bornprofiler.io INFO     Read run input configuration from 'Na_nAChR.cfg'

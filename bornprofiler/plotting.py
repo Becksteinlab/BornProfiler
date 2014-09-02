@@ -20,42 +20,24 @@ import traceback
 import argparse
 import logging
 import numpy
+import matplotlib
+matplotlib.use('AGG')
 import matplotlib.pyplot as plt
+
 from bornprofiler.config import cfg
 logger = logging.getLogger("bornprofiler")
 
+def test_seaborn():
+    try:
+        import seaborn as sns
+        return True
+    except ImportError:
+        logger.info("seaborn import failed. Proceeding with uglier graphs")
+        return False
 
-def graph_mult_data(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,title):
-    logger.info("unpacking data")
-    datalist = [[numpy.loadtxt(filename),label] for filename,label in zip(file_list, plot_labels)]
-    logger.info("plotting")
-    for data,label in datalist:
-        plt.plot( data[:,2],data[:,3],label=label)
-    plt.legend(loc='best')
-    plt.title(title)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
-    plt.savefig(title,format='pdf')
-    plt.savefig(title)
-
-def graph_mult_data_colors(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,y_label,title):
-    logger.info("unpacking data")
-    datalist = [[numpy.loadtxt(filename),label,color] for filename,label,color in zip(file_list, plot_labels,colors)]
-    logger.info("plotting")
-    for data,label,color in datalist:
-        plt.plot( data[:,xcolumn],data[:,ycolumn],label=label,color=color)
-    plt.legend(loc='best')
-    plt.title(title)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
-    plt.savefig(title,format='pdf')
-    plt.savefig(title)
-
-def graph_mult_data_cfgs(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,title,cfgs):
-    logger.info("unpacking data")
-    datalist = [[numpy.loadtxt(filename),label] for filename,label in zip(file_list, plot_labels)]
+def protein_membrane_plot(axis,cfgs):
+    """function for plotting membrane and protein on subplot axis using information from the first cfg in cfgs""" 
+    plot_bot,plot_top = axis.get_ylim()
     logger.info("reading cfg")
     logger.warning("Assuming membrane and protein locations identical in all cfgs")
     cfg.readfp(open(cfgs[0]))
@@ -63,47 +45,51 @@ def graph_mult_data_cfgs(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,t
     protein_top = protein_bottom + float(cfg.get('plotting','protein_length'))
     membrane_bottom = float(cfg.get('membrane','zmem'))
     membrane_top = membrane_bottom + float(cfg.get('membrane','lmem'))
-    logger.info("plotting")
-    fig = plt.figure()
-    axis = fig.add_subplot(111)
-    for data,label in datalist:
-        axis.plot( data[:,2],data[:,3],label=label)
+    protein_low,protein_high = [plot_bot*.6 + plot_top*.4,plot_bot*.4+plot_top*.6]
+    axis.fill_between([membrane_bottom,membrane_top],[plot_top,plot_top],[plot_bot,plot_bot],facecolor='yellow',alpha=0.3)
+    axis.fill_between([protein_bottom,protein_top],[protein_high,protein_high],[protein_low,protein_low],facecolor='red',alpha=0.3)
+
+def plot_markups(fig,axis,title,x_label,y_label,file_title,cfgs=None,seaborn=False):
+    """function for applying labels,titles,membrane boxes and saving a matplotlib figure fig with subplot axis, previously plotted"""
     axis.legend(loc='best')
     axis.set_title(title)
     axis.set_xlabel(x_label)
     axis.set_ylabel(y_label)
-    plot_bot,plot_top = axis.get_ylim()
-    protein_low,protein_high = [plot_bot*.6 + plot_top*.4,plot_bot*.4+plot_top*.6]
-    axis.fill_between([membrane_bottom,membrane_top],[plot_top,plot_top],[plot_bot,plot_bot],facecolor='yellow',alpha=0.3)
-    axis.fill_between([protein_bottom,protein_top],[protein_high,protein_high],[protein_low,protein_low],facecolor='red',alpha=0.3)
-    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
-    fig.savefig(title,format='pdf')
-    fig.savefig(title)
+    if cfgs==None:
+        pass
+    else:
+        protein_membrane_plot(axis,cfgs)
+    if seaborn:
+        import seaborn as sns
+        sns.despine(trim=True, fig=fig)
+        fig.tight_layout()
+    logger.info("saving figure to {file_title}.pdf and {file_title}.png".format(file_title=file_title))
+    fig.savefig("{file_title}.png".format(file_title=file_title),format='png')
+    fig.savefig("{file_title}.pdf".format(file_title=file_title),format='pdf')
 
-def graph_mult_data_colors_cfgs(file_list,xcolumn,ycolumn,plot_labels,colors,x_label,y_label,title,cfgs):
+
+def graph_mult_data(file_list,xcolumn,ycolumn,plot_labels,x_label,y_label,title,file_title,colors=None,cfgs=None,seaborn=False):
+    if seaborn:
+        seaborn = test_seaborn()
+        import seaborn as sns
     logger.info("unpacking data")
-    datalist = [[numpy.loadtxt(filename),label,color] for filename,label,color in zip(file_list, plot_labels,colors)]
-    logger.info("reading cfg")
-    logger.warning("Assuming membrane and protein locations identical in all cfgs")
-    cfg.readfp(open(cfgs[0]))
-    protein_bottom = float(cfg.get('plotting','protein_bottom'))
-    protein_top = protein_bottom + float(cfg.get('plotting','protein_length'))
-    membrane_bottom = float(cfg.get('membrane','zmem'))
-    membrane_top = membrane_bottom + float(cfg.get('membrane','lmem'))
+    if colors==None:
+        datalist = [[numpy.loadtxt(filename),label] for filename,label in zip(file_list, plot_labels)]
+    else:
+        datalist = [[numpy.loadtxt(filename),label,color] for filename,label,color in zip(file_list, plot_labels,colors)]
+    if seaborn:
+        sns.set_style("ticks", rc={'font.family': 'Helvetica'})
+        sns.set_context("paper")
     logger.info("plotting")
     fig = plt.figure()
     axis = fig.add_subplot(111)
-    for data,label,color in datalist:
-        axis.plot( data[:,xcolumn],data[:,ycolumn],label=label,color=color)
-    axis.legend(loc='best')
-    axis.set_title(title)
-    axis.set_xlabel(x_label)
-    axis.set_ylabel(y_label)
-    plot_bot,plot_top = axis.get_ylim()
-    protein_low,protein_high = [plot_bot*.6 + plot_top*.4,plot_bot*.4+plot_top*.6]
-    axis.fill_between([membrane_bottom,membrane_top],[plot_top,plot_top],[plot_bot,plot_bot],facecolor='yellow',alpha=0.3)
-    axis.fill_between([protein_bottom,protein_top],[protein_high,protein_high],[protein_low,protein_low],facecolor='red',alpha=0.3)
+    if seaborn:
+        sns.offset_spines(fig=fig)
+    if colors==None:
+        for data,label in datalist:
+            axis.plot( data[:,xcolumn],data[:,ycolumn],label=label)
+    else:
+        for data,label,color in datalist:
+            axis.plot( data[:,xcolumn],data[:,ycolumn],label=label,color=color)
+    plot_markups(fig,axis,title,x_label,y_label,file_title,cfgs=cfgs,seaborn=seaborn)
 
-    logger.info("saving figure to {title}.pdf and {title}.png".format(title=title))
-    fig.savefig(title,format='pdf')
-    fig.savefig(title)

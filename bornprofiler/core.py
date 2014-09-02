@@ -9,7 +9,7 @@
 """Bornprofiler module"""
 
 from __future__ import with_statement
-
+import math
 import os, errno
 import numpy
 import sys
@@ -29,9 +29,9 @@ TEMPLATES = {'placeion': read_template('placeion.in'), }
 TABLE_IONS = read_template('bornions.dat')
 
 class Ion(dict):
-  def __init__(self, name, symbol, atomname, radius, charge):
-    super(Ion, self).__init__(name=name, symbol=symbol, atomname=atomname,
-                              radius=float(radius), charge=float(charge))
+  def __init__(self, name, symbol, atomname, radius, charge, LaTeKname):
+    super(Ion, self).__init__(name=name, symbol=symbol,
+ atomname=atomname, radius=float(radius), charge=float(charge), LaTeKname=LaTeKname)
   def __getattribute__(self, name):
     try:
       return self[name]
@@ -80,10 +80,10 @@ class BPbase(object):
     return "%s_%s%s" % (prefix, self.jobName, ext)
 
   def filename(self, prefix, num, ext):
-    return '%s_%04d%s' % (prefix,num,ext)
+    return '%s_%0{oomPoints}d%s'.format(oomPoints=self.oomPoints) % (prefix,num,ext)
 
   def window_jobname(self, num):
-    return "w%04d_%s" % (num,self.jobName)
+    return "w%0{oomPoints}d_%s".format(oomPoints=self.oomPoints) % (num,self.jobName)
 
   def get_ion_name(self, num):
     return self.filename("ion",num,".pqr")
@@ -100,7 +100,7 @@ class BPbase(object):
     return self.infilename(num) # could probably make one of the two funcs redundant    
 
   def get_windowdirname(self, num):
-    return "w%04d" % num
+    return "w%0{oomPoints}d".format(oomPoints=self.oomPoints) % num
 
   def get_taskid(self, num):
     """Return 1-based Sun Gridengine taskid for an array job"""
@@ -134,6 +134,13 @@ class BPbase(object):
     """
     self.points = bpio.readPoints(self.pointsName)
     self.numPoints = self.points.shape[0]
+    #Find order of magnitude of number of points with minimum 4 to ensure consistency
+    self.oomPoints = int(math.ceil(math.log10(self.numPoints)))
+    if self.oomPoints < 4:
+        self.oomPoints = 4
+#    if self.oomPoints == 0:
+#        self.oomPoints = 1
+
 
   def readPQR(self):
     """Read PQR file and determines protein centre of geometry"""
@@ -196,8 +203,8 @@ class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
  
   def __init__(self, *args, **kwargs):
-    params = bpio.RunParameters(args[0],True,False)
-    self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
+    params = bpio.RunParameters(args[0],True)
+    self.bornprofile_kwargs = kw = params.get_bornprofilenomem_kwargs()
     self.pqrName = os.path.realpath(kw.pop('pqr'))
     self.pointsName = os.path.realpath(kw.pop('points'))
     self.ion = IONS[kw.pop('ion', 'Na')]
@@ -357,7 +364,7 @@ class MPlaceion(BPbase):
     """
     self.__cache_MemBornSetup = {}
 
-    params = bpio.RunParameters(args[0],False,False)
+    params = bpio.RunParameters(args[0],False)
     self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
     self.pqrName = os.path.realpath(kw.pop('pqr'))
     self.pointsName = os.path.realpath(kw.pop('points'))

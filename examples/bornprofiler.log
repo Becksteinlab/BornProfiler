@@ -1,0 +1,15 @@
+2013-06-06 12:44:59,302 bornprofiler INFO     BornProfiler STARTED logging to 'bornprofiler.log'
+2013-06-06 12:44:59,303 bornprofiler INFO     run config = 'Na_nAChR.cfg'
+2013-06-06 12:44:59,305 bornprofiler.io INFO     Created new run input configuration 'Na_nAChR.cfg'
+2013-06-06 12:44:59,305 bornprofiler.io INFO     Read run input configuration from 'Na_nAChR.cfg'
+2013-06-06 12:44:59,307 bornprofiler.io DEBUG    Reading file 'q_array.sge' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/q_array.sge'.
+2013-06-06 12:44:59,321 bornprofiler.io DEBUG    Reading file 'q_local.sh' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/q_local.sh'.
+2013-06-06 12:44:59,358 bornprofiler.io DEBUG    Reading file 'dummy.in' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/dummy.in'.
+2013-06-06 12:44:59,373 bornprofiler.io DEBUG    Reading file 'solvation.in' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/solvation.in'.
+2013-06-06 12:44:59,375 bornprofiler.io DEBUG    Reading file 'mdummy.in' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/mdummy.in'.
+2013-06-06 12:44:59,391 bornprofiler.io DEBUG    Reading file 'mplaceion.in' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/mplaceion.in'.
+2013-06-06 12:44:59,410 bornprofiler.io DEBUG    Reading file 'mplaceion_memonly.in' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/mplaceion_memonly.in'.
+2013-06-06 12:44:59,422 bornprofiler.io DEBUG    Reading file 'drawmembrane2.bash' from '/nfs/homes/lennard/.local/lib/python2.7/site-packages/APBS_BornProfiler-0.9.2-py2.7.egg/bornprofiler/templates/drawmembrane2.bash'.
+2013-06-06 12:44:59,440 bornprofiler.core INFO     MPlaceion: pqr='/nfs/homes/lennard/Projects/ICE/BornProfile/examples/protein.pqr'
+2013-06-06 12:44:59,441 bornprofiler.core INFO     MPlaceion: points='/nfs/homes/lennard/Projects/ICE/BornProfile/examples/points.dat'
+2013-06-06 12:44:59,441 bornprofiler.core INFO     MPlaceion: ion={'charge': 1.0, 'radius': 1.68, 'symbol': 'Na+', 'atomname': 'NA+', 'name': 'Na'}

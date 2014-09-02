@@ -1,0 +1,507 @@
+Warning: The 'nlev' keyword is now deprecated!
+
+
+----------------------------------------------------------------------
+    APBS -- Adaptive Poisson-Boltzmann Solver
+    Version 1.4
+    
+    Nathan A. Baker (nathan.baker@pnnl.gov)
+    Pacific Northwest National Laboratory
+    
+    Additional contributing authors listed in the code documentation.
+    
+    Copyright (c) 2010-2012 Battelle Memorial Institute. Developed at the Pacific
+    Northwest National Laboratory, operated by Battelle Memorial Institute, Pacific
+    Northwest Division for the U.S. Department of Energy.
+    
+    Portions Copyright (c) 2002-2010, Washington University in St. Louis.
+    Portions Copyright (c) 2002-2010, Nathan A. Baker.
+    Portions Copyright (c) 1999-2002, The Regents of the University of California.
+    Portions Copyright (c) 1995, Michael Holst.
+    All rights reserved.
+    
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+    
+    * Redistributions of source code must retain the above copyright notice, this
+      list of conditions and the following disclaimer.
+    
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+    
+    * Neither the name of the developer nor the names of its contributors may be
+      used to endorse or promote products derived from this software without
+      specific prior written permission.
+    
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+----------------------------------------------------------------------
+	APBS uses FETK (the Finite Element ToolKit) to solve the
+	Poisson-Boltzmann equation numerically.  FETK is a portable collection
+	of finite element modeling class libraries developed by the Michael Holst
+	research group and written in an object-oriented form of C.  FEtk is
+	designed to solve general coupled systems of nonlinear partial differential
+	equations using adaptive finite element methods, inexact Newton methods,
+	and algebraic multilevel methods.  More information about FEtk may be found
+	at <http://www.FEtk.ORG>.
+----------------------------------------------------------------------
+	APBS also uses Aqua to solve the Poisson-Boltzmann equation numerically.  
+	Aqua is a modified form of the Holst group PMG library <http://www.FEtk.ORG>
+	which has been modified by Patrice Koehl
+	<http://koehllab.genomecenter.ucdavis.edu/> for improved efficiency and
+	memory usage when solving the Poisson-Boltzmann equation.
+----------------------------------------------------------------------
+	Please cite your use of APBS as:
+
+	Baker NA, Sept D, Joseph S, Holst MJ, McCammon JA. Electrostatics of
+	nanosystems: application to microtubules and the ribosome. Proc.
+	Natl. Acad. Sci. USA 98, 10037-10041 2001.
+	
+
+This executable compiled on Oct  6 2012 at 19:11:12
+
+Parsing input file job_0053.in...
+Parsed input file.
+Got paths for 3 molecules
+Reading PQR-format atom data from pro.pqr.
+  29882 atoms
+  Centered at (6.501e+01, 6.341e+01, 7.374e+01)
+  Net charge -6.20e+01 e
+Reading PQR-format atom data from ion_0053.pqr.
+  1 atoms
+  Centered at (6.607e+01, 6.395e+01, 8.525e+01)
+  Net charge 1.00e+00 e
+Reading PQR-format atom data from cpx_0053.pqr.
+  29883 atoms
+  Centered at (6.501e+01, 6.341e+01, 7.374e+01)
+  Net charge -6.10e+01 e
+Got paths for 6 dielectric map sets
+Reading x-shifted dielectric map data from dielx_prot_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.0164, -61.594, -51.2595) A lower corner
+  Volume integral = 1.05e+09 A^3
+Reading y-shifted dielectric map data from diely_prot_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -60.6174, -51.2595) A lower corner
+  Volume integral = 1.05e+09 A^3
+Reading z-shifted dielectric map data from dielz_prot_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -61.594, -50.2829) A lower corner
+  Volume integral = 1.05e+09 A^3
+Reading x-shifted dielectric map data from dielx_prot_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.4646, 13.95, 35.25) A lower corner
+  Volume integral = 3.69e+07 A^3
+Reading y-shifted dielectric map data from diely_prot_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 14.3406, 35.25) A lower corner
+  Volume integral = 3.69e+07 A^3
+Reading z-shifted dielectric map data from dielz_prot_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 13.95, 35.6406) A lower corner
+  Volume integral = 3.74e+07 A^3
+Reading x-shifted dielectric map data from dielx_prot_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.2693, 38.95, 60.25) A lower corner
+  Volume integral = 2.93e+06 A^3
+Reading y-shifted dielectric map data from diely_prot_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 39.1453, 60.25) A lower corner
+  Volume integral = 2.93e+06 A^3
+Reading z-shifted dielectric map data from dielz_prot_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 38.95, 60.4453) A lower corner
+  Volume integral = 2.97e+06 A^3
+Reading x-shifted dielectric map data from dielx_cpx_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.0164, -61.594, -51.2595) A lower corner
+  Volume integral = 1.05e+09 A^3
+Reading y-shifted dielectric map data from diely_cpx_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -60.6174, -51.2595) A lower corner
+  Volume integral = 1.05e+09 A^3
+Reading z-shifted dielectric map data from dielz_cpx_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -61.594, -50.2829) A lower corner
+  Volume integral = 1.05e+09 A^3
+Reading x-shifted dielectric map data from dielx_cpx_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.4646, 13.95, 35.25) A lower corner
+  Volume integral = 3.69e+07 A^3
+Reading y-shifted dielectric map data from diely_cpx_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 14.3406, 35.25) A lower corner
+  Volume integral = 3.69e+07 A^3
+Reading z-shifted dielectric map data from dielz_cpx_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 13.95, 35.6406) A lower corner
+  Volume integral = 3.74e+07 A^3
+Reading x-shifted dielectric map data from dielx_cpx_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.2693, 38.95, 60.25) A lower corner
+  Volume integral = 2.93e+06 A^3
+Reading y-shifted dielectric map data from diely_cpx_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 39.1453, 60.25) A lower corner
+  Volume integral = 2.93e+06 A^3
+Reading z-shifted dielectric map data from dielz_cpx_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 38.95, 60.4453) A lower corner
+  Volume integral = 2.97e+06 A^3
+Got paths for 6 kappa maps
+Reading kappa map data from kappa_prot_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -61.594, -51.2595) A lower corner
+  Volume integral = 1.29e+07 A^3
+Reading kappa map data from kappa_prot_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 13.95, 35.25) A lower corner
+  Volume integral = 3.50e+05 A^3
+Reading kappa map data from kappa_prot_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 38.95, 60.25) A lower corner
+  Volume integral = 1.07e+04 A^3
+Reading kappa map data from kappa_cpx_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -61.594, -51.2595) A lower corner
+  Volume integral = 1.29e+07 A^3
+Reading kappa map data from kappa_cpx_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 13.95, 35.25) A lower corner
+  Volume integral = 3.50e+05 A^3
+Reading kappa map data from kappa_cpx_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 38.95, 60.25) A lower corner
+  Volume integral = 1.06e+04 A^3
+Got paths for 6 charge maps
+Reading charge map data from charge_prot_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -61.594, -51.2595) A lower corner
+  Charge map integral = -6.21e+01 e
+Reading charge map data from charge_prot_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 13.95, 35.25) A lower corner
+  Charge map integral = -3.63e+01 e
+Reading charge map data from charge_prot_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 38.95, 60.25) A lower corner
+  Charge map integral = -1.62e+01 e
+Reading charge map data from charge_cpx_Lm.dx.gz:
+  129 x 129 x 129 grid
+  (1.95312, 1.95312, 1.95312) A spacings
+  (-59.993, -61.594, -51.2595) A lower corner
+  Charge map integral = -6.11e+01 e
+Reading charge map data from charge_cpx_Mm.dx.gz:
+  129 x 129 x 129 grid
+  (0.78125, 0.78125, 0.78125) A spacings
+  (16.074, 13.95, 35.25) A lower corner
+  Charge map integral = -3.53e+01 e
+Reading charge map data from charge_cpx_Sm.dx.gz:
+  129 x 129 x 129 grid
+  (0.390625, 0.390625, 0.390625) A spacings
+  (41.074, 38.95, 60.25) A lower corner
+  Charge map integral = -1.52e+01 e
+Preparing to run 9 PBE calculations.
+----------------------------------------
+CALCULATION #1 (protein_L): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+  Debye length:  7.92928 A
+  Current memory usage:  1056.003 MB total, 1056.003 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 1.953 x 1.953 x 1.953
+  Grid lengths: 250.000 x 250.000 x 250.000
+  Grid center: (65.007, 63.406, 73.740)
+  Multigrid levels: 6
+  Molecule ID: 1
+  Linearized traditional PBE
+  Zero boundary conditions
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 9.898404079999E+03 kJ/mol
+  Calculating forces...
+----------------------------------------
+CALCULATION #2 (protein_M): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+  Debye length:  7.92928 A
+  Current memory usage:  1056.003 MB total, 1609.095 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 0.781 x 0.781 x 0.781
+  Grid lengths: 100.000 x 100.000 x 100.000
+  Grid center: (66.074, 63.950, 85.250)
+  Multigrid levels: 6
+  Molecule ID: 1
+  Linearized traditional PBE
+  Boundary conditions from focusing
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 1.135083109321E+05 kJ/mol
+  Calculating forces...
+[focusFillBound()]: WARNING:
+    Unusually large potential values
+    detected on the focusing boundary!
+    Convergence not guaranteed for NPBE/NRPBE calculations!
+
+----------------------------------------
+CALCULATION #3 (protein_S): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+  Debye length:  7.92928 A
+  Current memory usage:  1056.003 MB total, 1609.095 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 0.391 x 0.391 x 0.391
+  Grid lengths: 50.000 x 50.000 x 50.000
+  Grid center: (66.074, 63.950, 85.250)
+  Multigrid levels: 6
+  Molecule ID: 1
+  Linearized traditional PBE
+  Boundary conditions from focusing
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 2.055041387465E+05 kJ/mol
+  Calculating forces...
+----------------------------------------
+CALCULATION #4 (ion_L): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+Vacc_SASA: Time elapsed: 0.000000
+  Debye length:  7.92928 A
+  Current memory usage:  969.565 MB total, 1609.095 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 1.953 x 1.953 x 1.953
+  Grid lengths: 250.000 x 250.000 x 250.000
+  Grid center: (65.007, 63.406, 73.740)
+  Multigrid levels: 6
+  Molecule ID: 2
+  Linearized traditional PBE
+  Zero boundary conditions
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 5.653596854587E+00 kJ/mol
+  Calculating forces...
+----------------------------------------
+CALCULATION #5 (ion_M): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+Vacc_SASA: Time elapsed: 0.000000
+  Debye length:  7.92928 A
+  Current memory usage:  969.565 MB total, 1609.095 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 0.781 x 0.781 x 0.781
+  Grid lengths: 100.000 x 100.000 x 100.000
+  Grid center: (66.074, 63.950, 85.250)
+  Multigrid levels: 6
+  Molecule ID: 2
+  Linearized traditional PBE
+  Boundary conditions from focusing
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 8.314878607443E+01 kJ/mol
+  Calculating forces...
+----------------------------------------
+CALCULATION #6 (ion_S): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+Vacc_SASA: Time elapsed: 0.000000
+  Debye length:  7.92928 A
+  Current memory usage:  969.565 MB total, 1609.095 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 0.391 x 0.391 x 0.391
+  Grid lengths: 50.000 x 50.000 x 50.000
+  Grid center: (66.074, 63.950, 85.250)
+  Multigrid levels: 6
+  Molecule ID: 2
+  Linearized traditional PBE
+  Boundary conditions from focusing
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 2.009708607527E+02 kJ/mol
+  Calculating forces...
+----------------------------------------
+CALCULATION #7 (complex_L): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+  Debye length:  7.92928 A
+  Current memory usage:  1056.005 MB total, 1609.095 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 1.953 x 1.953 x 1.953
+  Grid lengths: 250.000 x 250.000 x 250.000
+  Grid center: (65.007, 63.406, 73.740)
+  Multigrid levels: 6
+  Molecule ID: 3
+  Linearized traditional PBE
+  Zero boundary conditions
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 9.895453798953E+03 kJ/mol
+  Calculating forces...
+----------------------------------------
+CALCULATION #8 (complex_M): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+  Debye length:  7.92928 A
+  Current memory usage:  1056.005 MB total, 1609.100 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 0.781 x 0.781 x 0.781
+  Grid lengths: 100.000 x 100.000 x 100.000
+  Grid center: (66.074, 63.950, 85.250)
+  Multigrid levels: 6
+  Molecule ID: 3
+  Linearized traditional PBE
+  Boundary conditions from focusing
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 1.135828874971E+05 kJ/mol
+  Calculating forces...
+[focusFillBound()]: WARNING:
+    Unusually large potential values
+    detected on the focusing boundary!
+    Convergence not guaranteed for NPBE/NRPBE calculations!
+
+----------------------------------------
+CALCULATION #9 (complex_S): MULTIGRID
+  Setting up problem...
+  Vpbe_ctor:  Using max ion radius (1.81 A) for exclusion function
+  Debye length:  7.92928 A
+  Current memory usage:  1056.005 MB total, 1609.100 MB high water
+  Using cubic spline charge discretization.
+  Grid dimensions: 129 x 129 x 129
+  Grid spacings: 0.391 x 0.391 x 0.391
+  Grid lengths: 50.000 x 50.000 x 50.000
+  Grid center: (66.074, 63.950, 85.250)
+  Multigrid levels: 6
+  Molecule ID: 3
+  Linearized traditional PBE
+  Boundary conditions from focusing
+  2 ion species (0.150 M ionic strength):
+    0.950 A-radius, 1.000 e-charge, 0.150 M concentration
+    1.810 A-radius, -1.000 e-charge, 0.150 M concentration
+  Solute dielectric: 10.000
+  Solvent dielectric: 80.000
+  Using "molecular" surface definition; no smoothing
+  Solvent probe radius: 1.400 A
+  Temperature:  298.150 K
+  Electrostatic energies will be calculated
+  Total electrostatic energy = 2.056963930006E+05 kJ/mol
+  Calculating forces...
+----------------------------------------
+PRINT STATEMENTS
+
+print energy 9 (complex_S) - 6 (ion_S) - 3 (protein_S) end
+  Local net energy (PE 0) = -8.716606622154E+00 kJ/mol
+  Global net ELEC energy = -8.716606622154E+00 kJ/mol
+----------------------------------------
+CLEANING UP AND SHUTTING DOWN...
+Destroying force arrays.
+No energy arrays to destroy.
+Destroying multigrid structures.
+Destroying 6 charge maps
+Destroying 6 kappa maps
+Destroying 6 dielectric map sets
+Destroying 3 molecules
+Final memory usage:  0.001 MB total, 1609.100 MB high water
+
+
+Thanks for using APBS!
+
