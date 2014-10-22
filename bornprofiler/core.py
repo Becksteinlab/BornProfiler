@@ -17,7 +17,7 @@ import bpio
 from bpio import read_template
 from config import configuration
 from utilities import in_dir, asiterable
-
+from scipy.interpolate import interp1d
 import logging
 logger = logging.getLogger('bornprofiler.core') 
 
@@ -593,3 +593,36 @@ def ngridpoints(c, nlev=4):
   http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime
   """
   return c*2**(nlev+1) + 1
+
+class datinfo(object):
+    """Class for encapsulating the information stored in a group of BP dat file.
+    Allows for addition, subtraction, and averaging with appropriate 
+    interpolation."""
+    def __init__(self,*args,**kwargs):
+        infile = args[0]
+        datarray = self.readdat(infile)
+        self.spacial = datarray[:,0:3]
+        self.energy = numpy.array([[E] for E in datarray[:,-1]])
+        self.density = self.calc_density()
+        self.z = self.spacial[:,-1]
+        self.minz = numpy.amin(self.z)
+        self.maxz = numpy.amax(self.z)
+
+    def readdat(self, datfile):
+        """Reads the dat file into a (4,N) numpy array"""
+        infolist = []
+        dat_file = open(datfile)
+        dat_file.readline()
+        for line in dat_file:
+            floatline = [float(x) for x in line.split()]
+            infolist.append(floatline)
+        return (numpy.array(infolist))
+
+    def calc_density(self):
+        displacements = self.spacial[1:] - self.spacial[:-1]
+        distance = (displacements * displacements).sum()
+        density = (self.spacial.shape[0] - 1)/distance
+        return density
+
+    def z_interpolator(self):
+        return interp1d(self.z.flatten(),self.energy.flatten())
