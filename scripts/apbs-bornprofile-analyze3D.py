@@ -67,7 +67,7 @@ if __name__ == "__main__":
   parser.add_option("--basedir", "-B", dest="basedir",
                     metavar="DIR",
                     help="when using a run parameter file, the job output is found under "
-                    "'DIR/<job.name>/w[0-9][0-9][0-9][0-9]/job*.out', with job.name taken from "
+                    "'DIR/<job.name>/w[0-9][0-9][0-9][0-9].../job*.out', with job.name taken from "
                     "the run parameter file [%default]")
   parser.add_option("--read", dest="create", action="store_false",
                     help="If set, read positions and enrgies from a previously created dat file.")

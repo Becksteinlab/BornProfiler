@@ -24,6 +24,24 @@ import config
 import logging
 logger = logging.getLogger("bornprofiler.io")
 
+def read_dat_to_array(datfile):
+    """Reads the dat file into a (4,N) numpy array"""
+    infolist = []
+    dat_file = open(datfile)
+    dat_file.readline()
+    for line in dat_file:
+       floatline = [float(x) for x in line.split()]
+       infolist.append(floatline)
+    return (numpy.array(infolist))
+
+def write_dat_from_array(outName, datinfo):
+    with open(outName, "w") as outFile:
+        outFile.write("# x/A y/A z/A  W/(kJ/mol)\n")
+        for x,y,z,E in datinfo:
+            outFile.write("{x:>8,.3f} {y:>8,.3f} {z:>8,.3f} {E:>8,.3f}\n".format(x=x,y=y,z=z,E=E))
+    logger.info("Wrote Born PMF to {outName}.".format(outName=outName))
+
+
 def path(s):
     """Return *s* with user expansion."""
     return os.path.expanduser(s)

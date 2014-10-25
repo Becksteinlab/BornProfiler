@@ -16,7 +16,7 @@ import math
 import numpy
 import bornprofiler
 from bornprofiler.core import BPbase
-
+import bornprofiler.bpio as bpio
 import logging
 logger = logging.getLogger('bornprofiler.analysis')
 
@@ -27,7 +27,8 @@ def get_files(runfile, basedir=os.path.curdir):
     try:
         p = RunParameters(runfile,False)
         samplepoints = p.get_bornprofile_kwargs('points')
-        numpoints = len(samplepoints)
+        points = bpio.readPoints(self.pointsName)
+        numpoints = points.shape[0]
         oompoints = int(math.ceil(math.log10(numpoints)))
         if oompoints < 4:
             oompoints = 4

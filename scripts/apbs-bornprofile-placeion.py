@@ -17,9 +17,7 @@
 from __future__ import with_statement
 usage = """%prog [options] parameter-file
 
-Setup Born profile calculation with or without a membrane. Default is with 
-membrane, if option --nomembrane is specified, setup will proceed without 
-membrane considerations. Parameters are read from the parameter file.
+Setup Born profile calculation with or without a membrane. Parameters are read from the parameter file.
 
 This script creates directories for ion positions, required input files to
 APBS, and scripts that can be run locally or through a queuing system to
@@ -74,7 +72,7 @@ if __name__ == "__main__":
                     help="immediately run apbs and draw_membrane2a to produce "
                     "all input files (can take a while); the default is to do "
                     "this as part of the individual jobs")
-  parser.add_option("--nomembrane", dest = "no_membrane",action = "store_true",help="skip membrane steps")
+#  parser.add_option("--nomembrane", dest = "no_membrane",action = "store_true",help="skip membrane steps")
   opts,args = parser.parse_args()
 
   try:
@@ -84,11 +82,11 @@ if __name__ == "__main__":
     sys.exit(1)
 
   logger.info("run config = %(filename)r", vars())
-  if opts.no_membrane:
-     P = bornprofiler.core.Placeion(filename)
-     P.generate()
-  else:
-     P = bornprofiler.core.MPlaceion(filename)
-     P.generate(run=opts.run)
+#  if opts.no_membrane:
+#     P = bornprofiler.core.Placeion(filename)
+#     P.generate()
+#  else:
+  P = bornprofiler.core.MPlaceion(filename)
+  P.generate(run=opts.run)
 
   bornprofiler.stop_logging()

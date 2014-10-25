@@ -108,7 +108,10 @@ def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script
             os.chdir(ion)
             logger.info("Setting cfg elements based on protein, ion, membrane, and path information")
             if Nomembrane:
-                pass
+                cfg.set('membrane','rtop','0')
+                cfg.set('membrane','rbot','0')
+                cfg.set('membrane','lmem','0')
+                cfg.set('membrane','zmem','0')
             else: 
                 cfg.set('membrane','rtop','{}'.format(top_rad))
                 cfg.set('membrane','rbot','{}'.format(bot_rad))
@@ -141,10 +144,10 @@ def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script
             logger.info("writing cfg file.")
             with open('{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion), 'wb') as config_file:
                 cfg.write(config_file)
-            if Nomembrane:
-                subprocess.call(['apbs-bornprofile-placeion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion),'--nomembrane'])
-            else:
-                subprocess.call(['apbs-bornprofile-placeion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
+#            if Nomembrane:
+#                subprocess.call(['apbs-bornprofile-placeion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion),'--nomembrane'])
+#            else:
+            subprocess.call(['apbs-bornprofile-placeion.py','{pdbid}_{ion}.cfg'.format(pdbid=pdbid,ion=ion)])
             if submit_com != None:
                 subprocess.call(['{submit_com}'.format(submit_com=submit_com),'qsub_{pdbid}line{ion}.bash'.format(pdbid=pdbid,ion=ion)])
             os.chdir('..')
