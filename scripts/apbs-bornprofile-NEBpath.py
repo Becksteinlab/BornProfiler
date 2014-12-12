@@ -172,7 +172,7 @@ def NEB(initial_path, Interpolator, spacing,savestep,k,time_step,title):
     along the path joined together by elastic connectors whose equilibrium 
     length is the initial spacing. See script documentation for additional info"""
 # bootstrapping
-    tolerance = spacing/100.0
+    tolerance = spacing/10.0
     damping_factor = 0.05
     all_paths = numpy.array([initial_path])
     path_energies = Interpolator.__call__(initial_path)
