@@ -5,10 +5,13 @@
 Required pre-requisites
 =======================
 
-* python2.5 or better
-* NumPy http://numpy.scipy.org
+* Python 2.5 or better
+* NumPy_ 
 * a C compiler such as GNU gcc
-* APBS 
+* APBS_
+
+.. _NumPy: http://numpy.scipy.org
+.. _APBS: http://www.poissonboltzmann.org 
 
 
 Installation
@@ -24,7 +27,7 @@ Install the python module and scripts::
 ``python setup.py install --help`` for guidance on what your options
 are.)
 
-Compile the customized (and improved) version of draw_membrane::
+Compile the customized (and improved) version of ``draw_membrane``::
 
   mkdir BUILD && cd BUILD
   cmake -D CMAKE_INSTALL_PREFIX=$HOME -D CMAKE_BUILD_TYPE=Release ../src/drawmembrane
@@ -35,7 +38,8 @@ The ``make install`` step will install the executable
 ``draw_membrane2a`` under ``CMAKE_INSTALL_PREFIX/bin``; change
 ``CMAKE_INSTALL_PREFIX`` if you prefer another location.
 
-(cmake is not really needed; if you don't have it try the following::
+(``cmake`` is not really needed; if you don't have it try the
+following::
 
    gcc ./src/drawmembrane/draw_membrane2a.c -o draw_membrane2a -lm -lz
 

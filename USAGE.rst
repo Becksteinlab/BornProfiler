@@ -67,9 +67,10 @@ First generate a blank parameter file::
 
   apbs-bornprofile-mplaceion.py --template Mine.cfg
 
-Edit the parameter file::
+Edit the parameter file (use your favorite text editor instead of
+``vi`` )::
 
-  nano Mine.cfg
+  vi Mine.cfg
 
 For instance, set the *pqr* file and the position of the membrane. The
 *qscript* and *arrayscript* can also be your own templates. For what's
@@ -90,9 +91,6 @@ system, run the whole job array with ::
 
   qsub qsub_mine.sge
 
-.. Note for SBCB: Look at the Talk:BornProfiler page on the Wiki for
-..                notes that tell you how to run on the workstation queue!
-
 
 Analyze::
 
@@ -112,8 +110,8 @@ configuration variables glen_ *and* fglen_ to determine the focusing
 schedule. (See the APBS documentation for explanations of the variables.)
 
 
-``apbs-bornprofiler-placeion.py`` behaves similarly to the old ``placeion.sh`` and
-``placeion.py`` scripts.
+``apbs-bornprofiler-placeion.py`` behaves similarly to the old
+``placeion.sh`` and ``placeion.py`` scripts.
 
 
 Potential for visualization

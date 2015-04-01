@@ -1,4 +1,4 @@
-include README INSTALL USAGE CHANGELOG COPYING  AUTHORS
+include README.rst INSTALL.rst USAGE.rst CHANGELOG COPYING  AUTHORS.rst
 include ez_setup.py setup.py 
 graft   examples/Parsegian
 exclude examples/Parsegian/figs/*.tga examples/Parsegian/figs/*.dat.gz
