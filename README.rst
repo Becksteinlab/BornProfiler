@@ -23,25 +23,30 @@ calculations of the electrostatic potential of mean force of an ion in
 a pore or channel under the influence of a membrane. The membrane is
 modelled as a dielectric slab of ε=2.
 
- * Provide a path (list of coordinates) and a PQR file of the protein as input.
- * A membrane can be defined with arbitrary thickness, z-position, and
-   dielectric. A headgroup region can also be defined with a different
-   dielectric constant. 
- * Define all input parameters in a compact parameter file so that
-   there is always a record of the exact calculation setup available. 
- * Born radii for all ions from the Rashin & Honig paper [Rashin1985]_
-   are included; just select the ion in the input file.
- * Born radii for H3O+, OH- (and H+... for testing) have been derived
-   from the solvation free energies in [Pliego2000]_ directly via the
-   Born equation. USE AT YOUR OWN RISK!!
- * Customize run scripts and queuing system submission scripts by
-   providing your own templates.  
+* Provide a path (list of coordinates) and a PQR file of the protein
+  as input.
+* 1D (linear) traditional Born profiles (e.g. ion in channel)
+* 3D (spatial) solvation free energy maps [Stelzl2014]_
+* A membrane can be defined with arbitrary thickness, z-position, and
+  dielectric. A headgroup region can also be defined with a different
+  dielectric constant. 
+* Define all input parameters in a compact parameter file so that
+  there is always a record of the exact calculation setup available. 
+* Born radii for all ions from the Rashin & Honig paper [Rashin1985]_
+  are included; just select the ion in the input file.
+* Born radii for H3O+, OH- (and H+... for testing) have been derived
+  from the solvation free energies in [Pliego2000]_ directly via the
+  Born equation. USE AT YOUR OWN RISK!!
+* Customize run scripts and queuing system submission scripts by
+  providing your own templates.  
 
 .. rubric:: References
 
+.. [Stelzl2014] LS Stelzl, PW Fowler, MSP Sansom, O Beckstein. J Mol
+                Biol 426 (2014), 735-751.
 .. [Rashin1985] A.Rashin & B.Honig, J Phys Chem B 89 (1985), 5588
 .. [Pliego2000] J.R. Pliego and J.M. Riveros. Chemical Physics
-                Letters, 332(5-6): 597--602, 2000. 
+                Letters 332 (2000), 597--602. 
 		doi:10.1016/S0009-2614(00)01305-1.  
 
 
