@@ -34,48 +34,83 @@ class curve(object):
 
     def axis_interpolator(self):
         return interp1d(self.axis_points.flatten(),self.values.flatten())
-
-    def __add__(self,curve2):
+    
+    def curve_overlap(self,curve2):
         if self.axis != curve2.axis:
-            raise Exception("Curves to be added do not have the same interpolation axis")
+            raise Exception("Curves do not have the same interpolation axis")
         spacing = max(self.spacing,curve2.spacing)
         valid_min,valid_max = [max(self.min_axis,curve2.min_axis),min(self.max_axis,curve2.max_axis)]
         if valid_min >= valid_max:
-            raise Exception("Curves to be added do not overlap on their interpolation axis")
+            raise Exception("Curves do not overlap on their interpolation axis")
         points = numpy.arange(valid_min,valid_max,spacing)
         numpoints = points.shape[0]
         if numpoints < 2:
-            raise Exception("Curves to be added do not share sufficient space on interpolation axis to allow for addition")
-        result = self.axis_interpolator()(points) + curve2.axis_interpolator()(points)
-        output_array = numpy.zeros((numpoints,4))
-        output_array[:,self.axis] = points
+            raise Exception("Curves do not share sufficient space on interpolation")
+        return [points,numpoints,spacing]
+
+
+    def __add__(self,addend):
+        if type(addend) == curve:
+            points, numpoints, spacing = self.curve_overlap(addend)
+            result = self.axis_interpolator()(points) + addend.axis_interpolator()(points)
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,self.axis] = points
+        else:
+            points = self.spacial
+            numpoints = self.numpoints
+            spacing = self.spacing
+            result = self.values.flatten() + addend
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,(0,2)] = points
         output_array[:,3] = result 
         return curve(output_array,spacing=spacing)
 
-    def __sub__(self,curve2):
-        if self.axis != curve2.axis:
-            raise Exception("Curves to be subtracted do not have the same interpolation axis")
-        spacing = max(self.spacing,curve2.spacing)
-        valid_min,valid_max = [max(self.min_axis,curve2.min_axis),min(self.max_axis,curve2.max_axis)]
-        if valid_min >= valid_max:
-            raise Exception("Curves to be subtracted do not overlap on their interpolation axis")
-        points = numpy.arange(valid_min,valid_max,spacing)
-        numpoints = points.shape[0]
-        if numpoints < 2:
-            raise Exception("Curves to be added do not share sufficient space on interpolation axis to allow for addition")
-        result = self.axis_interpolator()(points) - curve2.axis_interpolator()(points)
-        output_array = numpy.zeros((numpoints,4))
-        output_array[:,self.axis] = points
+    def __sub__(self,subtrahend):
+        if type(subtrahend) == curve:
+            points, numpoints, spacing = self.curve_overlap(subtrahend)
+            result = self.axis_interpolator()(points) - subtrahend.axis_interpolator()(points)
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,self.axis] = points
+        else:
+            points = self.spacial
+            numpoints = self.numpoints
+            spacing = self.spacing
+            result = self.values.flatten() - subtrahend
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,(0,2)] = points
+
         output_array[:,3] = result
         return curve(output_array,spacing=spacing)
 
 
-    def __div__(self,number):
-        divided_vals = self.values/number
-        complete_array = numpy.hstack((self.spacial,divided_vals))
-        return curve(complete_array)
+    def __div__(self,divisor):
+        if type(divisor) == curve:
+            points, numpoints, spacing = self.curve_overlap(divisor)
+            result = self.axis_interpolator()(points)/divisor.axis_interpolator()(points)
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,self.axis] = points
+        else:
+            points = self.spacial
+            numpoints = self.numpoints
+            spacing = self.spacing
+            result = self.values.flatten()/divisor
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,(0,2)] = points
+        output_array[:,3] = result
+        return curve(output_array)
 
-    def __mul__(self,number):
-        multiplied_vals = self.values * number
-        complete_array = numpy.hstack((self.spacial,multiplied_vals))
-        return curve(complete_array)
+    def __mul__(self,multiplier):
+        if type(multiplier) == curve:
+            points, numpoints, spacing = self.curve_overlap(multiplier)
+            result = self.axis_interpolator()(points)*multiplier.axis_interpolator()(points)
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,self.axis] = points
+        else:
+            points = self.spacial
+            numpoints = self.numpoints
+            spacing = self.spacing
+            result = self.values.flatten()*multiplier
+            output_array = numpy.zeros((numpoints,4))
+            output_array[:,(0,2)] = points
+        output_array[:,3] = result
+        return curve(output_array)
