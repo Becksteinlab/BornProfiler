@@ -1,6 +1,13 @@
-# -*- coding: utf-8 -*-
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
 # APBS BornProfiler -- dealing with configuration files
-# Copyright (c) 2010-2011 Oliver Beckstein
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2013 Oliver Beckstein
 """
 Configuration file handling and setup
 =====================================

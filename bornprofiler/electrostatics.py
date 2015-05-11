@@ -1,21 +1,29 @@
 # BornProfiler -- integration with draw_membrane
-# Copyright (c) 2010-2011 Oliver Beckstein
-# Published under the GNU Public Licence, version 3
-
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2013 Oliver Beckstein
+# Copyright (c) 2013 Lennard van der Feltz
 """
 APBS calculations: Membrane simulations
 =======================================
 
-Requires the :program:`draw_membrane2a` binary.
+Aside from APBSnomem, requires the :program:`draw_membrane2a` binary.
 
-Uses :programe:`draw_membrane2a` to add a low-dielectric (eps=2) region and sets
+Membrane scripts:
+Use :programe:`draw_membrane2a` to add a low-dielectric (eps=2) region and sets
 protein dielectric to eps=10.
 
 .. Note:: Paths to draw_membrane2a and apbs are set in the configuration file
    ``~/.bornprofiler.cfg``::
           apbs = %(APBS)r
           draw_membrane2 = %(DRAWMEMBRANE)r
-
+APBSnomem simply gives electrostatics info for the protein/solvent system
 Commandline version of apbsmem, following
 http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
 and modified (see ``src/drawmembrane/draw_membrane2a.c`` in the BornProfiler distribution).
@@ -30,9 +38,9 @@ import numpy
 from itertools import izip
 
 import logging
-logger = logging.getLogger("bornprofiler.membrane")
+logger = logging.getLogger("bornprofiler.electrostatics")
 
-from io import read_template
+from bpio import read_template
 
 import config
 from config import configuration
@@ -44,6 +52,7 @@ APBS = configuration["apbs"]
 #: cache for template files
 TEMPLATES = {'dummy': read_template('dummy.in'),
              'solvation': read_template('solvation.in'),
+             'solvation_no_membrane': read_template('solvation_no_membrane.in'),
              'born_dummy': read_template('mdummy.in'),
              'with_protein': read_template('mplaceion.in'),
              'memonly': read_template('mplaceion_memonly.in'),
@@ -124,7 +133,7 @@ class BaseMem(object):
 
         #logger.debug("BornProfiler: detected APBS version %(apbs_version)r", vars(self))
 
-        super(BaseMem, self).__init__(*args, **kwargs)
+        super(BaseMem, self).__init__()
 
     def get_var_dict(self, stage):
         """Load required values for stage from vars(self) into d."""
@@ -231,6 +240,69 @@ class BaseMem(object):
     def ungzip_dx(self):
         """Run external ungzip on all dx files."""
         return self._gzip_dx('gunzip')
+
+class APBSnomem(BaseMem):
+    """Represent the apbsnomem tools.
+
+    Run for S, M, and L grid (change suffix).
+
+    .. Note:: see code for kwargs
+    """
+    # used by apbs-bornprofile-potential.py
+
+    def __init__(self, *args, **kwargs):
+        """Set up calculation.
+
+        APBSnomem(pqr, suffix[, kwargs])
+
+        :Arguments:
+          - temperature: temperature [298.15]
+          - conc: ionic concentration of monovalent salt with radius 2 A
+                  in mol/l [0.1]
+          - dime: grid dimensions, as list [(97,97,97)]
+          - glen: grid length, as list in  Angstroem [(250,250,250}]
+        """
+        self.pqr = args[0]
+        self.suffix = args[1]
+        self.dime = kwargs.pop('dime', (97,97,97))     # grid points -- check allowed values!!
+        self.glen = kwargs.pop('glen', (250,250,250))  # Angstroem
+        self.filenames = {'dummy': 'dummy%(suffix)s.in' % vars(self),
+                          'solvation_no_membrane': 'solvation_no_membrane%(suffix)s.in' % vars(self),
+                          }
+        # names for diel, kappa, and charge maps hard coded; only suffix (=infix) varies
+        # (see templates/dummy.in)
+
+        #: "static" variables required for a  calculation
+        self.vars = {'dummy':
+                     "pqr,suffix,"
+                     "pdie,sdie,conc,temperature,dxformat,dxsuffix,"
+                     "DIME_XYZ,GLEN_XYZ",
+                     'solvation_no_membrane':
+                     "pqr,suffix,pdie,sdie,conc,temperature,dxformat,dxsuffix,"
+                     "DIME_XYZ,GLEN_XYZ",
+                     }
+        # generate names
+        d = {}
+        d['DIME_XYZ'] = self.vec2str(self.dime)
+        d['GLEN_XYZ'] = self.vec2str(self.glen)
+        self.__dict__.update(d)
+        # process parameters
+        super(APBSnomem, self).__init__(*args[2:], **kwargs)
+
+        
+
+    def generate(self):
+        """Setup solvation calculation.
+
+        1. create exclusion maps (runs apbs)
+        2. create apbs run input file
+        """
+        self.write('dummy')
+        self.run_apbs('dummy')
+        self.write_infile('solvation_no_membrane')
+        if self.dxformat == "dx":
+            logger.info("Manually compressing all dx files (you should get APBS >= 1.3...)")
+            self.gzip_dx()
 
 
 class APBSmem(BaseMem):
