@@ -1,11 +1,17 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
 """
 :Author: Kaihsu Tai, Oliver Beckstein
 :Year: 2008, 2010
 :Licence: GPL
 :Copyright: (c) 2008 Kaihsu Tai
-:Copyright: (c) 2010 Oliver Beckstein
+:Copyright: (c) 2010-2013 Oliver Beckstein
 :URL: http://en.wikiversity.org/wiki/Talk:Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
 
 I wrote some Python code to automate this process. The job submission

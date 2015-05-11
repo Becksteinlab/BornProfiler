@@ -1,10 +1,16 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
 """
 :Author: Kaihsu Tai, Oliver Beckstein
 :Year: 2011
 :Licence: GPL
-:Copyright: (c) 2011 Oliver Beckstein
+:Copyright: (c) 2011-2013 Oliver Beckstein
 """
 
 import logging
@@ -34,7 +40,7 @@ if __name__ == "__main__":
                 bornprofiler.config.configdir)
     logger.info("The package can also be customized by editing %r.",
                 bornprofiler.config.CONFIGNAME)
-    logger.info("Questions and feedback: Oliver Beckstein <oliver.beckstein@bioch.ox.ac.uk>")
+    logger.info("Questions and feedback: Oliver Beckstein <obeckste@asu.edu>")
   else:
     logger.error("Something is wrong: Failed to setup the template directories.")
     logger.warn("You can proceed but problems migh arise and you will not be able "
