@@ -27,7 +27,7 @@ def get_files(runfile, basedir=os.path.curdir):
     try:
         p = RunParameters(runfile,False)
         samplepoints = p.get_bornprofile_kwargs('points')
-        points = bpio.readPoints(self.pointsName)
+        points = bpio.readPoints(samplepoints)
         numpoints = points.shape[0]
         oompoints = int(math.ceil(math.log10(numpoints)))
         if oompoints < 4:
