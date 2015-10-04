@@ -14,12 +14,21 @@ functions available to access the version.
 
 __all__ = ['VERSION', 'get_version', 'get_version_tuple']
 
+#: Is this a release? If not, the :data:`VERSION` will have
+#: "-dev" appended.
+RELEASE = False
 #: Package version; this is the only place where it is set.
-VERSION = 0,9,2
+VERSION = 0,10,0
+
+if not RELEASE:
+    VERSION = VERSION + ('dev',)
 
 def get_version():
     """Return current package version as a string."""
-    return ".".join(map(str,VERSION))
+    s = ".".join(map(str, VERSION[:3]))
+    if not RELEASE:
+        s = s + "-" + VERSION[3]
+    return s
 
 def get_version_tuple():
     """Return current package version as a tuple (*MAJOR*, *MINOR*, *PATCHLEVEL*)."""

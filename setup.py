@@ -13,8 +13,6 @@
 #
 # setuptools installation of APBS BornProfiler
 
-from ez_setup import use_setuptools
-use_setuptools()
 from setuptools import setup, find_packages
 
 # Dynamically calculate the version based on bornprofiler.VERSION.
