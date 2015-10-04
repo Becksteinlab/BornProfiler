@@ -48,7 +48,7 @@ def stop_logging():
     logger.info("BornProfiler STOPPED logging")
     log.clear_handlers(logger)  # this _should_ do the job...
 
-import core, io
+import core, bpio
 
 def write_parameters(filename, **defaults):
     """Write a default parameter file to *filename*.
@@ -60,5 +60,5 @@ def write_parameters(filename, **defaults):
     .. Note:: If the file already exists then it will be updated but
               not reset to the default values of all sections.
     """
-    p = io.RunParameters(filename, **defaults)
+    p = bpio.RunParameters(filename, **defaults)
     return p.write()
