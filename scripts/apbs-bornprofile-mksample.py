@@ -1,10 +1,16 @@
 #!/usr/bin/env python
-# quick and dirty way to get the samplepoints.dat from HOLE .sph 
-# (sphere) output
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2013 Oliver Beckstein
 
-# $Id: mksample.py,v 1.10 2008/03/13 17:21:51 kaihsu Exp $
+from __future__ import with_statement
 
-"""%prog [options] [FILE]
+usage = """%prog [options] [FILE]
 
 Create samplepoints for the Born profile scripts from a pdb file or a
 HOLE sphere file, which includes points on the axis of a channel
@@ -21,7 +27,6 @@ R(z). If more accurate values are required one needs to grep HOLE's
 output.
 """
 
-from __future__ import with_statement
 
 import string
 import sys

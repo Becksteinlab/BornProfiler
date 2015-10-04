@@ -1,4 +1,11 @@
-# -*- coding: utf-8 -*-
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2013 Oliver Beckstein
 """
 Input/Output for the BornProfiler modules --- :mod:`bornprofiler.io`
 ====================================================================
@@ -16,6 +23,24 @@ import config
 
 import logging
 logger = logging.getLogger("bornprofiler.io")
+
+def read_dat_to_array(datfile):
+    """Reads the dat file into a (4,N) numpy array"""
+    infolist = []
+    dat_file = open(datfile)
+    dat_file.readline()
+    for line in dat_file:
+       floatline = [float(x) for x in line.split()]
+       infolist.append(floatline)
+    return (numpy.array(infolist))
+
+def write_dat_from_array(outName, datinfo):
+    with open(outName, "w") as outFile:
+        outFile.write("# x/A y/A z/A  W/(kJ/mol)\n")
+        for x,y,z,E in datinfo:
+            outFile.write("{x:>8,.3f} {y:>8,.3f} {z:>8,.3f} {E:>8,.3f}\n".format(x=x,y=y,z=z,E=E))
+    logger.info("Wrote Born PMF to {outName}.".format(outName=outName))
+
 
 def path(s):
     """Return *s* with user expansion."""
@@ -74,8 +99,9 @@ class RunParameters(object):
     # 2. RunParameters.parameter_selections (possibly multiple times!)
     # 3. RunParameters._populate_default()
     # 4. membrane.BaseMem: set as attribute
-    # 5. membrane.APBSmem.vars: name of the attribute if needed for a task
-    # 6. membrane.BornAPBSmem.vars: name of the attribute if needed for a task
+    # 5. membrane.APBSnomem.vars: name of the attribute if needed for a task
+    # 6. membrane.APBSmem.vars: name of the attribute if needed for a task
+    # 7. membrane.BornAPBSmem.vars: name of the attribute if needed for a task
 
     # The following should all be in a template file, together with the
     # defaults and types...
@@ -96,10 +122,23 @@ class RunParameters(object):
                              ('dx_R', float), ('dy_R', float),
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
-             'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval),
-                             ('points', path)],
+             'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval), ('points', path)],
              'job': [('name', str), ('script', path), ('arrayscript', path)],
-             },
+             'plotting': [('xcolumn',int),('ycolumn',int),('title',str),
+                          ('xlabel',str), ('ylabel',str),('plot_label',str),
+                          ('color',str),('protein_bottom',float),
+                          ('protein_length', float)]
+            },
+        'bornprofilenomem':
+            {'environment': [('temperature', float), ('conc', float), ('pdie', float),
+                             ('sdie', float), ('pqr', path), ('runtype', str)],
+             'bornprofile': [('ion', str), ('dime', eval), ('glen', eval), ('fglen', eval), ('points', path)],
+             'job': [('name', str), ('script', path), ('arrayscript', path)],
+             'plotting': [('xcolumn',int),('ycolumn',int),('title',str),
+                          ('xlabel',str), ('ylabel',str),('plot_label',str),
+                          ('color',str),('protein_bottom',float),
+                          ('protein_length', float)]
+            },
         'apbsmem':
             {'environment': [('temperature', float), ('conc', float), ('pdie', float),
                              ('sdie', float), ('pqr', path),],
@@ -109,22 +148,25 @@ class RunParameters(object):
                              ('headgroup_die', float), ('headgroup_l', float), ('Vmem', float),
                              ('lmem', float), ('zmem', float), ('mdie', float)],
              'potential':   [('dime', eval), ('glen', eval),],
-             }
+             },
+        'apbsnomem':
+            {'environment': [('temperature', float), ('conc', float), ('pdie', float),
+                             ('sdie', float), ('pqr', path),],
+             'potential':   [('dime', eval), ('glen', eval),],
+             },
         }
 
-    def __init__(self, filename, **defaults):
+    def __init__(self, filename,*omissions, **defaults):
         """Reads and parses the configuration file for a job."""
         self.filename = filename
         self.parser = SafeConfigParser(defaults)
-
-        # set the defaults and override ...
-        self._populate_default()
+        # set the defaults and override, omitting omissions...
+        self._populate_default(*omissions)
 
         # start with user configuration:
         # (I could add the default values in a template file here... but still
         # need a way to determine the type for entries)
         self.parser.read(config.CONFIGNAME)
-
         if not os.path.exists(filename):
             self.write(filename)
             logger.info("Created new run input configuration %(filename)r", vars())
@@ -133,32 +175,39 @@ class RunParameters(object):
             self.parser.readfp(open(filename))
 
         logger.info("Read run input configuration from %(filename)r", vars())
+        if self.parser.get('bornprofile','ion') == 'H':
+            logger.info("WARNING: submitted config file has H as ion. This will result in use of the mostly meaningless H+ proton. Try H30 for a more meaningful calculation")
 
-    def _populate_default(self, parser=None):
+    def _populate_default(self, nomembrane, **kwargs):
         # NOTE: - the parser turns all keys into *lowercase*
         #       - values must be strings
         #       - hack: python types are defined via external dicts
         #         (see self.bornprofile_parameters and
         #         get_bornprofile_kwargs())
+        parser = kwargs.get('parser', None)
+        
         if parser is None:
             parser = self.parser
         # can use %(basedir)s in other entries
         parser.set('DEFAULT', 'basedir', os.path.realpath(os.path.curdir))
         parser.set('DEFAULT', 'solvent_dielectric', '80')
-        parser.add_section('membrane')
-        parser.set('membrane', 'Rtop', '0')
-        parser.set('membrane', 'Rbot', '0')
-        parser.set('membrane', 'x0_R', 'None')
-        parser.set('membrane', 'y0_R', 'None')
-        parser.set('membrane', 'dx_R', '0')
-        parser.set('membrane', 'dy_R', '0')
-        parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
-        parser.set('membrane', 'headgroup_die', '20')
-        parser.set('membrane', 'headgroup_l', '0')
-        parser.set('membrane', 'mdie', '2')
-        parser.set('membrane', 'Vmem', '0')
-        parser.set('membrane', 'lmem', '40')
-        parser.set('membrane', 'zmem','0')
+        if nomembrane:
+            pass
+        else:
+            parser.add_section('membrane')
+            parser.set('membrane', 'Rtop', '0')
+            parser.set('membrane', 'Rbot', '0')
+            parser.set('membrane', 'x0_R', 'None')
+            parser.set('membrane', 'y0_R', 'None')
+            parser.set('membrane', 'dx_R', '0')
+            parser.set('membrane', 'dy_R', '0')
+            parser.set('membrane', 'cdie', '%(solvent_dielectric)s')
+            parser.set('membrane', 'headgroup_die', '20')
+            parser.set('membrane', 'headgroup_l', '0')
+            parser.set('membrane', 'mdie', '2')
+            parser.set('membrane', 'Vmem', '0')
+            parser.set('membrane', 'lmem', '0')
+            parser.set('membrane', 'zmem','0')
         parser.add_section('environment')
         parser.set('environment', 'pqr', 'protein.pqr')
         parser.set('environment', 'temperature', '298.15')
@@ -183,6 +232,16 @@ class RunParameters(object):
         parser.set('job', 'name', 'mbornprofile')
         parser.set('job', 'script', 'q_local.sh')
         parser.set('job', 'arrayscript', 'q_array.sge')
+        parser.add_section('plotting')
+        parser.set('plotting','xcolumn','2')
+        parser.set('plotting','ycolumn','3')
+        parser.set('plotting','title','BP')
+        parser.set('plotting','xlabel','z')
+        parser.set('plotting','ylabel','W_elec')
+        parser.set('plotting','plot_label','Ion')
+        parser.set('plotting','color','black')
+        parser.set('plotting','protein_bottom','-20')
+        parser.set('plotting','protein_length','40')
 
     def _get_kwargs(self, *args, **kwargs):
         """Prepare kwargs for a specified task."""
@@ -206,7 +265,7 @@ class RunParameters(object):
         return kw
 
     def get_bornprofile_kwargs(self, *args, **kwargs):
-        """Return a dict with kwargs appropriate for :class:`membrane.BornAPBSmem`.
+        """Return a dict with kwargs appropriate for :class:`bornprofile`.
 
         Default values can be supplied in *kwargs*. This method picks unique
         parameter keys from the relevant sections of the run parameters file
@@ -216,6 +275,32 @@ class RunParameters(object):
         to the key or a list of such values is returned instead.
         """
         _args = ('bornprofile',) + args
+        return self._get_kwargs(*_args, **kwargs)
+
+    def get_bornprofilenomem_kwargs(self, *args, **kwargs):
+        """Return a dict with kwargs appropriate for :class:`bornprofilenomem`.
+
+        Default values can be supplied in *kwargs*. This method picks unique
+        parameter keys from the relevant sections of the run parameters file
+        (i.e. *bornprofile*, *membrane*, and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
+        """
+        _args = ('bornprofilenomem',) + args
+        return self._get_kwargs(*_args,**kwargs)
+
+    def get_apbsnomem_kwargs(self, *args, **kwargs):
+        """Return a dict with kwargs appropriate for :class:`membrane.APBSnomem`.
+
+        Default values can be supplied in *kwargs*. This method picks unique
+        parameter keys from the relevant sections of the run parameters file
+        (i.e. *bornprofile* and *environment*).
+
+        If args are provided, then either a single value corresponding
+        to the key or a list of such values is returned instead.
+        """
+        _args = ('apbsnomem',) + args
         return self._get_kwargs(*_args, **kwargs)
 
     def get_apbsmem_kwargs(self, *args, **kwargs):

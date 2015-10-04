@@ -1,4 +1,13 @@
-# -*- encoding: utf-8 -*-
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+# Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
+# Copyright (c) 2010-2013 Oliver Beckstein
+# Copyright (c) 2013-2015 Oliver Beckstein, Lennard van der Feltz
+
 """
 Core functionality --- :mod:`bornprofiler.core`
 ===============================================
@@ -9,15 +18,14 @@ Base classes around which the whole **BornProfiler** package is built,
 """
 
 from __future__ import with_statement
-
+import math
 import os, errno
 import numpy
-
-import io
-from io import read_template
+import sys
+import bpio
+from bpio import read_template
 from config import configuration
 from utilities import in_dir, asiterable
-
 import logging
 logger = logging.getLogger('bornprofiler.core')
 
@@ -31,8 +39,9 @@ TABLE_IONS = read_template('bornions.dat')
 class Ion(dict):
   """Represent parameters for an ion."""
   def __init__(self, name, symbol, atomname, radius, charge):
-    super(Ion, self).__init__(name=name, symbol=symbol, atomname=atomname,
-                              radius=float(radius), charge=float(charge))
+    super(Ion, self).__init__(name=name, symbol=symbol,
+                              atomname=atomname, radius=float(radius), charge=float(charge))
+
   def __getattribute__(self, name):
     try:
       return self[name]
@@ -81,10 +90,10 @@ class BPbase(object):
     return "%s_%s%s" % (prefix, self.jobName, ext)
 
   def filename(self, prefix, num, ext):
-    return '%s_%04d%s' % (prefix,num,ext)
+    return '%s_%0{oomPoints}d%s'.format(oomPoints=self.oomPoints) % (prefix,num,ext)
 
   def window_jobname(self, num):
-    return "w%04d_%s" % (num,self.jobName)
+    return "w%0{oomPoints}d_%s".format(oomPoints=self.oomPoints) % (num,self.jobName)
 
   def get_ion_name(self, num):
     return self.filename("ion",num,".pqr")
@@ -97,11 +106,11 @@ class BPbase(object):
 
   def get_apbs_script_name(self, num=None):
     if num is None:
-      return "mem_placeion.in"  # see :class:`membrane.BornAPBSmem`
+      return "mem_placeion.in"  # see :class:`electrostatics.BornAPBSmem`
     return self.infilename(num) # could probably make one of the two funcs redundant
 
   def get_windowdirname(self, num):
-    return "w%04d" % num
+    return "w%0{oomPoints}d".format(oomPoints=self.oomPoints) % num
 
   def get_taskid(self, num):
     """Return 1-based Sun Gridengine taskid for an array job"""
@@ -133,12 +142,19 @@ class BPbase(object):
 
     Tries to be smart and autodetect standard x-y-z dat file or pdb.
     """
-    self.points = io.readPoints(self.pointsName)
+    self.points = bpio.readPoints(self.pointsName)
     self.numPoints = self.points.shape[0]
+    #Find order of magnitude of number of points with minimum 4 to ensure consistency
+    self.oomPoints = int(math.ceil(math.log10(self.numPoints)))
+    if self.oomPoints < 4:
+        self.oomPoints = 4
+#    if self.oomPoints == 0:
+#        self.oomPoints = 1
+
 
   def readPQR(self):
     """Read PQR file and determines protein centre of geometry"""
-    pqr = io.PQRReader(self.pqrName)
+    pqr = bpio.PQRReader(self.pqrName)
     self.pqrLines = pqr.pqrLines
     self.protein_centre = pqr.centroid
     return pqr.coords
@@ -196,51 +212,27 @@ class BPbase(object):
 class Placeion(BPbase):
   "preparing job for APBS energy profiling by placing ions"
 
-  padding_xy = 40.0  # xy only used with use_cubic_boundaries = False
-  padding_z  = 80.0
-
   def __init__(self, *args, **kwargs):
-    if len(args) == 1:
-      # new style
-      import io
-      params = io.RunParameters(args[0])
-      self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
-      self.pqrName = os.path.realpath(kw.pop('pqr'))
-      self.pointsName = os.path.realpath(kw.pop('points'))
-      self.ion = IONS[kw.pop('ion', 'Na')]
-      self.jobName = kw.pop('name', "bornprofile")
-      self.ionicStrength = kw.pop('conc', 0.15)
-      self.temperature = kw.pop('temperature', 300.0)
-      self.sdie = kw.pop('sdie', 78.5)
-      self.pdie = kw.pop('pdie', 10.0)
-      self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
-      self.script = read_template(kw.pop('script', 'q_local.sh'))
-      dime = numpy.array(kw.pop('dime', [129,129,129]))
-      if len(dime.shape) == 2:
-        self.dime = dime[0]   # only take the first one in a triplet
-      else:
-        self.dime = dime
-      self.fglen = numpy.array(kw.pop('fglen', [40,40,40]))
-      # glen not needed, auto-set from pqr and padding
+    params = bpio.RunParameters(args[0],True)
+    self.bornprofile_kwargs = kw = params.get_bornprofilenomem_kwargs()
+    self.pqrName = os.path.realpath(kw.pop('pqr'))
+    self.pointsName = os.path.realpath(kw.pop('points'))
+    self.ion = IONS[kw.pop('ion', 'Na')]
+    self.jobName = kw.pop('name', "bornprofile")
+    self.ionicStrength = kw.pop('conc', 0.15)
+    self.temperature = kw.pop('temperature', 300.0)
+    self.sdie = kw.pop('sdie', 78.5)
+    self.pdie = kw.pop('pdie', 10.0)
+    self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
+    self.script = read_template(kw.pop('script', 'q_local.sh'))
+    dime = numpy.array(kw.pop('dime', [129,129,129]))
+    if len(dime.shape) == 2:
+      self.dime = dime[0]   # only take the first one in a triplet
     else:
-      import warnings
-      warnings.warn("Using deprecated Placeion(pqr,points) call (will be removed in 1.0)",
-                    DeprecationWarning)
-      self.pqrName = os.path.realpath(args[0])
-      self.pointsName = os.path.realpath(args[1])
-      self.jobName = kwargs.pop('jobName', "bornprofile")
-      self.ion = IONS[kwargs.pop('ionName', 'Na')]
-      self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
-      self.temperature = kwargs.pop('temperature', 300.0)
-      self.sdie = kwargs.pop('sdie', 78.5)
-      self.pdie = kwargs.pop('pdie', 10.0)
-      self.dime = numpy.array(kwargs.pop('dime', [129,129,129]))
-      self.fglen = numpy.array(kwargs.pop('fglen', [40,40,40]))
-      self.script = read_template(kwargs.pop('script', 'q_local.sh'))
-      self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
+      self.dime = dime
+    self.fglen = numpy.array(kw.pop('fglen', [40,40,40]))
+    self.glen = numpy.array(kw.pop('glen',[[250,250,250],[100,100,100],[50,50,50]]))
 
-    self.cglen = numpy.array([0, 0, 0])  # automatically set by readPQR() + padding!
-    self.use_cubic_boundaries = True     # False uses old placeion.py algorithm: manually adjust fglen!!
     self.pqrLines = []
     self.protein_centre = None
 
@@ -250,32 +242,26 @@ class Placeion(BPbase):
 
     self.readPQR()
     self.readPoints()
+    self.pmax = numpy.amax(self.points,axis=0)
+    self.pmin = numpy.amin(self.points,axis=0)
 
   def generate(self):
     """Generate all input files."""
+
+    #Check to ensure no points for evaluation would cause secondary grid to lie outside of  primary grid
+    if numpy.greater(self.pmax - self.protein_centre,numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0)).all() or \
+          numpy.less(self.pmin - self.protein_centre, -(numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0))).all():
+      logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
+      sys.exit(1)
+
     self.writePQRs()
     self.writeIn()
+
     return self.writeJob()
 
   def readPQR(self):
     """Read PQR file and determine bounding box and centre of geometry."""
     coords = super(Placeion, self).readPQR()   # :-p
-
-    if self.use_cubic_boundaries:
-      # use largest cubic box (note: fglen is cubic in templates/placeion.in)
-      # but can be set in run parameters bornprofile.fglen.
-      paddings = numpy.max([self.padding_xy, self.padding_z])
-      L = (coords.max() - coords.min()) + paddings
-      self.cglen = numpy.array([L,L,L])
-      logger.debug("Setting cubic box boundaries cglen = %(cglen)r", vars(self))
-    else:
-      # original placeion.py algorithm
-      # (note: for this to work better, the fglen in templates/placeion.in should
-      # match the ratio of box lengths)
-      paddings = numpy.array([self.padding_xy, self.padding_xy, self.padding_z])
-      self.cglen = (coords.max(axis=0) - coords.min(axis=0)) + paddings
-      logger.debug("Using old algorithm to determine cglen = %(cglen)r: make sure that fglen "
-                   "matches the ratios of box lengths.", vars(self))
     return coords
 
   def writeIn(self, windows=None):
@@ -285,7 +271,7 @@ class Placeion(BPbase):
       # old-style ... manual setting up :-p
       params = {'x': x, 'y': y, 'z': z, 'protein_pqr': self.get_protein_name(num),
                 'ion_pqr': self.get_ion_name(num), 'complex_pqr': self.get_complex_name(num),
-                'DIME_XYZ': self.get_XYZ_str(self.dime), 'CGLEN_XYZ': self.get_XYZ_str(self.cglen),
+                'DIME_XYZ': self.get_XYZ_str(self.dime), 'CGLEN_XYZ': self.get_XYZ_str(self.glen),
                 'FGLEN_XYZ': self.get_XYZ_str(self.fglen),
                 'conc': self.ionicStrength, 'temperature': self.temperature,
                 'sdie': self.sdie, 'pdie': self.pdie}
@@ -389,53 +375,26 @@ class MPlaceion(BPbase):
     """
     self.__cache_MemBornSetup = {}
 
-    if len(args) == 1:
-      # new style
-      import io
-      params = io.RunParameters(args[0])
-      self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
-      self.pqrName = os.path.realpath(kw.pop('pqr'))
-      self.pointsName = os.path.realpath(kw.pop('points'))
-      self.ion = IONS[kw.pop('ion', 'Na')]
-      self.jobName = kw.pop('name', "mbornprofile")
-      self.ionicStrength = kw.pop('conc', 0.15)
-      self.temperature = kw.pop('temperature', 300.0)
-      self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
-      self.script = read_template(kw.pop('script', 'q_local.sh'))
-      # any variables that should NOT be passed to the constructor of the
-      # SetupClass must be popped from self.bornprofile_kwargs; this is now
-      # done (together with other hacks) inprocess_bornprofile_kwargs()
+    params = bpio.RunParameters(args[0], False)
+    self.bornprofile_kwargs = kw = params.get_bornprofile_kwargs()
+    self.pqrName = os.path.realpath(kw.pop('pqr'))
+    self.pointsName = os.path.realpath(kw.pop('points'))
+    self.ion = IONS[kw.pop('ion', 'Na')]
+    self.jobName = kw.pop('name', "mbornprofile")
+    self.ionicStrength = kw.pop('conc', 0.15)
+    self.temperature = kw.pop('temperature', 300.0)
+    self.arrayscript = read_template(kw.pop('arrayscript', 'q_array.sge'))
+    self.script = read_template(kw.pop('script', 'q_local.sh'))
+    # any variables that should NOT be passed to the constructor of the
+    # SetupClass must be popped from self.bornprofile_kwargs; this is now
+    # done (together with other hacks) inprocess_bornprofile_kwargs()
 
-      import membrane
-      self.SetupClass = membrane.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
-    else:
-      import warnings
-      warnings.warn("Using deprecated MPlaceion(pqr,points) call (will be removed in 1.0)",
-                    DeprecationWarning)
-      self.pqrName = os.path.realpath(args[0])
-      self.pointsName = os.path.realpath(args[1])
-
-      # copied & pasted from Placeion because inheritance would be messy :-p
-      self.jobName = kwargs.pop('jobName', "mbornprofile")
-      self.ion = IONS[kwargs.pop('ionName', 'Na')]
-      self.ionicStrength = kwargs.pop('ionicStrength', 0.15)
-      self.temperature = kwargs.pop('temperature', 300.0)
-      scriptname = kwargs.pop('script', None)
-      if not scriptname is None:
-        self.script = read_template(scriptname)
-      else:
-        self.script = None
-      self.arrayscript = read_template(kwargs.pop('arrayscript', 'q_array.sge'))
-
-      # hack for quickly customizing draw_membrane (uses custom classes)
-      self.SetupClass = kwargs.pop('memclass', None)
-      if self.SetupClass is None:
-        import membrane
-        self.SetupClass = membrane.BornAPBSmem  # to customize
+    import electrostatics
+    self.SetupClass = electrostatics.BornAPBSmem  # use parameters to customize (see get_MemBornSetup())
 
     logger.info("MPlaceion: pqr=%(pqrName)r", vars(self))
     logger.info("MPlaceion: points=%(pointsName)r", vars(self))
-    logger.info("MPlaceion: ion=%(ion)r", vars(self))
+    logger.info("MPlaceion: bpion=%(ion)r", vars(self))
 
     # sanity check
     assert len(self.schedule) != len(self.SetupClass.suffices), \
@@ -446,7 +405,15 @@ class MPlaceion(BPbase):
     # do some initial processing...
     self.readPQR()                     # hack: also sets self.protein_centre
     self.readPoints()
+    self.pmax = numpy.amax(self.points) # determines the maximum x y and z values for checking against grid sizes
+    self.pmin = numpy.amin(self.points)
+
+
     self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
+    # Checks if any grids from the second phase of focusing will lie outside of the first grid. Exits if true.
+    if numpy.greater(self.pmax - self.protein_centre,numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0)).all() or numpy.less(self.pmin - self.protein_centre, -(numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0))).all():
+        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
+        sys.exit(1)
 
   def process_bornprofile_kwargs(self):
     """Hook to manipulate :attr:`bornprofile_kwargs`.
@@ -457,8 +424,8 @@ class MPlaceion(BPbase):
     # filter :attr:`remove_bornprofile_keywords`
     """
     # :attr:`bornprofile_kwargs` are passed in :meth:`get_MemBornSetup`
-    # directly into downstream classes such as :class:`membrane.APBSmem` and
-    # :class:`membrane.BornAPBSmem` where they are used (or not) according to
+    # directly into downstream classes such as :class:`electrostatics.APBSmem` and
+    # :class:`electrostatics.BornAPBSmem` where they are used (or not) according to
     # requirements
     try:
       kw = self.bornprofile_kwargs
@@ -531,7 +498,7 @@ class MPlaceion(BPbase):
 
     The APBS calculation is set up for manual focusing in three stages:
       1. **L** is a coarse grid and centered on the protein
-      2. **M** is a medium grod, centered on the ion, and using focusing
+      2. **M** is a medium grid, centered on the ion, and using focusing
          (the boundary values come from the **L** calculation)
       3. **S** is the finest grid, also centered and focused on the ion
 
@@ -591,7 +558,8 @@ class MPlaceion(BPbase):
       # using a custom SetupClass pre-populates the parameters for draw_membrane2
       # (hack!! -- should be moved into a cfg input file)
       # Cfg file sets remaining kw args [2010-11-19] but still messy;
-      # but no custom classes needed anymore, just membrane.BornAPBSmem)
+      # but no custom classes needed anymore, just electrostatics.BornAPBSmem)
+
       self.__cache_MemBornSetup[num] = self.SetupClass(protein, ion, cpx, **kw)
     return self.__cache_MemBornSetup[num]
 
@@ -610,6 +578,7 @@ class MPlaceion(BPbase):
     number of windows it is also possible to only generate a bash script for
     each window and defer the setup (*run* = ``False``, the default).
     """
+
     windows = self._process_window_numbers(windows)
     self.writePQRs(windows=windows)
     self.generateMem(windows=windows, run=run)
@@ -620,11 +589,11 @@ def ngridpoints(c, nlev=4):
   """The allowed number of grid points.
 
   For mg-manual calculations, the arguments are dependent on the choice of *nlev*
-  by the formula
+  for dime_ by the formula
 
     n = c*2**(nlev + 1) + 1
 
-  where n is the dime argument, c is a non-zero integer, lev is the nlev
+  where n is the dime_ argument, c is a non-zero integer, lev is the nlev
   value. The most common values for grid dimensions are 65, 97, 129, and 161
   (they can be different in each direction); these are all compatible with a
   nlev value of 4. If you happen to pick a "bad" value for the dimensions
@@ -632,6 +601,8 @@ def ngridpoints(c, nlev=4):
   downwards to more appropriate values. This means that "bad" values will
   typically result in lower resolution/accuracy calculations!
 
-  http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime
+  .. _dime:
+     http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/dime
   """
   return c*2**(nlev+1) + 1
+

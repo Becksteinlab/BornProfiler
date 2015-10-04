@@ -1,6 +1,14 @@
 # BornProfiler -- analysis classes, typically used in scripts
+# -*- Mode: python; tab-width: 4; indent-tabs-mode:nil; coding: utf-8 -*-
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+#
+# BornProfiler --- A package to calculate electrostatic free energies with APBS
+# Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
+# Released under the GNU Public Licence, version 3
+#
 # Copyright (c) 2008 Kaihsu Tai
-# Copyright (c) 2011, 2012 Oliver Beckstein
+# Copyright (c) 2011-2013 Oliver Beckstein
+# Copyright (c) 2013-2015 Oliver Beckstein, Lennard van der Feltz
 
 """
 Analysis of calculations --- :mod:`bornprofiler.analysis`
@@ -15,23 +23,29 @@ from __future__ import with_statement
 
 import os.path
 import glob
-
+import math
 import numpy
 import bornprofiler
 from bornprofiler.core import BPbase
-
+import bornprofiler.bpio as bpio
 import logging
 logger = logging.getLogger('bornprofiler.analysis')
 
 def get_files(runfile, basedir=os.path.curdir):
     """Read *runfile* and return dict with input files and names."""
     # convenience function --- one could also just read the cfg file
-    from bornprofiler.io import RunParameters
+    from bornprofiler.bpio import RunParameters
     try:
-        p = RunParameters(runfile)
+        p = RunParameters(runfile,False)
         samplepoints = p.get_bornprofile_kwargs('points')
+        points = bpio.readPoints(samplepoints)
+        numpoints = points.shape[0]
+        oompoints = int(math.ceil(math.log10(numpoints)))
+        if oompoints < 4:
+            oompoints = 4
+        winnum = '[0-9]'*oompoints
         fileglob = os.path.join(basedir, p.get_bornprofile_kwargs('name'),
-                                'w[0-9][0-9][0-9][0-9]', 'job*.out')
+                                'w{winnum}'.format(winnum=winnum), 'job*.out')
         jobName = p.get_bornprofile_kwargs('name')
         ionName = p.get_bornprofile_kwargs('ion')
         pqr = p.get_bornprofile_kwargs('pqr')
@@ -237,8 +251,9 @@ class AnalyzeElec(Analyzer):
           *kwargs*
              other keyword arguments that are passed on to :func:`pylab.plot`
         """
-        from pylab import plot, xlabel, ylabel, savefig
-
+        import matplotlib
+        matplotlib.use('AGG')
+        import matplotlib.pyplot as plt
         if filename is None:
             plotName = self.datafile("welec",".pdf")
         else:
@@ -246,10 +261,10 @@ class AnalyzeElec(Analyzer):
         kwargs.setdefault('color', 'black')
         kwargs.setdefault('linewidth', 2)
         z,W = self.data[-2], self.data[-1]  # should work for (4,N) and (2,N) data
-        plot(z,W, **kwargs)
-        xlabel(r'$z$ in nm')
-        ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
-        savefig(plotName)
+        plt.plot(z,W, **kwargs)
+        plt.xlabel(r'$z$ in nm')
+        plt.ylabel(r'$W$ in kJ$\cdot$mol$^{-1}$')
+        plt.savefig(plotName)
         logger.info("Plotted graph W(z) %(plotName)r.", vars())
         return plotName
 

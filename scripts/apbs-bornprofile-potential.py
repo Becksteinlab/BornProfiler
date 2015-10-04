@@ -6,17 +6,17 @@
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
 #
+# based on apbs-mem-potential.py by Oliver Beckstein
 """
-:Author:  Oliver Beckstein
-:Year: 2010
+:Author:  Lennard van der Feltz
+:Year: 2013
 :License: GPL3
-:Copyright: (c) 2010 Oliver Beckstein
-:Copyright: (c) 2013 Oliver Beckstein
+:Copyright: (c) 2013 Lennard van der Feltz
 """
 
 usage = """%%prog [options] parameter-file [pqr]
 
-Runs customized apbs calculation of a protein in a membrane. Because
+Runs customized apbs calculation of a protein WITHOUT membrane. This script is a copy of apbs-mem-potential.py with membrane references removed. Because
 the number of options is pretty large, everything must be specified in
 a parameter file. The one exception is the pqr file: if provided as a
 second argument, it override the setting of ``environment: pqr`` in
@@ -26,16 +26,11 @@ A new parameter-file can be generated with the --template
 option; in this case only the file is written and no further actions are
 performed.
 
-We use :program:`draw_membrane2a` to add a low-dielectric region
-representing the membrane and optional a medium-dielectric region for
-the headgroups. It is also possible to specify a channel exclusion
-zone for a pore through a channel.
 
-Paths to draw_membrane2 and apbs are set in the configuration file
+The path to apbs is set in the configuration file
 %(configfilename)r or in the parameter file::
 
  - apbs = %(apbs)r
- - draw_membrane2 = %(drawmembrane)r
 
 .. SeeAlso: apbsmem_ and the `APBS PMF tutorial`_.
 
@@ -47,8 +42,8 @@ Paths to draw_membrane2 and apbs are set in the configuration file
 
 import os.path
 import bornprofiler
-import bornprofiler.electrostatics
 import bornprofiler.io
+import bornprofiler.electrostatics
 import logging
 logger = logging.getLogger('bornprofiler')
 
@@ -83,7 +78,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     params = bornprofiler.io.RunParameters(args[0])
-    kw = params.get_apbsmem_kwargs()
+    kw = params.get_apbsnomem_kwargs()
 
     try:
         pqr = args[1]
@@ -91,34 +86,20 @@ if __name__ == "__main__":
     except IndexError:
         pqr = kw.pop('pqr')
 
-    # hack: shift centre of exclusion zone (duplicates code in
-    # core.MPlaceion.process_bornprofile_kwargs but I don't really know how to
-    # put this at a lower level because the input for draw_membrane2a really is
-    # only the centre of the exclusion zone in absolute coordinates)
-    # exclusion zone centre
-    protein_centre = bornprofiler.io.PQRReader(pqr).centroid
-    if kw['x0_R'] is None:
-        kw['x0_R'] = protein_centre[0]
-    if kw['y0_R'] is None:
-        kw['y0_R'] = protein_centre[1]
-    # shift the centre
-    kw['x0_R'] += kw['dx_R']
-    kw['y0_R'] += kw['dy_R']
-    # clean kw
-    kw.pop('dx_R')
-    kw.pop('dy_R')
         
 
-    # sanity checks (APBS and draw_membrane2a will be needed)
+    # sanity checks (APBS will be needed)
     bornprofiler.config.check_APBS()
-    bornprofiler.config.check_drawmembrane()
 
-    A = bornprofiler.electrostatics.APBSmem(pqr, opts.suffix, **kw)
+    A = bornprofiler.electrostatics.APBSnomem(pqr, opts.suffix, **kw)
     A.generate()
+
+
+
     if opts.run:
         if A.unpack_dxgz:
             A.ungzip_dx()
-        A.run_apbs('solvation')
+        A.run_apbs('solvation_no_membrane')
         if A.unpack_dxgz:
             A.gzip_dx()
 
