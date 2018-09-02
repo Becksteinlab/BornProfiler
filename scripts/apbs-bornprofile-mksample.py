@@ -15,7 +15,7 @@ usage = """%prog [options] [FILE]
 Create samplepoints for the Born profile scripts from a pdb file or a
 HOLE sphere file, which includes points on the axis of a channel
 pore. The coordinates of the pore axis are output as a simple list of
-one point per line (x y z). 
+one point per line (x y z).
 
 By default, a sph file is read from stdin and output to stdout but
 this can be changed by commandline options.
@@ -32,13 +32,13 @@ import string
 import sys
 import os
 
+import bornprofiler
+
 import logging
-logger = logging.getLogger('bornprofiler') 
+logger = logging.getLogger('bornprofiler')
 
 if __name__ == "__main__":
     from optparse import OptionParser
-    
-    logging.basicConfig()
 
     parser = OptionParser(usage=__doc__)
     parser.add_option("--outfile", "-o", dest="outfile",
@@ -61,6 +61,8 @@ if __name__ == "__main__":
 
     opts,args = parser.parse_args()
 
+    bornprofiler.start_logging()
+
     try:
         infile = args[0]
     except IndexError:
@@ -71,11 +73,11 @@ if __name__ == "__main__":
     else:
         skipN = opts.skip
 
-    try: 
+    try:
         sphere = open(infile, "r")
     except IOError, details:
         sys.stderr.write("Error opening sph file '%s'. %s\n" % (infile,details))
-        sys.exit(2)        
+        sys.exit(2)
     logger.info("Opened sphere file '%s'." % infile)
 
     linecount = 0
@@ -90,7 +92,7 @@ if __name__ == "__main__":
             continue   # special HOLE sphere file records
         # http://www.wwpdb.org/documentation/format32/sect9.html#ATOM ::
         # 123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.
-        # HETATM   28  O   HOH X   0      -4.801   1.393 -31.205  1.00  1.00           O  
+        # HETATM   28  O   HOH X   0      -4.801   1.393 -31.205  1.00  1.00           O
         x,y,z = map(float, [line[30:38], line[38:46], line[46:54]])
         occupancy = line[54:60]
         try:
@@ -112,7 +114,7 @@ if __name__ == "__main__":
         logger.info("Opened output file '%s'.", opts.outfile)
 
         if opts.radiusfile:
-            try: 
+            try:
                 radius = open(opts.radiusfile, "w")
             except IOError, details:
                 sys.stderr.write("Error opening output radius profile file '%s'. %s\n"
@@ -133,7 +135,7 @@ if __name__ == "__main__":
         skipN += 1
         printcount = linecount = 0
         for (x,y,z,r) in spheredata:
-            if (0 == linecount % skipN):              
+            if (0 == linecount % skipN):
                 sample.write("%(x)8.3f %(y)8.3f %(z)8.3f\n" % locals())
                 printcount += 1
                 if opts.pdb:
@@ -148,3 +150,5 @@ if __name__ == "__main__":
         radius.close()
     if opts.pdb:
         pdb.close()
+
+    bornprofiler.stop_logging()

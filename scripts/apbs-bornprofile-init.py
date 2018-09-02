@@ -6,15 +6,11 @@
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
 #
-"""
-:Author: Kaihsu Tai, Oliver Beckstein
-:Year: 2011
-:Licence: GPL
-:Copyright: (c) 2011-2013 Oliver Beckstein
-"""
+
+import bornprofiler
 
 import logging
-logger = logging.getLogger('bornprofiler') 
+logger = logging.getLogger('bornprofiler')
 
 usage = """%prog [options]
 
@@ -22,18 +18,14 @@ Set up the BornProfiler configuration directories. This only has to be
 done once (but it will not cause any damage to run this script again).
 """
 
-import bornprofiler
- 
+
 if __name__ == "__main__":
-  import sys
-  import os
   from optparse import OptionParser
 
-  bornprofiler.start_logging()
-
   parser = OptionParser(usage=usage)
-  opts,args = parser.parse_args()
+  opts, args = parser.parse_args()
 
+  bornprofiler.start_logging()
   bornprofiler.config.setup()
   if bornprofiler.config.check_setup():
     logger.info("Init successful: you now have the template directories under %r.",

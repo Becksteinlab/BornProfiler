@@ -8,14 +8,6 @@
 #
 
 """
-:Author: Lennard van der Feltz
-:Year: 2013
-:Licence: GPL 3
-:Copyright: (c) 2013 Lennard van der Feltz
-"""
-
-usage = """%prog input pdbs --title=output dat file
-
 Code for merging any number of PDB files into a single .dat file takes
 the file names and --title= and writes the coordinates in rows into a
 new file with the specified title. If title not specified names output
@@ -38,14 +30,12 @@ def pdb2dat(pdblist, name):
             dat.write(coordinate_string)
 
 
-if __name__ = "__main__":
+if __name__ == "__main__":
     import argparse
 
-    parser=argparse.ArgumentParser()
+    parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('pdbs', nargs='+', type=str)
     parser.add_argument('--title', default="pdbs")
     args = parser.parse_args()
-    pdbs = args.pdbs
-    title = args.title
 
-    pdb2dat(pdbs, title)
+    pdb2dat(args.pdbs, args.title)

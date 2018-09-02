@@ -6,48 +6,21 @@
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
 #
-"""
-:Author: Lennard van der Feltz
-:Year: 2014
-:Licence: GPL 3
-:Copyright: (c) 2014 Lennard van der Feltz
-"""
-usage = """%prog -protein -pdbids -ions --pqr_forcefield --Nomembrane"""
+"""Automated bornprofiler run (EXPERIMENTAL)"""
+
 import os
-import argparse
 import logging
-import bornprofiler
 import sys
 import subprocess
+
+import MDAnalysis
+
+import bornprofiler
 from bornprofiler.config import cfg
 import bornprofiler.run_setup as run_setup
 
 logger = logging.getLogger("bornprofiler")
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-protein")
-parser.add_argument("-pdbids",nargs = '+')
-parser.add_argument("-ions",nargs = '+')
-parser.add_argument("--pqr_forcefield",default = 'CHARMM')
-parser.add_argument("--pH", default = None)
-parser.add_argument("--Nomembrane",action='store_true')
-parser.add_argument("--path", default = True)
-parser.add_argument("--pathres", default = 1)
-parser.add_argument("--script", default = 'q_ASU.sh')
-parser.add_argument("--arrayscript",default = 'array_ASU_workstations.sge')
-parser.add_argument("--submit_com",default = None)
-args = parser.parse_args()
-protein = args.protein
-pdbids = args.pdbids
-ions = args.ions
-forcefield = args.pqr_forcefield
-pH = args.pH
-Nomembrane = args.Nomembrane
-path = args.path
-pathres= args.pathres
-script = args.script
-arrayscript = args.arrayscript
-submit_com = args.submit_com
 
 def generate_directory(directory):
     try:
@@ -56,11 +29,6 @@ def generate_directory(directory):
         logger.warning("Directory {drc} already exists. Did not delete".format(drc=directory))
 
 def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script,arrayscript,submit_com):
-    try:
-        import MDAnalysis
-    except ImportError:
-        logger.fatal("Unable to import MDAnalysis. MDAnalysis required for many steps in run preparation. Available from https://code.google.com/p/mdanalysis/")    
-        sys.exit(1)
     logger.info("generating {prot} directory".format(prot=protein))
     generate_directory(protein)
     os.chdir(protein)
@@ -101,7 +69,7 @@ def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script
             P = MDAnalysis.Universe("../../{path}".format(path=path))
             topcorner,botcorner = P.atoms.bbox()
             pmin=botcorner[2]
-            pmax=topcorner[2]           
+            pmax=topcorner[2]
         for ion in ions:
             logger.info("generating {prot}/{pdb}/{ion} directory".format(prot=protein,pdb=pdbid,ion=ion))
             generate_directory(ion)
@@ -112,7 +80,7 @@ def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script
                 cfg.set('membrane','rbot','0')
                 cfg.set('membrane','lmem','0')
                 cfg.set('membrane','zmem','0')
-            else: 
+            else:
                 cfg.set('membrane','rtop','{}'.format(top_rad))
                 cfg.set('membrane','rbot','{}'.format(bot_rad))
                 cfg.set('membrane','lmem','{}'.format(thickness))
@@ -152,8 +120,37 @@ def prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script
                 subprocess.call(['{submit_com}'.format(submit_com=submit_com),'qsub_{pdbid}line{ion}.bash'.format(pdbid=pdbid,ion=ion)])
             os.chdir('..')
         os.chdir("..")
-        
 
-bornprofiler.start_logging()
-prepare_run(protein,pdbids,ions,forcefield,pH,Nomembrane,path,pathres,script,arrayscript,submit_com)
-bornprofiler.stop_logging()
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("-protein")
+    parser.add_argument("-pdbids",nargs='+')
+    parser.add_argument("-ions", nargs='+')
+    parser.add_argument("--pqr_forcefield", default='CHARMM')
+    parser.add_argument("--pH", default=None)
+    parser.add_argument("--Nomembrane", action='store_true')
+    parser.add_argument("--path", default=True)
+    parser.add_argument("--pathres", default=1)
+    parser.add_argument("--script", default='q_ASU.sh')
+    parser.add_argument("--arrayscript", default = 'array_ASU_workstations.sge')
+    parser.add_argument("--submit_com", default = None)
+    args = parser.parse_args()
+
+    protein = args.protein
+    pdbids = args.pdbids
+    ions = args.ions
+    forcefield = args.pqr_forcefield
+    pH = args.pH
+    Nomembrane = args.Nomembrane
+    path = args.path
+    pathres= args.pathres
+    script = args.script
+    arrayscript = args.arrayscript
+    submit_com = args.submit_com
+
+    bornprofiler.start_logging()
+    prepare_run(protein,pdbids, ions,forcefield, pH, Nomembrane, path, pathres,
+                script, arrayscript, submit_com)
+    bornprofiler.stop_logging()

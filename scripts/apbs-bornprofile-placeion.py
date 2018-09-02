@@ -7,17 +7,8 @@
 # Released under the GNU Public Licence, version 3
 #
 """
-:Authors:  Oliver Beckstein & Lennard van der Feltz
-:Year: 2010 2014
-:License: GPL3
-:Copyright: (c) 2010 Oliver Beckstein
-:Copyright: (c) 2013 Oliver Beckstein
-:Copyright: (c) 2014 Lennard van der Feltz
-"""
-from __future__ import with_statement
-usage = """%prog [options] parameter-file
-
-Setup Born profile calculation with or without a membrane. Parameters are read from the parameter file.
+Setup Born profile calculation with or without a membrane. Parameters
+are read from the parameter file.
 
 This script creates directories for ion positions, required input files to
 APBS, and scripts that can be run locally or through a queuing system to
@@ -54,6 +45,7 @@ from the solvation free energies in
 
 directly via the Born equation. USE AT YOUR OWN RISK!!
 """
+from __future__ import with_statement
 
 import bornprofiler
 
@@ -63,30 +55,34 @@ logger = logging.getLogger('bornprofiler')
 
 if __name__ == "__main__":
   import sys
-  from optparse import OptionParser
+  import argparse
+
+  parser = argparse.ArgumentParser(description=__doc__,
+                                   formatter_class=argparse.RawDescriptionHelpFormatter)
+  parser.add_argument("filename",
+                      help="parameter file")
+  parser.add_argument("--run", dest="run", action="store_true",
+                      help="immediately run apbs and draw_membrane2a to produce "
+                      "all input files (can take a while); the default is to do "
+                      "this as part of the individual jobs")
+  parser.add_argument("--nomembrane", dest="no_membrane", action="store_true",
+                      help="do not use a membrane (skip membrane setup steps)")
+  args = parser.parse_args()
 
   bornprofiler.start_logging()
 
-  parser = OptionParser(usage=__doc__)
-  parser.add_option("--run", dest="run", action="store_true",
-                    help="immediately run apbs and draw_membrane2a to produce "
-                    "all input files (can take a while); the default is to do "
-                    "this as part of the individual jobs")
-#  parser.add_option("--nomembrane", dest = "no_membrane",action = "store_true",help="skip membrane steps")
-  opts,args = parser.parse_args()
-
-  try:
-    filename = args[0]
-  except:
+  if not args.filename:
     logger.fatal("Provide the parameter filename. See --help.")
     sys.exit(1)
 
-  logger.info("run config = %(filename)r", vars())
-#  if opts.no_membrane:
-#     P = bornprofiler.core.Placeion(filename)
-#     P.generate()
-#  else:
-  P = bornprofiler.core.MPlaceion(filename)
-  P.generate(run=opts.run)
+  logger.info("run config = %(filename)r", args.filename)
+  if not args.no_membrane:
+    P = bornprofiler.core.MPlaceion(args.filename)
+  else:
+    raise NotImplementedError("Omitting of membrane is not yet working.")
+    # P = bornprofiler.core.Placeion(args.filename)
+    # P.generate() ## can probably be omitted and use P.generate(run=args..run)
+
+  P.generate(run=args.run)
 
   bornprofiler.stop_logging()

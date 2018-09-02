@@ -6,21 +6,14 @@
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
 #
-# based on apbs-mem-potential.py by Oliver Beckstein
-"""
-:Author:  Lennard van der Feltz
-:Year: 2013
-:License: GPL3
-:Copyright: (c) 2013 Lennard van der Feltz
-"""
+"""%%prog [options] parameter-file [pqr]
 
-usage = """%%prog [options] parameter-file [pqr]
-
-Runs customized apbs calculation of a protein WITHOUT membrane. This script is a copy of apbs-mem-potential.py with membrane references removed. Because
-the number of options is pretty large, everything must be specified in
-a parameter file. The one exception is the pqr file: if provided as a
-second argument, it override the setting of ``environment: pqr`` in
-the configuration file.
+Runs customized apbs calculation of a protein WITHOUT membrane. This
+script is a copy of apbs-mem-potential.py with membrane references
+removed. Because the number of options is pretty large, everything
+must be specified in a parameter file. The one exception is the pqr
+file: if provided as a second argument, it override the setting of
+``environment: pqr`` in the configuration file.
 
 A new parameter-file can be generated with the --template
 option; in this case only the file is written and no further actions are
@@ -52,8 +45,6 @@ if __name__ == "__main__":
     import errno
     from optparse import OptionParser
 
-    bornprofiler.start_logging()
-
     parser = OptionParser(usage=__doc__ % bornprofiler.config.configuration)
     parser.add_option("--template", dest="write_template", action="store_true",
                       help="write template parameter file and exit")
@@ -66,6 +57,8 @@ if __name__ == "__main__":
     parser.set_defaults(suffix="S", run=True)
 
     opts,args = parser.parse_args()
+
+    bornprofiler.start_logging()
 
     try:
         filename = args[0]
@@ -86,15 +79,11 @@ if __name__ == "__main__":
     except IndexError:
         pqr = kw.pop('pqr')
 
-
-
     # sanity checks (APBS will be needed)
     bornprofiler.config.check_APBS()
 
     A = bornprofiler.electrostatics.APBSnomem(pqr, opts.suffix, **kw)
     A.generate()
-
-
 
     if opts.run:
         if A.unpack_dxgz:

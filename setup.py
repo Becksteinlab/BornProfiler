@@ -57,10 +57,13 @@ setup(name="APBS-BornProfiler",
                  "scripts/apbs-bornprofile-cfg_template.py",
            ],
       install_requires=[
-        'numpy>=1.0.3',
+          'numpy>=1.0.3',
+          'scipy',
+          'networkx'
         ],
       extras_require = {
         'analysis': ['GridDataFormats>=0.2.2',
+                     'MDAnalysis',
                      ],
         },
       zip_safe=True,

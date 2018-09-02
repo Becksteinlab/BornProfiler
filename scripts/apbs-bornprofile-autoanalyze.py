@@ -6,29 +6,17 @@
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
 #
+"""Runs analysis script apbs-bornprofile-analyze.py on the files in
+specified prot/pdb/ion directories. Intended to follow use of BPauto
+script. (EXPERIMENTAL)
+
 """
-:Author: Lennard van der Feltz
-:Year: 2014
-:Licence: GPL 3
-:Copyright: (c) 2014 Lennard van der Feltz
-"""
-usage = """%prog -protein -pdbids -ions
-Runs analysis scripts on the files in specified prot/pdb/ion directories. Intended to follow use of BPauto script"""
 
 import os
 import subprocess
-import argparse
 import shutil
-parser=argparse.ArgumentParser()
-parser.add_argument("-protein")
-parser.add_argument("-pdbids", nargs = '+')
-parser.add_argument("-ions", nargs = '+')
-args = parser.parse_args()
-protein = args.protein
-pdbids = args.pdbids
-ions = args.ions
 
-def autoanalyze(protein,pdbids,ions):
+def autoanalyze(protein, pdbids, ions):
     os.chdir(protein)
     for pdbid in pdbids:
         os.chdir(pdbid)
@@ -40,4 +28,15 @@ def autoanalyze(protein,pdbids,ions):
         os.chdir("..")
     os.chdir("..")
 
-autoanalyze(protein,pdbids,ions)
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+
+    parser.add_argument("-protein")
+    parser.add_argument("-pdbids", nargs = '+')
+    parser.add_argument("-ions", nargs = '+')
+    args = parser.parse_args()
+
+    autoanalyze(args.protein, args.pdbids, args.ions)

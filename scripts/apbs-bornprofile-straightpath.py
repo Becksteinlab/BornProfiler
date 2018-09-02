@@ -6,50 +6,49 @@
 # Written by Kaihsu Tai, Lennard van der Feltz, and Oliver Beckstein
 # Released under the GNU Public Licence, version 3
 #
-"""
-:Author: Lennard van der Feltz
-:Year: 2013
-:Licence: GPL 3
-:Copyright: (c) 2013 Lennard van der Feltz
+"""Code for creating a straight line path pdb of a given length
+starting at a point in the direction of a vec with points every
+steplen.
 """
 
-usage = """%prog pointx pointy pointz vecx vecy vecz length steplen --title
+from __future__ import with_statement, division
 
- Code for creating a straight line path pdb of a given length starting
- at a point in the direction of a vec with points every steplen.
-
-"""
-
-import argparse
 import numpy
 
-parser = argparse.ArgumentParser()
-parser.add_argument('point',type=float, nargs = 3)
-parser.add_argument('vec',type=float, nargs = 3)
-parser.add_argument('length',type=float)
-parser.add_argument('steplen',type=float)
-parser.add_argument('--title', default="Line")
-
-args = parser.parse_args()
-vec = numpy.array(args.vec)
-point = numpy.array(args.point)
-length = args.length
-steplen = args.steplen
-title = args.title
-
-def straightline(point, vec, length, steplen,Name ):
-    nsteps= length/steplen
+def straightline(point, vec, length, steplen, Name):
+    point = numpy.asarray(point)
+    vec = numpy.asarray(vec)
+    nsteps = length//steplen
     step = 0
     newpoint = point
-    line = open("{name}.pdb".format(name=Name), 'w')
-    line.write("ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12,.2f}{y:>8,.2f}{z:>8,.2f} \n".format(atomnum = step + 1,x=point[0],y=point[1],z=point[2]))
-    coordinate_string = ""
-    while step < nsteps:
-        newpoint += vec*steplen
-        coordinate_string +="ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12,.2f}{y:>8,.2f}{z:>8,.2f} \n".format(atomnum = step + 2,x=newpoint[0],y=newpoint[1],z=newpoint[2])
-        step += 1
-    line.write(coordinate_string)
-    line.close()
+    with open("{name}.pdb".format(name=Name), 'w') as line:
+        line.write("ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12,.2f}{y:>8,.2f}{z:>8,.2f} \n".format(
+            atomnum=step + 1, x=point[0], y=point[1], z=point[2]))
+        coordinate_string = ""
+        while step < nsteps:
+            newpoint += vec*steplen
+            coordinate_string += "ATOM {atomnum:>6}   X  XXX X{atomnum:>4}{x:>12,.2f}{y:>8,.2f}{z:>8,.2f} \n".format(
+                atomnum=step + 2, x=newpoint[0], y=newpoint[1], z=newpoint[2])
+            step += 1
+        line.write(coordinate_string)
 
-straightline(point,vec,length,steplen,title)
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('point', type=float, nargs=3,
+                        help="X Y Z coordinates of point on line")
+    parser.add_argument('vec', type=float, nargs=3,
+                        help="X Y Z coordinates of direction")
+    parser.add_argument('length', type=float, help="length of "
+                        "line. NOTE: N = length//steplen segments "
+                        "will be generated, hence the final length can "
+                        "differ from the requested length.")
+    parser.add_argument('steplen', type=float,
+                        help="length of a line segment")
+    parser.add_argument('--title', default="Line")
+
+    args = parser.parse_args()
+
+    straightline(args.point, args.vec, args.length, args.steplen, args.title)
 

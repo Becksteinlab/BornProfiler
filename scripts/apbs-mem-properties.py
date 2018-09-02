@@ -7,14 +7,6 @@
 # Released under the GNU Public Licence, version 3
 #
 """
-:Author: Lennard van der Feltz
-:Year: 2013
-:Licence: GPL 3
-:Copyright: (c) 2013 Lennard van der Feltz
-"""
-
-usage = """%prog PDBID --InputPDB
-
 Code takes PDBID of protein, finds the coordinate file on the opm
 database, & makes use of the dummy atoms to return the membrane
 thickness and position relative to the geometrical center of the
@@ -26,21 +18,21 @@ outputs in terms of the input. This will only work if using a protomer
 as otherwise the membrane top and bottom will be displaced, and thus
 the radii will also be faulty."""
 
-import numpy
-import bornprofiler
-import urllib2
-import sys
-import traceback
-import argparse
 import logging
+
+import bornprofiler
 from bornprofiler import run_setup
 
 logger = logging.getLogger("bornprofiler")
-parser = argparse.ArgumentParser()
-parser.add_argument('PDBID')
-parser.add_argument('--InputPDB')
-args = parser.parse_args()
 
-bornprofiler.start_logging()
-run_setup.memplacer(args.PDBID,args.InputPDB)
-bornprofiler.stop_logging()
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('PDBID', help="Protein Databank ID of a membrane protein")
+    parser.add_argument('--InputPDB', help="Use PQR from this file but download OPM orientation.")
+    args = parser.parse_args()
+
+    bornprofiler.start_logging()
+    run_setup.memplacer(args.PDBID,args.InputPDB)
+    bornprofiler.stop_logging()

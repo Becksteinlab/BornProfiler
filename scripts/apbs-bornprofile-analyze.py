@@ -22,10 +22,10 @@ or GNU General Public License at your option.
 """
 
 import logging
-logger = logging.getLogger('bornprofiler') 
+logger = logging.getLogger('bornprofiler')
 
 usage = """%prog [options] parameter-file
-       %prog [options] samplepoints-file *.out       
+       %prog [options] samplepoints-file *.out
 
 Extract the electrostatic free energy from the numbered APBS output files
 (produced via the apbs-bornprofil-placeion.py script) and associate each energy
@@ -42,14 +42,12 @@ configuration file and possibly the directory where the datafiles are stored
 
 import bornprofiler
 from bornprofiler.analysis import AnalyzeElec
- 
+
 if __name__ == "__main__":
   import sys
   import os
   import glob
   from optparse import OptionParser
-
-  bornprofiler.start_logging()
 
   parser = OptionParser(usage=usage)
   parser.add_option("--name", dest="jobName",
@@ -58,7 +56,7 @@ if __name__ == "__main__":
   parser.add_option("--ion", dest="ionName",
                     metavar="STRING",
                     help="Set the ion name for --pdb if not running from config file [%default]")
-  parser.add_option("--pdb", "-p", dest="pdbfilename", 
+  parser.add_option("--pdb", "-p", dest="pdbfilename",
                     metavar="FILE",
                     help="Export points to a PDB file with the energy in the B-factor. "
                     "If set to 'auto' then a filename is chosen.")
@@ -74,9 +72,11 @@ if __name__ == "__main__":
 
   opts,args = parser.parse_args()
 
+  bornprofiler.start_logging()
+
   if len(args) == 0:
     logger.fatal("Needs samplepoints file and at least one APBS output file. See --help.")
-    sys.exit(1)  
+    sys.exit(1)
   elif len(args) == 1:
     # run parameter file
     f = bornprofiler.analysis.get_files(args[0], basedir=opts.basedir)
@@ -99,6 +99,6 @@ if __name__ == "__main__":
   if opts.pdbfilename:
     if opts.pdbfilename == "auto":
       opts.pdbfilename = None
-    A.export(filename=opts.pdbfilename, format="pdb", ion=opts.ionName)    
+    A.export(filename=opts.pdbfilename, format="pdb", ion=opts.ionName)
 
   bornprofiler.stop_logging()
