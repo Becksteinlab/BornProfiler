@@ -178,14 +178,14 @@ class RunParameters(object):
         if self.parser.get('bornprofile','ion') == 'H':
             logger.info("WARNING: submitted config file has H as ion. This will result in use of the mostly meaningless H+ proton. Try H30 for a more meaningful calculation")
 
-    def _populate_default(self, nomembrane, **kwargs):
+    def _populate_default(self, nomembrane=False, **kwargs):
         # NOTE: - the parser turns all keys into *lowercase*
         #       - values must be strings
         #       - hack: python types are defined via external dicts
         #         (see self.bornprofile_parameters and
         #         get_bornprofile_kwargs())
         parser = kwargs.get('parser', None)
-        
+
         if parser is None:
             parser = self.parser
         # can use %(basedir)s in other entries
