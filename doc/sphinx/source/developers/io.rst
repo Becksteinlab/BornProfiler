@@ -1,2 +1,0 @@
-.. automodule:: bornprofiler.io
-   :members:

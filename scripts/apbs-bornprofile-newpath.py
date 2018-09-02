@@ -39,7 +39,7 @@ except ImportError:
      # for recipes
      try:
           from scipy.spatial.distance import cdist
-          def distance_array(xy1,xy2):          
+          def distance_array(xy1,xy2):
                return cdist(xy1, xy2, 'euclidean')
      except ImportError:
           # Alex Martelli's solution (still good but slower that above)
@@ -47,21 +47,21 @@ except ImportError:
           def distance_array(xy1,xy2):
                d0 = numpy.subtract.outer(xy1[:,0], xy2[:,0])
                d1 = numpy.subtract.outer(xy1[:,1], xy2[:,1])
-               return numpy.hypot(d0, d1)          
-          
+               return numpy.hypot(d0, d1)
+
 try:
      import networkx as NX
 except ImportError:
      raise ImportError("NetworkX http://networkx.lanl.gov/ is required.")
 
-import bornprofiler.io
+import bornprofiler.bpio
 
 def modify_path(infile, outfile="newpath.dat", mindist=1.0):
      """try to get a inter-point distance of  mindist or more if needed"""
 
-     p = bornprofiler.io.readPoints(infile)
+     p = bornprofiler.bpio.readPoints(infile)
 
-     # inplace sort by z (col=2): 
+     # inplace sort by z (col=2):
      # http://stackoverflow.com/questions/2828059/sorting-arrays-in-numpy-by-column
      p[:] = p[p[:,2].argsort()]
 
@@ -75,9 +75,9 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
      newp = p[dij3]
      savetxt(outfile, newp, "%8.3f %8.3f %8.3f")
 
-     # newp is ordered in traversal order; 
+     # newp is ordered in traversal order;
      # get the distances between adjacent nodes
-     deltas = map(linalg.norm, newp[1:] - newp[:-1])	
+     deltas = map(linalg.norm, newp[1:] - newp[:-1])
 
      # build new linear graph with distances between nodes as edge attribute
      G2 = NX.Graph()
@@ -126,7 +126,7 @@ def modify_path(infile, outfile="newpath.dat", mindist=1.0):
 
 if __name__ == "__main__":
      from optparse import OptionParser
-     
+
      parser = OptionParser(usage=__doc__)
      parser.add_option("--outfile", "-o", dest="outfile",
                        metavar="FILE",
@@ -144,4 +144,4 @@ if __name__ == "__main__":
           infile  = "/dev/stdin"
 
      modify_path(infile, opts.outfile, mindist=opts.mindist)
-          
+

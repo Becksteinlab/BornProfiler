@@ -1,0 +1,2 @@
+.. automodule:: bornprofiler.bpio
+   :members:

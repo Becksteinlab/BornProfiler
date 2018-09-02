@@ -42,7 +42,7 @@ The path to apbs is set in the configuration file
 
 import os.path
 import bornprofiler
-import bornprofiler.io
+import bornprofiler.bpio
 import bornprofiler.electrostatics
 import logging
 logger = logging.getLogger('bornprofiler')
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         bornprofiler.write_parameters(filename)
         sys.exit(0)
 
-    params = bornprofiler.io.RunParameters(args[0])
+    params = bornprofiler.bpio.RunParameters(args[0])
     kw = params.get_apbsnomem_kwargs()
 
     try:
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     except IndexError:
         pqr = kw.pop('pqr')
 
-        
+
 
     # sanity checks (APBS will be needed)
     bornprofiler.config.check_APBS()

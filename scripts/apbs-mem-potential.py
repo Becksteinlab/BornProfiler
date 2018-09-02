@@ -48,7 +48,7 @@ Paths to draw_membrane2 and apbs are set in the configuration file
 import os.path
 import bornprofiler
 import bornprofiler.electrostatics
-import bornprofiler.io
+import bornprofiler.bpio
 import logging
 logger = logging.getLogger('bornprofiler')
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         bornprofiler.write_parameters(filename)
         sys.exit(0)
 
-    params = bornprofiler.io.RunParameters(args[0])
+    params = bornprofiler.bpio.RunParameters(args[0])
     kw = params.get_apbsmem_kwargs()
 
     try:
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     # put this at a lower level because the input for draw_membrane2a really is
     # only the centre of the exclusion zone in absolute coordinates)
     # exclusion zone centre
-    protein_centre = bornprofiler.io.PQRReader(pqr).centroid
+    protein_centre = bornprofiler.bpio.PQRReader(pqr).centroid
     if kw['x0_R'] is None:
         kw['x0_R'] = protein_centre[0]
     if kw['y0_R'] is None:
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # clean kw
     kw.pop('dx_R')
     kw.pop('dy_R')
-        
+
 
     # sanity checks (APBS and draw_membrane2a will be needed)
     bornprofiler.config.check_APBS()
