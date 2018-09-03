@@ -6,3 +6,5 @@ graft   examples/2BG9
 graft   bornprofiler/templates/
 
 
+include versioneer.py
+include bornprofiler/_version.py

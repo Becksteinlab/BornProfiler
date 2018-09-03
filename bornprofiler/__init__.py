@@ -21,11 +21,18 @@ so-called *Born profile*).
 .. _APBS: http://www.poissonboltzmann.org/apbs
 
 """
-from version import get_version, get_version_tuple
-
-import config, utilities
-
+from __future__ import absolute_import
 import logging
+
+from . import config
+from . import utilities
+from . import core
+from . import bpio
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
+
 # see the advice on logging and libraries in
 # http://docs.python.org/library/logging.html?#configuring-logging-for-a-library
 class NullHandler(logging.Handler):
@@ -37,18 +44,18 @@ del h
 
 def start_logging(logfile="bornprofiler.log"):
     """Start logging of messages to file and console."""
-    import log
+    from . import log
     log.create("bornprofiler", logfile=logfile)
-    logging.getLogger("bornprofiler").info("BornProfiler STARTED logging to %r", logfile)
+    logging.getLogger("bornprofiler").info("BornProfiler %r STARTED logging to %r",
+                                           __version__, logfile)
 
 def stop_logging():
     """Stop logging to logfile."""
-    import log
+    from . import log
     logger = logging.getLogger("bornprofiler")
     logger.info("BornProfiler STOPPED logging")
     log.clear_handlers(logger)  # this _should_ do the job...
 
-import core, bpio
 
 def write_parameters(filename, **defaults):
     """Write a default parameter file to *filename*.

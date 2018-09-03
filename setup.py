@@ -14,17 +14,15 @@
 # setuptools installation of APBS BornProfiler
 
 from setuptools import setup, find_packages
+import versioneer
 
-# Dynamically calculate the version based on bornprofiler.VERSION.
-# (but requires that we can actually import the package BEFORE it is
-# properly installed!)
-version = __import__('bornprofiler').get_version()
 
 with open("README.rst") as summary:
     LONG_DESCRIPTION = summary.read()
 
-setup(name="APBS-BornProfiler",
-      version=version,
+setup(version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
+      name="APBS-BornProfiler",
       description="Setting up of Born profile calculations for APBS",
       long_description=LONG_DESCRIPTION,
       author="Oliver Beckstein",

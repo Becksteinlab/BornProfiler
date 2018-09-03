@@ -85,7 +85,7 @@ because everthing else is taken from your global configuration file
   
 Edit the template in ``[environment]`` section and the set pqr file.
 
-.. code-block:: inifile
+.. code-block:: cfg
 
   [environment]
   pqr = 3p4w.pqr
@@ -100,7 +100,7 @@ membrane.
   
 
 
-.. code-block:: inifile
+.. code-block:: cfg
 
    [membrane]
    rtop = 10
