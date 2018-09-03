@@ -92,10 +92,20 @@ class BaseMem(object):
         # dx file compression
         # http://www.poissonboltzmann.org/apbs/user-guide/running-apbs/input-files/elec-input-file-section/elec-keywords/write
         self.versions['APBS'] = config.check_APBS(self.apbs)
-        self.unpack_dxgz = False     # hack for v1.3, see below and http://sourceforge.net/support/tracker.php?aid=3108761
-        if self.versions['APBS'] >= (1,3):
+        # hack for v1.3, see below and http://sourceforge.net/support/tracker.php?aid=3108761
+        self.unpack_dxgz = False
+        if (self.versions['APBS'] < (1,3) or
+            not config.cfg.getboolean('executables', 'apbs_has_zlib')):
+            # user has to declare if zlib is missing (e.g., apbs 1.4 macports);
+            # see also https://github.com/Becksteinlab/BornProfiler/issues/7
+            self.dxformat = "dx"
+            self.dxsuffix = "dx"
+            self.unpack_dxgz = True
+            logger.warn("Gzip compression disabled; temporary output files will be huge.")
+        else:
             self.dxformat = "gz"     # format in an APBS read/write statement
             self.dxsuffix = "dx.gz"  # APBS automatically adds .dx.gz when writing
+            logger.info("Gzip compression enabled.")
             if self.versions['APBS'] == (1,3) \
                     and not config.cfg.getboolean('executables', 'apbs_always_read_dxgz'):
                 # note that 1.3 'READ gz' is broken (at least on Mac OS X) so we hack around
@@ -105,9 +115,7 @@ class BaseMem(object):
                 # [executables]
                 # apbs_always_read_dxgz = True
                 self.unpack_dxgz = True
-        else:
-            self.dxformat = "dx"
-            self.dxsuffix = "dx"
+                logger.info("'apbs_always_read_dxgz' hack enabled (for apbs 1.3).")
         self.apbs_version = ".".join(map(str, self.versions['APBS']))
 
         # all the variables needed for draw_membrane2a
@@ -131,7 +139,7 @@ class BaseMem(object):
         self.conc = kwargs.pop('conc', 0.1)   # monovalent salt at 0.1 M
         self.basedir = kwargs.pop('basedir', os.path.realpath(os.path.curdir))
 
-        #logger.debug("BornProfiler: detected APBS version %(apbs_version)r", vars(self))
+        logger.debug("BornProfiler: detected APBS version %(apbs_version)r", vars(self))
 
         super(BaseMem, self).__init__()
 
@@ -289,7 +297,7 @@ class APBSnomem(BaseMem):
         # process parameters
         super(APBSnomem, self).__init__(*args[2:], **kwargs)
 
-        
+
 
     def generate(self):
         """Setup solvation calculation.

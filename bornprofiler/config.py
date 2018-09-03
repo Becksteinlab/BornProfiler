@@ -52,17 +52,19 @@ variable can be accessed via the getter method of the
   varname = cfg.get(section, varname)
 
 """
-from __future__ import with_statement
+from __future__ import with_statement, absolute_import
 
 import os.path, errno
+import subprocess
+import re
 from ConfigParser import SafeConfigParser
 import datetime
+import logging
 
 from pkg_resources import resource_filename, resource_listdir
 
-import utilities
+from . import utilities
 
-import logging
 logger = logging.getLogger("bornprofiler.config")
 
 
@@ -130,6 +132,7 @@ def get_configuration(filename=CONFIGNAME):
     cfg.add_section('executables')
     cfg.set('executables', 'drawmembrane', 'draw_membrane2a')
     cfg.set('executables', 'apbs', 'apbs')
+    cfg.set('executables', 'apbs_has_zlib', 'True') # some builds do not have zlib/gz
     cfg.set('executables', 'apbs_always_read_dxgz', 'False')  # hack when using svn 1623+
 
     if os.path.exists(filename):
@@ -307,9 +310,6 @@ def _get_template(t):
             logger.fatal(errmsg)
             raise ValueError(errmsg)
    return os.path.realpath(t)
-
-import subprocess
-import re
 
 def check_APBS(name=None):
     """Return ABPS version if apbs can be run and has the minimum required version.
