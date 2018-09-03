@@ -23,7 +23,7 @@ Contents
    installing
    users/index
    developers/index
-
+   references
 
 
 Indices and tables

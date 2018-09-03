@@ -33,12 +33,6 @@ modelled as a dielectric slab of epsilon=2.
  * Customize run scripts and queuing system submission scripts by
    providing your own templates.  
 
-.. [Rashin1985] A.Rashin & B.Honig, J Phys Chem B 89 (1985), 5588
-.. [Pliego2000] J.R. Pliego and J.M. Riveros. Chemical Physics
-                Letters, 332(5-6): 597--602, 2000. 
-		doi:10.1016/S0009-2614(00)01305-1.  
-
-
 
 History and Contributions
 -------------------------
