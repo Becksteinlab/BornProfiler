@@ -12,7 +12,7 @@ machine where ``apbs`` is going to run.
 Required pre-requisites
 =======================
 
-* python2.5 or better
+* python >= 2.7 and < 3
 * NumPy_
 * a C compiler such as GNU gcc
 * APBS_ >= 1.3
@@ -26,15 +26,14 @@ Installation from Source
 
 Unpack the tar ball::
 
-  tar zxvf BornProfiler-1.0.tar.gz
+  tar zxvf BornProfiler-0.9.2.tar.gz
 
 Install the python module and scripts::
 
   cd BornProfiler
-  python setup.py install --user
+  python setup.py install
 
-(``--user`` might only work for Python 2.6; look at the output of
-``python setup.py install --help`` for guidance on what your options
+(see ``python setup.py install --help`` for guidance on what your options
 are.)
 
 Compile the customized (and improved) version of ``draw_membrane``

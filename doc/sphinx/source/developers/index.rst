@@ -13,13 +13,12 @@ Content:
    :maxdepth: 2
 
    core
-   membrane
+   electrostatics
    analysis
    config
-   io
+   bpio
    log
    utilities
-   version
    
 
    

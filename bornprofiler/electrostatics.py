@@ -9,24 +9,36 @@
 # Copyright (c) 2005-2008 Kaihsu Tai, Oliver Beckstein
 # Copyright (c) 2010-2013 Oliver Beckstein
 # Copyright (c) 2013 Lennard van der Feltz
-"""
-APBS calculations: Membrane simulations --- :mod:`bornprofiler.membrane`
-========================================================================
 
-Aside from APBSnomem, requires the :program:`draw_membrane2a` binary.
+"""APBS calculations: Membrane simulations --- :mod:`bornprofiler.electrostatics`
+==============================================================================
 
-Membrane scripts:
-Use :programe:`draw_membrane2a` to add a low-dielectric (eps=2) region and sets
-protein dielectric to eps=10.
+:class:`APBSmem` facilitates the setup of electrostatics calculations
+with a membrane. It implements the workflow from the `APBS tutorial
+'Helix in a membrane'`_. The :program:`draw_membrane2a` binary is
+required to to add a low-dielectric (eps=2) region and sets protein
+dielectric to eps=10.
 
-.. Note:: Paths to draw_membrane2a and apbs are set in the configuration file
-   ``~/.bornprofiler.cfg``::
-          apbs = %(APBS)r
-          draw_membrane2 = %(DRAWMEMBRANE)r
-APBSnomem simply gives electrostatics info for the protein/solvent system
-Commandline version of apbsmem, following
-http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
-and modified (see ``src/drawmembrane/draw_membrane2a.c`` in the BornProfiler distribution).
+.. Note::
+
+   Paths to draw_membrane2a and apbs are set in the configuration file
+   ``~/.bornprofiler.cfg``:
+
+   .. code-block:: cfg
+
+      apbs = %(APBS)r
+      draw_membrane2 = %(DRAWMEMBRANE)r
+
+:class:`APBSnomem` simply gives electrostatics info for the
+protein/solvent system for comparison (and does not need
+:program:`draw_membrane2a`).
+
+.. SeeAlso::
+
+   APBSmem https://apbsmem.sourceforge.io/
+
+.. _`APBS tutorial 'Helix in a membrane'`:
+   http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
 
 """
 from __future__ import with_statement
