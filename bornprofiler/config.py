@@ -324,7 +324,7 @@ def check_APBS(name=None):
         logger.critical("No APBS binary found --- set it in the config file %(configfilename)s", configuration)
         raise
     # do not check p.returncode because --verbose sets it to 13 (?) but no idea if this is a feature
-    m = re.match('.*APBS\s*(?P<major>\d+)\.(?P<minor>\d+)', err)
+    m = re.match('.*(APBS)?\s*(?P<major>\d+)\.(?P<minor>\d+)', err)
     if m is None:
         errmsg = "Cannot obtain APBS version string from %r." % err
         logger.critical(errmsg)
