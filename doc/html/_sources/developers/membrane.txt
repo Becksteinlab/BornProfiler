@@ -1,2 +1,0 @@
-.. automodule:: bornprofiler.membrane
-   :members:
