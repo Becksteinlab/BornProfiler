@@ -75,6 +75,14 @@ Generate a template input file ``3p4w.cfg`` for the protein::
 
   apbs-mem-potential.py --template 3p4w.cfg
 
+You only need to keep the sections
+* ``[environment]``
+* ``[membrane]``
+* ``[potential]``  
+
+because everthing else is taken from your global configuration file
+(``~/.bornprofiler.cfg``).
+  
 Edit the template in ``[environment]`` section and the set pqr file.
 
 .. code-block:: inifile
