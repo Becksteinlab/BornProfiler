@@ -178,7 +178,7 @@ class BaseMem(object):
             errmsg = "ABPS failed [returncode %d]. Investigate error messages in output and io.mc" % rc
             logger.fatal(errmsg)
             raise EnvironmentError(errno.ENODATA, self.apbs, errmsg)
-        logger.info("APBS completed run successfully. The peasants rejoice.")
+        logger.info("APBS completed ran successfully. The peasants rejoice.")
         return rc
 
     def run_drawmembrane(self, **kwargs):
@@ -210,7 +210,7 @@ class BaseMem(object):
     def write_infile(self, name):
         if self.unpack_dxgz:
             extra = {'dxformat': 'dx', 'dxsuffix': 'dx'}
-            logger.debug("Working around bug in APBS 1.3: reading gunzipped files")
+            logger.debug("Gzip not supported: reading uncompressed DX files (make sure to gunzip in a qscript!)")
         else:
             extra = {}
         self.write(name, **extra)
@@ -230,7 +230,7 @@ class BaseMem(object):
         cmdline = [name] + options + dxfiles
         logger.info("Beginning to %s %s all %d dx files... patience.",
                     name, " ".join(options), len(dxfiles))
-        logger.debug("COMMAND: %r", cmdline)
+        logger.debug("COMMAND: %r", " ".join(cmdline))
         rc = call(cmdline)
         if rc == 0:
             logger.info("Completed %s operation.", name)
