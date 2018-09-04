@@ -189,6 +189,23 @@ the DX file ``pot_membraneS.dx`` in your favorite visualization
 tool. Contour the density at, for example, –5 kT/e and +5 kT/e.
 
 
+.. figure:: /images/membrane/glic_mem_dielectric_map.png
+
+   GLIC channel dielectric map ``dielxSm.dx`` visualized together with
+   ``3p4w.pdb``. Epsilon 2 (membrane) is red, protein (10) is orange,
+   solvent (80) is blue. Visualized and rendered with UCSF Chimera.
+
+
+.. figure:: /images/membrane/glic_mem_potential.png   
+
+   GLIC channel electrostatic potential ``pot_membraneS.dx``
+   visualized with the protein structure ``3p4w.pdb``. The potential
+   isocontour surface at –5 kT/e is shown in red, and the one at +5
+   kT/e in blue. The membrane dielectric region is shown as a gray
+   mesh. Visualized and rendered with UCSF Chimera.
+
+   
+
 
 A simple Born profile
 =====================
