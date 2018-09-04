@@ -8,7 +8,7 @@ particular calculations of the electrostatic solvation free energy of
 an ion along a pathway in a membrane protein (the so-called *Born
 profile*).
 
-.. _APBS: http://www.poissonboltzmann.org/apbs
+.. _APBS: http://www.poissonboltzmann.org
 
 
 Features
@@ -49,10 +49,10 @@ APBSmem_.
    http://en.wikiversity.org/wiki/Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
 
 .. _PMF of a helix in a membrane:
-   http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
+   https://sites.google.com/a/poissonboltzmann.org/software/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
 
-.. _APBSmem: 
-   http://mgrabe1.bio.pitt.edu/apbsmem/
+.. _APBSmem:
+   https://apbsmem.sourceforge.io/
 
 
 

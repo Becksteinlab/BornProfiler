@@ -4,11 +4,13 @@
  README for BornProfiler
 =========================
 
+|docs|
+
 A small Python package to set up "Born" calculations of an ion in a
 membrane protein and calculate the electrostatic free energy with
 APBS_.
 
-.. _APBS: http://www.poissonboltzmann.org/apbs
+.. _APBS: https://apbs-pdb2pqr.readthedocs.io/en/latest/apbs/index.html
 
 .. Warning:: This software is under development and should not be
              relied upon yet. Feedback in the form of bug reports and
@@ -68,10 +70,13 @@ See the file AUTHORS for all contributors.
    http://en.wikiversity.org/wiki/Poisson%E2%80%93Boltzmann_profile_for_an_ion_channel
 
 .. _PMF of a helix in a membrane:
-   http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
+   https://sites.google.com/a/poissonboltzmann.org/software/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane
 
-.. _APBSmem: 
-   http://mgrabe1.bio.pitt.edu/apbsmem/
+.. _Apbsmem: 
+   https://apbsmem.sourceforge.io/
 
 
 
+.. |docs| image:: https://readthedocs.org/projects/bornprofiler/badge/?version=latest
+   :target: https://bornprofiler.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation

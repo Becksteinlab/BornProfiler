@@ -4,26 +4,42 @@
  Basic operations
 ==================
 
+Simple example that introduce important concepts and functionality.
+
+
 Potential surface with membrane
 ===============================
+
+We want to calculate the electrostatic potential around a membrane
+protein. We need the structure of the protein, assign charges and
+radii (using the `pdb2pqr`_ tool), and create a low-dielectric slab
+that simulates the membrane. We then run `apbs`_ to solve the
+Poisson-Boltzmann equation and visualize the results.
+
 
 PQR file
 --------
 
 Have a PQR file for your membrane protein of interest
-available. Getting it from  the *Orientations of Proteins in Membranes
-(OPM_) database* is convenient because you can get a sense for the
+available. Getting it from  the `Orientations of Proteins in Membranes
+database`_ (OPM) is convenient because you can get a sense for the
 likely position of the membrane. In the following we assume we use the
 GLIC channel (a proton gated cation channel) with OPM/PDB id `3p4w
 <https://opm.phar.umich.edu/proteins/831>`_ as an example. Download
-the file from OPM and create the PQR file with :program:`pdb2pqr`:
+the file from OPM_ and create the PQR file with :program:`pdb2pqr`:
 
 .. code-block:: bash
 		
    wget https://storage.googleapis.com/opm-assets/pdb/3p4w.pdb
    pdb2pqr --ff CHARMM --whitespace --drop-water 3p4w.pdb 3p4w.pqr
 
+.. _`Orientations of Proteins in Membranes database`:
+   https://opm.phar.umich.edu/
 .. _OPM: https://opm.phar.umich.edu/
+.. _pdb2pqr:
+   https://apbs-pdb2pqr.readthedocs.io/en/latest/pdb2pqr/index.html
+.. _apbs:
+   https://apbs-pdb2pqr.readthedocs.io/en/latest/apbs/index.html
 
 
 Membrane position
@@ -193,7 +209,7 @@ tool. Contour the density at, for example, –5 kT/e and +5 kT/e.
 
    GLIC channel dielectric map ``dielxSm.dx`` visualized together with
    ``3p4w.pdb``. Epsilon 2 (membrane) is red, protein (10) is orange,
-   solvent (80) is blue. Visualized and rendered with UCSF Chimera.
+   solvent (80) is blue. Visualized and rendered with `UCSF Chimera`_.
 
 
 .. figure:: /images/membrane/glic_mem_potential.png   
@@ -202,10 +218,11 @@ tool. Contour the density at, for example, –5 kT/e and +5 kT/e.
    visualized with the protein structure ``3p4w.pdb``. The potential
    isocontour surface at –5 kT/e is shown in red, and the one at +5
    kT/e in blue. The membrane dielectric region is shown as a gray
-   mesh. Visualized and rendered with UCSF Chimera.
+   mesh. Visualized and rendered with `UCSF Chimera`_.
 
    
-
+.. _`UCSF Chimera`: https://www.cgl.ucsf.edu/chimera/
+   
 
 A simple Born profile
 =====================

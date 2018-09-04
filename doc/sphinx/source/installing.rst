@@ -18,7 +18,7 @@ Required pre-requisites
 * APBS_ >= 1.3
 
 .. _NumPy:  http://numpy.scipy.org
-.. _APBS: http://www.poissonboltzmann.org/apbs
+.. _APBS: http://www.poissonboltzmann.org
 
 
 Installation from Source

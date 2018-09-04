@@ -10,7 +10,7 @@ BornProfiler documentation
 electrostatic free energy of an ion in a membrane protein for the
 Poisson-Boltzmann solver APBS_.
 
-.. _APBS: http://www.poissonboltzmann.org/apbs
+.. _APBS: https://apbs-pdb2pqr.readthedocs.io/en/latest/apbs/index.html
 
 
 Contents
