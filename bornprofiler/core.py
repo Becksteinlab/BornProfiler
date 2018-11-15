@@ -242,8 +242,8 @@ class Placeion(BPbase):
 
     self.readPQR()
     self.readPoints()
-    self.pmax = numpy.amax(self.points,axis=0)
-    self.pmin = numpy.amin(self.points,axis=0)
+    self.pmax = numpy.amax(self.points, axis=0)
+    self.pmin = numpy.amin(self.points, axis=0)
 
   def generate(self):
     """Generate all input files."""
@@ -410,8 +410,8 @@ class MPlaceion(BPbase):
     # do some initial processing...
     self.readPQR()                     # hack: also sets self.protein_centre
     self.readPoints()
-    self.pmax = numpy.amax(self.points) # determines the maximum x y and z values for checking against grid sizes
-    self.pmin = numpy.amin(self.points)
+    self.pmax = numpy.amax(self.points, axis=0) # determines the maximum x y and z values for checking against grid sizes
+    self.pmin = numpy.amin(self.points, axis=0)
 
 
     self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
@@ -420,9 +420,11 @@ class MPlaceion(BPbase):
             numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0)).all() or \
        numpy.less(self.pmin - self.protein_centre, 
             -(numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0))).all():
-        errmsg = ("Points for evaluation lie too close to glen {} box boundary. "
+        errmsg = ("Points for evaluation (pmax = {0}, pmin = {1}) lie too close "
+        "to glen {2} box boundary. "
         "Adjust this parameter accordingly (need to have buffer between points "
-        "and box boundary to fit the secondary grid inside of the first.)".format(kw['glen']))
+        "and box boundary to fit the secondary grid inside of the "
+        "first.)".format(self.pmax, self.pmin, kw['glen'][:2]))
         logger.fatal(errmsg)
         raise ValueError(errmsg)
 
