@@ -416,9 +416,15 @@ class MPlaceion(BPbase):
 
     self.process_bornprofile_kwargs()  # hackish hook (e.g. set exclusion zone centre)
     # Checks if any grids from the second phase of focusing will lie outside of the first grid. Exits if true.
-    if numpy.greater(self.pmax - self.protein_centre,numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0)).all() or numpy.less(self.pmin - self.protein_centre, -(numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0))).all():
-        logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
-        sys.exit(1)
+    if numpy.greater(self.pmax - self.protein_centre,
+            numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0)).all() or \
+       numpy.less(self.pmin - self.protein_centre, 
+            -(numpy.asarray(kw['glen'][0])/2.0 - (numpy.asarray(kw['glen'][1])/2.0+5.0))).all():
+        errmsg = ("Points for evaluation lie too close to glen {} box boundary. "
+        "Adjust this parameter accordingly (need to have buffer between points "
+        "and box boundary to fit the secondary grid inside of the first.)".format(kw['glen']))
+        logger.fatal(errmsg)
+        raise ValueError(errmsg)
 
   def process_bornprofile_kwargs(self):
     """Hook to manipulate :attr:`bornprofile_kwargs`.
