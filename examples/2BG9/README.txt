@@ -7,8 +7,8 @@ Generation of input files
 
 From the example directory, prepare the input::
 
-  apbs-bornprofile-mplaceion.py Na_nAChR.cfg
-  apbs-bornprofile-mplaceion.py Cl_nAChR.cfg
+  apbs-bornprofile-placeion.py Na_nAChR.cfg
+  apbs-bornprofile-placeion.py Cl_nAChR.cfg
 
 These commands will generate input files in two directories
 corresponding to the *job:name* values in the run configuration (cfg)
