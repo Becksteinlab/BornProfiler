@@ -248,11 +248,16 @@ class Placeion(BPbase):
   def generate(self):
     """Generate all input files."""
 
-    #Check to ensure no points for evaluation would cause secondary grid to lie outside of  primary grid
-    if numpy.greater(self.pmax - self.protein_centre,numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0)).all() or \
-          numpy.less(self.pmin - self.protein_centre, -(numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0))).all():
-      logger.fatal("Points for evaluation lie too close to glen box boundary. Adjust this parameter accordingly(need to have buffer between points and box boundary to fit the secondary grid inside of the first.)")
-      sys.exit(1)
+    # Check to ensure no points for evaluation would cause secondary grid to lie outside of  primary grid
+    if numpy.greater(self.pmax - self.protein_centre,
+                     numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0)).all() or \
+          numpy.less(self.pmin - self.protein_centre,
+                     -(numpy.asarray(self.glen[0])/2.0 - (numpy.asarray(self.glen[1])/2.0+5.0))).all():
+      errmsg = ("Points for evaluation lie too close to glen {} box boundary. Adjust this parameter "
+                "accordingly (need to have buffer between points and box boundary to fit the "
+                "secondary grid inside of the first.)".format(self.glen))
+      logger.fatal(errmsg)
+      raise ValueError(errmsg)
 
     self.writePQRs()
     self.writeIn()
