@@ -47,23 +47,9 @@ echo "------------------------------------------------------------"
 case "$MACHINE_TYPE" in
 'Linux_x86_64')
 	echo "Loading 64-bit Linux modules"
-	module load apbs/1.4/64
+	module load apbs/1.4/ASU/64
 	module load APBSmem/1.12/64
 ;; 
-'Darwin_i386')
-	echo "Loading 32-bit Darwin modules"
-	#module load apbs/1.3svn1625/univ
-	#module load APBSmem/1.05/univ
-	echo "ERROR: No binaries for platform and architecture."
-	exit 1
-;;
-'Darwin_x86_64')
-	echo "Loading 64-bit Darwin modules"
-	#module load apbs/1.3svn1625/univ
-	#module load APBSmem/1.05/univ
-	echo "ERROR: No binaries for platform and architecture."
-	exit 1
-;;
 *)
 	echo "ERROR: Unknown platform and architecture."
 	exit 1
