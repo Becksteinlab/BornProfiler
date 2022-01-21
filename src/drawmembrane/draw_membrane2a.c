@@ -69,6 +69,10 @@ typedef struct {
   float x0_p; /* x and y of protein */
   float y0_p;
   float z0_p;
+
+  bool dimer; /* new feature x2,y2 added for CPA dimer. If the system is a dimer then set to True.*/
+  float x2_R;
+  float y2_R
 } t_membrane;
 
 char *newname(const char *prefix, const char *infix, const char *suffix, const bool gzipped);
@@ -346,18 +350,39 @@ float draw_diel(const t_membrane *M, float *diel, const float x, const float y, 
 
      changes *diel in place (and also returns the value)
   */
-  float R, R_temp;
-  R = sqrt(SQR(x - M->x0_R) + SQR(y - M->y0_R));	
-  R_temp = (M->R_m1*(z - M->z_m0) - M->R_m0*(z - M->z_m1))/(M->z_m1 - M->z_m0);  	
+  float R, R2, R_temp;
+   
 
-  if (z >= M->z_m0 && z <= M->z_m1 && *diel > M->pdie+PDIE_FUDGE_DELTA) {
+  if (! M->dimer){
+    R = sqrt(SQR(x - M->x0_R) + SQR(y - M->y0_R));	
+    R_temp = (M->R_m1*(z - M->z_m0) - M->R_m0*(z - M->z_m1))/(M->z_m1 - M->z_m0); 
+
+    if (z >= M->z_m0 && z <= M->z_m1 && *diel > M->pdie+PDIE_FUDGE_DELTA) {
     /* inside membrane region but NOT where the protein is */
     /* bilayer or headgroup dielectric constant outside channel */
-    *diel = (z >= M->z_h0 && z <= M->z_h1) ? M->mdie : M->idie; 
-    if (R <= R_temp) {
-      *diel = M->cdie;   /* channel dielectric painted over membrane */
+      *diel = (z >= M->z_h0 && z <= M->z_h1) ? M->mdie : M->idie; 
+      if (R <= R_temp) {
+        *diel = M->cdie;   /* channel dielectric painted over membrane */
+      }
     }
   }
+
+  else {
+	    R = sqrt(SQR(x-M->x0_R) + SQR(y-M->y0_R));                /*better to use the Membrane struct for x2, y2*/
+	    R2 = sqrt(SQR(x-M->x2_R) + SQR(y-M->y2_R));
+	    R_temp = (M->R_m1*(z - M->z_m0) - M->R_m0*(z - M->z_m1))/(M->z_m1 - M->z_m0);
+
+    if (z >= M->z_m0 && z <= M->z_m1 && *diel > M->pdie+PDIE_FUDGE_DELTA) {
+    /* inside membrane region but NOT where the protein is */
+    /* bilayer or headgroup dielectric constant outside channel */
+      *diel = (z >= M->z_h0 && z <= M->z_h1) ? M->mdie : M->idie; 
+      if (R2 <= R_temp || R <= R_temp){
+      //if (R2 <= R_temp) {  // test the other protomer
+        *diel = M->cdie;   /* channel dielectric painted over membrane */
+      }
+    }
+	}
+
   return *diel;
 }
 
@@ -507,13 +532,26 @@ int main(int argc, char *argv[])
   float V=0, I=0.1, sdie, cdie, pdie, mdie, idie;
   float l_m=40, a0=0;
   float z_m0=0, R_m0=0, R_m1=0, x0_R=NO_COORDINATE, y0_R=NO_COORDINATE;
-  float R, R_temp;
+  float R, R2, R_temp;  /*11-2021 added R2*/
   char *infix;
   char *file_name_x, *file_name_y, *file_name_z;
   char *file_name_k, *file_name_c;
   char *f1, *f2, *f3, *f4, *f5, *f6;
   char ext[]="m.dx";
   bool compression = FALSE;
+
+  /*11-2021*/
+  /* Draw symmetric exclusion zone for a dimer. */
+  /* The zone is defined by x0_R, y0_R, dx_R, dy_R. */
+  bool dimer = TRUE; /* New feature for CPA dimer. Set to FALSE as default*/
+  float x2_R=NO_COORDINATE, y2_R=NO_COORDINATE;
+  float dx_R, dy_R;
+
+  /* For this test case, we are going to hard code the second zone center as:*/
+  /* x0_R - 2 * dx_R */
+  /* y0_R - 2 * dy_R */
+  /* see core.py line 458*/
+
   int c;
   t_membrane Membrane;
  
@@ -524,6 +562,7 @@ int main(int argc, char *argv[])
   printf("draw_membrane2  -- (c) 2008 Michael Grabe [09/02/08]\n");
   printf("draw_membrane4  -- (c) 2010 Michael Grabe [07/29/10]\n");
   printf("draw_membrane2a -- (c) 2010,2011 Oliver Beckstein [04/26/11]\n");
+  printf("draw_membrane2a -- (c) 2021 Chenou Zhang [12/13/21] \n");
   printf("Published under the Open Source MIT License (see http://sourceforge.net/projects/apbsmem/).\n");
   printf("Based on http://www.poissonboltzmann.org/apbs/examples/potentials-of-mean-force/the-polar-solvation-potential-of-mean-force-for-a-helix-in-a-dielectric-slab-membrane/draw_membrane2.c\n");
   printf("----------------------------------------------------------------\n");
@@ -540,6 +579,12 @@ int main(int argc, char *argv[])
 
   R_m1 = 0;      /* upper exclusion radius */
   R_m0 = 0;      /* lower exclusion radius */
+
+  /*11-2021*/
+  /* Warning: this is the hard coded offset. Normally you should get them from core.py*/
+  /* But the way wrote in core.py made it hard to do so. */
+  dx_R = 20;
+  dy_R = -5;
 
   opterr = 0;
   while ((c = getopt(argc, argv, "hZz:d:s:c:m:p:i:a:V:I:r:R:X:Y:")) != -1) {
@@ -647,6 +692,8 @@ int main(int argc, char *argv[])
 	   z_m0, l_m, R_m0, R_m1, opt_x0_R, opt_y0_R, infix);
   }
 
+
+
   /* Find the x-shifted dielectric map 
      Construct the name as <basename><infix><suffix>
 
@@ -753,6 +800,7 @@ int main(int argc, char *argv[])
     printf("NOTE: centre y0_R of exclusion zone set to centre y0_p of dielectric map (use -Y)!\n");
   }
 
+
   /* TODO: use t_membrane throughout, currently only used for draw() */
   Membrane.z_m0 = z_m0;         /* bottom of membrane */
   Membrane.z_m1 = z_m0 + l_m;   /* top of the membrane */
@@ -770,6 +818,19 @@ int main(int argc, char *argv[])
   Membrane.x0_p = x0_p;          /* centre of the protein */
   Membrane.y0_p = y0_p;
   Membrane.z0_p = z0_p;
+  Membrane.dimer = TRUE;         /*11-2021 CPA hack*/
+
+    /* 11-2021 */
+  /* Manually add parameters for the second protomer. */
+  printf("dimer=%d", dimer);
+  if (dimer){
+    printf("Dimer system detected. Turning on the hack mode.");
+    x2_R =  Membrane.x0_R - 2 * dx_R;
+    y2_R =  Membrane.y0_R - 2 * dy_R;
+    }
+
+  Membrane.x2_R = x2_R;
+  Membrane.y2_R = y2_R;
 
   print_geometry(&Membrane, l_c_x, l_c_y, l_c_z);
   print_membrane(&Membrane);
@@ -933,11 +994,27 @@ int main(int argc, char *argv[])
 	}
 
 	/* channel exclusion zone for ion accessibility */
-	R = sqrt(SQR(x[k]-Membrane.x0_R) + SQR(y[j]-Membrane.y0_R));                      
-	R_temp = (R_m1*(z[i]-Membrane.z_m0) - R_m0*(z[i]-Membrane.z_m1))/(Membrane.z_m1 - Membrane.z_m0);
+	/*If the system is not a dimer. 11-2021 added*/
+	if (! Membrane.dimer){
+	    R = sqrt(SQR(x[k]-Membrane.x0_R) + SQR(y[j]-Membrane.y0_R));
+	    R_temp = (R_m1*(z[i]-Membrane.z_m0) - R_m0*(z[i]-Membrane.z_m1))/(Membrane.z_m1 - Membrane.z_m0);
 
-	if (z[i] <= Membrane.z_m1 && z[i] >= Membrane.z_m0 && R > R_temp) {
-	  kk[cnt] = 0.0;   /* Zero ion accessibility */
+	    if (z[i] <= Membrane.z_m1 && z[i] >= Membrane.z_m0 && R > R_temp) {
+	        kk[cnt] = 0.0;   /* Zero ion accessibility */
+	    }
+    }
+
+	/*11-2021*/
+	/*Added the exclusion zone for a second protomer. */
+	else {
+	    R = sqrt(SQR(x[k]-Membrane.x0_R) + SQR(y[j]-Membrane.y0_R));                /*better to use the Membrane struct for x2, y2*/
+	    R2 = sqrt(SQR(x[k]-x2_R) + SQR(y[j]-y2_R));
+	    R_temp = (R_m1*(z[i]-Membrane.z_m0) - R_m0*(z[i]-Membrane.z_m1))/(Membrane.z_m1 - Membrane.z_m0);
+
+	    //if (z[i] <= Membrane.z_m1 && z[i] >= Membrane.z_m0 && R > R_temp && R2 > R_temp) {
+	    if (z[i] <= Membrane.z_m1 && z[i] >= Membrane.z_m0  && R2 > R_temp) {
+	        kk[cnt] = 0.0;   /* Zero ion accessibility */
+	    }
 	}
 	++cnt;
       }			
