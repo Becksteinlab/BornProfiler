@@ -358,7 +358,6 @@ class AnalyzeElec3D(Analyzer):
         to :meth:`AnalElec.Grid`.
         """
         g = self.Grid(delta, **kwargs)
-        g.export(filename, format="dx")
+        g.export(filename, file_format="dx")
         logger.info("Wrote Born PMF to dx file  %(filename)r with spacing %(delta)g A.",
                     vars())
-
