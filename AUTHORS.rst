@@ -5,7 +5,8 @@
 Copyright (c) 2005 Kaihsu Tai, Oliver Beckstein
 Copyright (c) 2008 Kaihsu Tai
 Copyright (c) 2010-2012 Oliver Beckstein                   
-Copyright (c) 2013-2015 Oliver Beckstein, Lennard van der Feltz
+Copyright (c) 2013-2021 Oliver Beckstein, Lennard van der Feltzi
+Copyright (c) 2021-2022 Oliver Beckstein, Lennard van der Feltzi, Chenou Zhang
 
 Published under the GNU Public Licence, version 3
 
@@ -20,6 +21,9 @@ Authors
 
 2013
   - Lennard van der Feltz
+
+2022
+  - Chenou Zhang
 
 
 Additional Software
